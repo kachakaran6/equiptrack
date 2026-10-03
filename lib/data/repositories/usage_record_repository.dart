@@ -164,7 +164,11 @@ class SupabaseUsageRecordRepository implements UsageRecordRepository {
         .stream(primaryKey: ['id'])
         .eq('section_id', sectionId)
         .order('usage_date', ascending: true)
-        .map((data) => data.map((item) => UsageRecord.fromJson(item)).toList());
+        .map((data) {
+          final items = data.map((item) => UsageRecord.fromJson(item)).toList();
+          final seen = <String>{};
+          return items.where((item) => seen.add(item.id)).toList();
+        });
   }
 }
 

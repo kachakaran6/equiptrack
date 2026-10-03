@@ -134,7 +134,11 @@ class SupabaseSectionRepository implements SectionRepository {
         .stream(primaryKey: ['id'])
         .eq('machine_id', machineId)
         .order('name', ascending: true)
-        .map((data) => data.map((item) => Section.fromJson(item)).toList());
+        .map((data) {
+          final items = data.map((item) => Section.fromJson(item)).toList();
+          final seen = <String>{};
+          return items.where((item) => seen.add(item.id)).toList();
+        });
   }
 }
 

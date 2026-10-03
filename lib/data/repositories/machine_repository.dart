@@ -134,7 +134,11 @@ class SupabaseMachineRepository implements MachineRepository {
         .from(AppConstants.tableMachines)
         .stream(primaryKey: ['id'])
         .order('name', ascending: true)
-        .map((data) => data.map((item) => Machine.fromJson(item)).toList());
+        .map((data) {
+          final items = data.map((item) => Machine.fromJson(item)).toList();
+          final seen = <String>{};
+          return items.where((item) => seen.add(item.id)).toList();
+        });
   }
 }
 
