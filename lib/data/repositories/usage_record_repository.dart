@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_failure.dart';
+import '../../core/network/api_client.dart';
 import '../../core/utils/app_logger.dart';
 import '../../models/usage_record.dart';
-import '../datasources/supabase_client_provider.dart';
 
 abstract class UsageRecordRepository {
   Future<List<UsageRecord>> getRecords(String sectionId);
@@ -24,29 +22,26 @@ abstract class UsageRecordRepository {
     required DateTime date,
     String? excludeRecordId,
   });
-  Stream<List<UsageRecord>> watchRecords(String sectionId);
 }
 
-class SupabaseUsageRecordRepository implements UsageRecordRepository {
-  final SupabaseClient _client;
+class ApiUsageRecordRepository implements UsageRecordRepository {
+  final ApiClient _apiClient;
 
-  SupabaseUsageRecordRepository(this._client);
+  ApiUsageRecordRepository(this._apiClient);
 
   @override
   Future<List<UsageRecord>> getRecords(String sectionId) async {
     try {
-      final data = await _client
-          .from(AppConstants.tableUsageRecords)
-          .select()
-          .eq('section_id', sectionId)
-          .order('usage_date', ascending: true);
-
-      return (data as List).map((item) => UsageRecord.fromJson(item)).toList();
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error fetching usage records for section $sectionId', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      final data = await _apiClient.get('/sections/$sectionId/usage-records');
+      if (data is List) {
+        return data
+            .map((item) => UsageRecord.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+      return [];
     } catch (e, st) {
-      AppLogger.error('Unexpected error fetching usage records', e, st);
+      AppLogger.error('Error fetching usage records for section $sectionId via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load usage history: $e');
     }
   }
@@ -61,20 +56,22 @@ class SupabaseUsageRecordRepository implements UsageRecordRepository {
       final dateStr =
           '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-      var query = _client
-          .from(AppConstants.tableUsageRecords)
-          .select('id')
-          .eq('section_id', sectionId)
-          .eq('usage_date', dateStr);
-
+      final queryParams = <String, dynamic>{'date': dateStr};
       if (excludeRecordId != null) {
-        query = query.neq('id', excludeRecordId);
+        queryParams['excludeId'] = excludeRecordId;
       }
 
-      final data = await query;
-      return (data as List).isNotEmpty;
+      final data = await _apiClient.get(
+        '/sections/$sectionId/check-duplicate-date',
+        queryParameters: queryParams,
+      );
+
+      if (data is Map && data['isDuplicate'] != null) {
+        return data['isDuplicate'] as bool;
+      }
+      return false;
     } catch (e, st) {
-      AppLogger.error('Error checking duplicate date', e, st);
+      AppLogger.error('Error checking duplicate date via API', e, st);
       return false;
     }
   }
@@ -86,28 +83,21 @@ class SupabaseUsageRecordRepository implements UsageRecordRepository {
     required DateTime usageDate,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
       final dateStr =
           '${usageDate.year.toString().padLeft(4, '0')}-${usageDate.month.toString().padLeft(2, '0')}-${usageDate.day.toString().padLeft(2, '0')}';
 
-      final response = await _client
-          .from(AppConstants.tableUsageRecords)
-          .insert({
-            'section_id': sectionId,
-            'name': name.trim(),
-            'usage_date': dateStr,
-            'created_by': userId,
-            'updated_by': userId,
-          })
-          .select()
-          .single();
+      final data = await _apiClient.post(
+        '/sections/$sectionId/usage-records',
+        body: {
+          'name': name.trim(),
+          'usage_date': dateStr,
+        },
+      );
 
-      return UsageRecord.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error creating usage record', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return UsageRecord.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error creating usage record', e, st);
+      AppLogger.error('Error creating usage record via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to save usage record: $e');
     }
   }
@@ -119,27 +109,21 @@ class SupabaseUsageRecordRepository implements UsageRecordRepository {
     required DateTime usageDate,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
       final dateStr =
           '${usageDate.year.toString().padLeft(4, '0')}-${usageDate.month.toString().padLeft(2, '0')}-${usageDate.day.toString().padLeft(2, '0')}';
 
-      final response = await _client
-          .from(AppConstants.tableUsageRecords)
-          .update({
-            'name': name.trim(),
-            'usage_date': dateStr,
-            'updated_by': userId,
-          })
-          .eq('id', id)
-          .select()
-          .single();
+      final data = await _apiClient.patch(
+        '/usage-records/$id',
+        body: {
+          'name': name.trim(),
+          'usage_date': dateStr,
+        },
+      );
 
-      return UsageRecord.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error updating usage record $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return UsageRecord.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error updating usage record $id', e, st);
+      AppLogger.error('Error updating usage record $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to update usage record: $e');
     }
   }
@@ -147,37 +131,22 @@ class SupabaseUsageRecordRepository implements UsageRecordRepository {
   @override
   Future<void> deleteRecord(String id) async {
     try {
-      await _client.from(AppConstants.tableUsageRecords).delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error deleting usage record $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      await _apiClient.delete('/usage-records/$id');
     } catch (e, st) {
-      AppLogger.error('Unexpected error deleting usage record $id', e, st);
+      AppLogger.error('Error deleting usage record $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to delete usage record: $e');
     }
-  }
-
-  @override
-  Stream<List<UsageRecord>> watchRecords(String sectionId) {
-    return _client
-        .from(AppConstants.tableUsageRecords)
-        .stream(primaryKey: ['id'])
-        .eq('section_id', sectionId)
-        .order('usage_date', ascending: true)
-        .map((data) {
-          final items = data.map((item) => UsageRecord.fromJson(item)).toList();
-          final seen = <String>{};
-          return items.where((item) => seen.add(item.id)).toList();
-        });
   }
 }
 
 final usageRecordRepositoryProvider = Provider<UsageRecordRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return SupabaseUsageRecordRepository(client);
+  final apiClient = ref.watch(apiClientProvider);
+  return ApiUsageRecordRepository(apiClient);
 });
 
-final usageRecordsStreamFamily = StreamProvider.family<List<UsageRecord>, String>((ref, sectionId) {
+final usageRecordsStreamFamily =
+    FutureProvider.family<List<UsageRecord>, String>((ref, sectionId) async {
   final repo = ref.watch(usageRecordRepositoryProvider);
-  return repo.watchRecords(sectionId);
+  return repo.getRecords(sectionId);
 });

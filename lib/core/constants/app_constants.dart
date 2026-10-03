@@ -6,7 +6,7 @@ class AppConstants {
   static const String appTagline = 'Track machine lifecycle & component durability';
   static const String runningText = 'Running';
 
-  // Table Names in Supabase
+  // PostgreSQL Tables
   static const String tableMachines = 'machines';
   static const String tableSections = 'sections';
   static const String tableUsageRecords = 'usage_records';

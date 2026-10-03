@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../core/utils/app_logger.dart';
-import '../data/datasources/supabase_client_provider.dart';
 
 /// Initializes core services, environment configuration, and device orientations
 class AppBootstrap {
@@ -18,11 +18,12 @@ class AppBootstrap {
       DeviceOrientation.landscapeRight,
     ]);
 
-    // Initialize Supabase
+    // Load environment variables (.env)
     try {
-      await SupabaseBootstrap.initialize();
-    } catch (e, st) {
-      AppLogger.error('AppBootstrap: Supabase initialization failed', e, st);
+      await dotenv.load(fileName: '.env');
+      AppLogger.info('Environment variables loaded successfully.');
+    } catch (e) {
+      AppLogger.warning('Could not load .env file (using runtime defaults): $e');
     }
   }
 }

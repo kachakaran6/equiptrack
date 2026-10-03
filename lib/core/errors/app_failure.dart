@@ -28,7 +28,7 @@ class AuthenticationFailure extends AppFailure {
   ]) : super(code: code ?? 'AUTH_ERROR', details: details);
 }
 
-/// Database/Supabase CRUD failure
+/// Database / API CRUD failure
 class DatabaseFailure extends AppFailure {
   const DatabaseFailure([
     super.message = 'An error occurred while accessing the database. Please try again.',

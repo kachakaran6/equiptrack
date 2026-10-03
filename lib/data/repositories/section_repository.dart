@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_failure.dart';
+import '../../core/network/api_client.dart';
 import '../../core/utils/app_logger.dart';
 import '../../models/section.dart';
-import '../datasources/supabase_client_provider.dart';
 
 abstract class SectionRepository {
   Future<List<Section>> getSections(String machineId);
@@ -12,29 +10,26 @@ abstract class SectionRepository {
   Future<Section> createSection({required String machineId, required String name});
   Future<Section> updateSection({required String id, required String name});
   Future<void> deleteSection(String id);
-  Stream<List<Section>> watchSections(String machineId);
 }
 
-class SupabaseSectionRepository implements SectionRepository {
-  final SupabaseClient _client;
+class ApiSectionRepository implements SectionRepository {
+  final ApiClient _apiClient;
 
-  SupabaseSectionRepository(this._client);
+  ApiSectionRepository(this._apiClient);
 
   @override
   Future<List<Section>> getSections(String machineId) async {
     try {
-      final data = await _client
-          .from(AppConstants.tableSections)
-          .select()
-          .eq('machine_id', machineId)
-          .order('name', ascending: true);
-
-      return (data as List).map((item) => Section.fromJson(item)).toList();
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error fetching sections for machine $machineId', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      final data = await _apiClient.get('/machines/$machineId/sections');
+      if (data is List) {
+        return data
+            .map((item) => Section.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+      return [];
     } catch (e, st) {
-      AppLogger.error('Unexpected error fetching sections', e, st);
+      AppLogger.error('Error fetching sections for machine $machineId via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load sections: $e');
     }
   }
@@ -42,19 +37,17 @@ class SupabaseSectionRepository implements SectionRepository {
   @override
   Future<Section?> getSectionById(String id) async {
     try {
-      final data = await _client
-          .from(AppConstants.tableSections)
-          .select()
-          .eq('id', id)
-          .maybeSingle();
-
-      if (data == null) return null;
-      return Section.fromJson(data);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error fetching section $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      final data = await _apiClient.get('/sections/$id');
+      if (data is Map) {
+        return Section.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
     } catch (e, st) {
-      AppLogger.error('Unexpected error fetching section $id', e, st);
+      AppLogger.error('Error fetching section $id via API', e, st);
+      if (e is DatabaseFailure && e.code == '404') {
+        return null;
+      }
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load section details: $e');
     }
   }
@@ -65,24 +58,17 @@ class SupabaseSectionRepository implements SectionRepository {
     required String name,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
-      final response = await _client
-          .from(AppConstants.tableSections)
-          .insert({
-            'machine_id': machineId,
-            'name': name.trim(),
-            'created_by': userId,
-            'updated_by': userId,
-          })
-          .select()
-          .single();
+      final data = await _apiClient.post(
+        '/machines/$machineId/sections',
+        body: {
+          'name': name.trim(),
+        },
+      );
 
-      return Section.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error creating section', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return Section.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error creating section', e, st);
+      AppLogger.error('Error creating section via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to save section: $e');
     }
   }
@@ -93,23 +79,17 @@ class SupabaseSectionRepository implements SectionRepository {
     required String name,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
-      final response = await _client
-          .from(AppConstants.tableSections)
-          .update({
-            'name': name.trim(),
-            'updated_by': userId,
-          })
-          .eq('id', id)
-          .select()
-          .single();
+      final data = await _apiClient.patch(
+        '/sections/$id',
+        body: {
+          'name': name.trim(),
+        },
+      );
 
-      return Section.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error updating section $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return Section.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error updating section $id', e, st);
+      AppLogger.error('Error updating section $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to update section: $e');
     }
   }
@@ -117,37 +97,21 @@ class SupabaseSectionRepository implements SectionRepository {
   @override
   Future<void> deleteSection(String id) async {
     try {
-      await _client.from(AppConstants.tableSections).delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error deleting section $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      await _apiClient.delete('/sections/$id');
     } catch (e, st) {
-      AppLogger.error('Unexpected error deleting section $id', e, st);
+      AppLogger.error('Error deleting section $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to delete section: $e');
     }
-  }
-
-  @override
-  Stream<List<Section>> watchSections(String machineId) {
-    return _client
-        .from(AppConstants.tableSections)
-        .stream(primaryKey: ['id'])
-        .eq('machine_id', machineId)
-        .order('name', ascending: true)
-        .map((data) {
-          final items = data.map((item) => Section.fromJson(item)).toList();
-          final seen = <String>{};
-          return items.where((item) => seen.add(item.id)).toList();
-        });
   }
 }
 
 final sectionRepositoryProvider = Provider<SectionRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return SupabaseSectionRepository(client);
+  final apiClient = ref.watch(apiClientProvider);
+  return ApiSectionRepository(apiClient);
 });
 
-final sectionsStreamFamily = StreamProvider.family<List<Section>, String>((ref, machineId) {
+final sectionsStreamFamily = FutureProvider.family<List<Section>, String>((ref, machineId) async {
   final repo = ref.watch(sectionRepositoryProvider);
-  return repo.watchSections(machineId);
+  return repo.getSections(machineId);
 });

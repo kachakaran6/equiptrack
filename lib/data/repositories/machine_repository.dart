@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_failure.dart';
+import '../../core/network/api_client.dart';
 import '../../core/utils/app_logger.dart';
 import '../../models/machine.dart';
-import '../datasources/supabase_client_provider.dart';
 
 abstract class MachineRepository {
   Future<List<Machine>> getMachines();
@@ -12,28 +10,26 @@ abstract class MachineRepository {
   Future<Machine> createMachine({required String name, String? description});
   Future<Machine> updateMachine({required String id, required String name, String? description});
   Future<void> deleteMachine(String id);
-  Stream<List<Machine>> watchMachines();
 }
 
-class SupabaseMachineRepository implements MachineRepository {
-  final SupabaseClient _client;
+class ApiMachineRepository implements MachineRepository {
+  final ApiClient _apiClient;
 
-  SupabaseMachineRepository(this._client);
+  ApiMachineRepository(this._apiClient);
 
   @override
   Future<List<Machine>> getMachines() async {
     try {
-      final data = await _client
-          .from(AppConstants.tableMachines)
-          .select()
-          .order('name', ascending: true);
-
-      return (data as List).map((item) => Machine.fromJson(item)).toList();
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error fetching machines', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      final data = await _apiClient.get('/machines');
+      if (data is List) {
+        return data
+            .map((item) => Machine.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+      return [];
     } catch (e, st) {
-      AppLogger.error('Unexpected error fetching machines', e, st);
+      AppLogger.error('Error fetching machines via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load machines: $e');
     }
   }
@@ -41,19 +37,17 @@ class SupabaseMachineRepository implements MachineRepository {
   @override
   Future<Machine?> getMachineById(String id) async {
     try {
-      final data = await _client
-          .from(AppConstants.tableMachines)
-          .select()
-          .eq('id', id)
-          .maybeSingle();
-
-      if (data == null) return null;
-      return Machine.fromJson(data);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error fetching machine $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      final data = await _apiClient.get('/machines/$id');
+      if (data is Map) {
+        return Machine.fromJson(Map<String, dynamic>.from(data));
+      }
+      return null;
     } catch (e, st) {
-      AppLogger.error('Unexpected error fetching machine $id', e, st);
+      AppLogger.error('Error fetching machine $id via API', e, st);
+      if (e is DatabaseFailure && e.code == '404') {
+        return null;
+      }
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load machine details: $e');
     }
   }
@@ -64,24 +58,18 @@ class SupabaseMachineRepository implements MachineRepository {
     String? description,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
-      final response = await _client
-          .from(AppConstants.tableMachines)
-          .insert({
-            'name': name.trim(),
-            'description': description?.trim().isEmpty == true ? null : description?.trim(),
-            'created_by': userId,
-            'updated_by': userId,
-          })
-          .select()
-          .single();
+      final data = await _apiClient.post(
+        '/machines',
+        body: {
+          'name': name.trim(),
+          'description': description?.trim().isEmpty == true ? null : description?.trim(),
+        },
+      );
 
-      return Machine.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error creating machine', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return Machine.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error creating machine', e, st);
+      AppLogger.error('Error creating machine via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to save new machine: $e');
     }
   }
@@ -93,24 +81,18 @@ class SupabaseMachineRepository implements MachineRepository {
     String? description,
   }) async {
     try {
-      final userId = _client.auth.currentUser?.id;
-      final response = await _client
-          .from(AppConstants.tableMachines)
-          .update({
-            'name': name.trim(),
-            'description': description?.trim().isEmpty == true ? null : description?.trim(),
-            'updated_by': userId,
-          })
-          .eq('id', id)
-          .select()
-          .single();
+      final data = await _apiClient.patch(
+        '/machines/$id',
+        body: {
+          'name': name.trim(),
+          'description': description?.trim().isEmpty == true ? null : description?.trim(),
+        },
+      );
 
-      return Machine.fromJson(response);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error updating machine $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      return Machine.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
-      AppLogger.error('Unexpected error updating machine $id', e, st);
+      AppLogger.error('Error updating machine $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to update machine: $e');
     }
   }
@@ -118,36 +100,21 @@ class SupabaseMachineRepository implements MachineRepository {
   @override
   Future<void> deleteMachine(String id) async {
     try {
-      await _client.from(AppConstants.tableMachines).delete().eq('id', id);
-    } on PostgrestException catch (e) {
-      AppLogger.error('Postgrest error deleting machine $id', e);
-      throw DatabaseFailure(e.message, e.code, e.details);
+      await _apiClient.delete('/machines/$id');
     } catch (e, st) {
-      AppLogger.error('Unexpected error deleting machine $id', e, st);
+      AppLogger.error('Error deleting machine $id via API', e, st);
+      if (e is AppFailure) rethrow;
       throw DatabaseFailure('Failed to delete machine: $e');
     }
-  }
-
-  @override
-  Stream<List<Machine>> watchMachines() {
-    return _client
-        .from(AppConstants.tableMachines)
-        .stream(primaryKey: ['id'])
-        .order('name', ascending: true)
-        .map((data) {
-          final items = data.map((item) => Machine.fromJson(item)).toList();
-          final seen = <String>{};
-          return items.where((item) => seen.add(item.id)).toList();
-        });
   }
 }
 
 final machineRepositoryProvider = Provider<MachineRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return SupabaseMachineRepository(client);
+  final apiClient = ref.watch(apiClientProvider);
+  return ApiMachineRepository(apiClient);
 });
 
-final machinesStreamProvider = StreamProvider<List<Machine>>((ref) {
+final machinesStreamProvider = FutureProvider<List<Machine>>((ref) async {
   final repo = ref.watch(machineRepositoryProvider);
-  return repo.watchMachines();
+  return repo.getMachines();
 });
