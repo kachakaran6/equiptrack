@@ -1,19 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-export interface AuthUser {
-  id: string;
-  email: string;
-}
-
-declare module 'fastify' {
-  interface FastifyRequest {
-    user: AuthUser;
-  }
-}
-
 export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
-    const payload = await request.jwtVerify<AuthUser>();
+    const payload = await request.jwtVerify<{ id: string; email: string }>();
     if (!payload || !payload.id) {
       reply.status(401).send({
         success: false,
@@ -21,7 +10,6 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       });
       return;
     }
-    request.user = payload;
   } catch (err) {
     reply.status(401).send({
       success: false,
@@ -29,3 +17,4 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     });
   }
 }
+

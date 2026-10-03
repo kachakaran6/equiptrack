@@ -2,6 +2,7 @@
   "name": "equiptrack-backend",
   "version": "1.0.0",
   "description": "Lightweight, secure Fastify + PostgreSQL backend for EquipTrack",
+  "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
