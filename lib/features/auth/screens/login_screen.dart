@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_keys.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -32,10 +34,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
-    await ref.read(authControllerProvider.notifier).signIn(
+    final success = await ref.read(authControllerProvider.notifier).signIn(
           _emailController.text,
           _passwordController.text,
         );
+
+    if (success && mounted) {
+      context.go(AppRoutes.machines);
+    }
   }
 
   @override
