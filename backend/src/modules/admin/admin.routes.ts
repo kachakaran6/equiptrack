@@ -251,4 +251,77 @@ export async function adminRoutes(fastify: FastifyInstance) {
       await targetPool.end();
     }
   });
+
+  // POST /api/admin/set-password
+  fastify.post('/set-password', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { email, password } = (request.body || {}) as any;
+    if (!email || !password) {
+      return reply.status(400).send({ success: false, message: 'Email and password are required' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const targetPool = new pg.Pool({ connectionString: env.DATABASE_URL });
+    try {
+      const result = await targetPool.query(
+        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE email = $2 RETURNING id, email',
+        [hash, email]
+      );
+      if (result.rowCount === 0) {
+        const insertRes = await targetPool.query(
+          'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
+          [email, hash]
+        );
+        return reply.send({
+          success: true,
+          message: `Created user ${email} with specified password`,
+          user: insertRes.rows[0],
+        });
+      }
+      return reply.send({
+        success: true,
+        message: `Updated password for ${email}`,
+        user: result.rows[0],
+      });
+    } finally {
+      await targetPool.end();
+    }
+  });
+
+  // POST /api/admin/bulk-set-passwords
+  fastify.post('/bulk-set-passwords', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { users } = (request.body || {}) as { users: Array<{ email: string; password: string }> };
+    if (!Array.isArray(users) || users.length === 0) {
+      return reply.status(400).send({ success: false, message: 'Array of users is required' });
+    }
+
+    const targetPool = new pg.Pool({ connectionString: env.DATABASE_URL });
+    const results = [];
+    try {
+      for (const u of users) {
+        if (!u.email || !u.password) continue;
+        const hash = await bcrypt.hash(u.password, 10);
+        const updateRes = await targetPool.query(
+          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE email = $2 RETURNING id, email',
+          [hash, u.email]
+        );
+        if (updateRes.rowCount && updateRes.rowCount > 0) {
+          results.push({ email: u.email, status: 'updated', user: updateRes.rows[0] });
+        } else {
+          const insertRes = await targetPool.query(
+            'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
+            [u.email, hash]
+          );
+          results.push({ email: u.email, status: 'created', user: insertRes.rows[0] });
+        }
+      }
+
+      return reply.send({
+        success: true,
+        message: `Processed ${results.length} user passwords`,
+        results,
+      });
+    } finally {
+      await targetPool.end();
+    }
+  });
 }
+
