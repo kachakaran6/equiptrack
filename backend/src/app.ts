@@ -8,6 +8,7 @@ import { machineRoutes } from './modules/machines/machines.routes.js';
 import { sectionRoutes } from './modules/sections/sections.routes.js';
 import { usageRecordRoutes } from './modules/usage-records/usage-records.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
+import { adminRoutes } from './modules/admin/admin.routes.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -62,6 +63,7 @@ export function buildApp(): FastifyInstance {
   app.register(sectionRoutes, { prefix: '/api' });
   app.register(usageRecordRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api/reports' });
+  app.register(adminRoutes, { prefix: '/api/admin' });
 
   // 6. Global Error Handler
   app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
