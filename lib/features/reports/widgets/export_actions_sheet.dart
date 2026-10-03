@@ -53,8 +53,8 @@ class ExportActionsSheet extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: isDark
-                ? AppColors.primaryContainerDark
-                : AppColors.primaryContainerLight,
+                ? AppColors.surfaceContainerDark
+                : AppColors.surfaceContainerLight,
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             border: Border.all(
               color: isDark ? AppColors.borderDark : AppColors.borderLight,

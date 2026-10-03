@@ -259,11 +259,11 @@ class _MobileUsageRowCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? AppColors.primaryContainerDark
-                        : AppColors.primaryContainerLight,
+                        ? AppColors.surfaceContainerDark
+                        : AppColors.surfaceContainerLight,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     border: Border.all(
-                      color: (isDark ? AppColors.primaryLight : AppColors.primary).withAlpha(40),
+                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
                     ),
                   ),
                   child: Text(

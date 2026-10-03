@@ -79,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       height: 56,
                       decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.primaryContainerDark
+                            ? AppColors.surfaceContainerDark
                             : AppColors.primaryContainerLight,
                         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                         border: Border.all(
