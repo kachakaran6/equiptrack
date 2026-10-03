@@ -52,20 +52,32 @@ class AppConfirmDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
       title: Row(
         children: [
-          Icon(
-            isDestructive ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
-            color: isDestructive ? theme.colorScheme.error : theme.colorScheme.primary,
-            size: 24,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDestructive
+                  ? theme.colorScheme.errorContainer
+                  : theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isDestructive ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
+              color: isDestructive ? theme.colorScheme.error : theme.colorScheme.primary,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -78,18 +90,18 @@ class AppConfirmDialog extends StatelessWidget {
           Text(
             message,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           if (cascadeNotice != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withAlpha(60),
-                borderRadius: BorderRadius.circular(8),
+                color: theme.colorScheme.errorContainer.withAlpha(90),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: theme.colorScheme.error.withAlpha(60),
+                  color: theme.colorScheme.error.withAlpha(80),
                 ),
               ),
               child: Row(
@@ -97,10 +109,10 @@ class AppConfirmDialog extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.info_outline_rounded,
-                    size: 16,
+                    size: 18,
                     color: theme.colorScheme.error,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       cascadeNotice!,
@@ -116,7 +128,6 @@ class AppConfirmDialog extends StatelessWidget {
           ],
         ],
       ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
         AppButton(
           text: cancelLabel,
@@ -132,3 +143,4 @@ class AppConfirmDialog extends StatelessWidget {
     );
   }
 }
+

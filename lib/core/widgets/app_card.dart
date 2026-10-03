@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Authentic Material Design 3 Card with interactive ripple, proper tonal surface, and clipping
 class AppCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -7,6 +8,7 @@ class AppCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final double borderRadius;
+  final double elevation;
   final String? keyString;
 
   const AppCard({
@@ -16,42 +18,54 @@ class AppCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.backgroundColor,
     this.borderColor,
-    this.borderRadius = 12,
+    this.borderRadius = 16,
+    this.elevation = 0,
     this.keyString,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cardColor = backgroundColor ??
+        theme.cardTheme.color ??
+        theme.colorScheme.surfaceContainerLow;
+    final effectiveBorderColor =
+        borderColor ?? theme.colorScheme.outlineVariant.withAlpha(140);
 
-    Widget content = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? theme.cardTheme.color ?? theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: borderColor ?? theme.colorScheme.outlineVariant.withAlpha(128),
-          width: 1,
-        ),
-      ),
-      child: child,
+    final cardShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+      side: BorderSide(color: effectiveBorderColor, width: 1),
     );
 
-    if (onTap != null) {
-      return Material(
-        key: keyString != null ? Key(keyString!) : null,
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: content,
-        ),
+    final cardWidget = Material(
+      color: cardColor,
+      elevation: elevation,
+      shape: cardShape,
+      clipBehavior: Clip.antiAlias,
+      child: onTap != null
+          ? InkWell(
+              onTap: onTap,
+              splashColor: theme.colorScheme.primary.withAlpha(25),
+              highlightColor: theme.colorScheme.primary.withAlpha(15),
+              child: Padding(
+                padding: padding,
+                child: child,
+              ),
+            )
+          : Padding(
+              padding: padding,
+              child: child,
+            ),
+    );
+
+    if (keyString != null) {
+      return KeyedSubtree(
+        key: Key(keyString!),
+        child: cardWidget,
       );
     }
 
-    return KeyedSubtree(
-      key: keyString != null ? Key(keyString!) : null,
-      child: content,
-    );
+    return cardWidget;
   }
 }
+

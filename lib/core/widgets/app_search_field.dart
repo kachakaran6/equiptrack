@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Authentic Material Design 3 Search Bar component
 class AppSearchField extends StatefulWidget {
   final String hintText;
   final ValueChanged<String> onChanged;
@@ -48,50 +49,64 @@ class _AppSearchFieldState extends State<AppSearchField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return TextField(
-      key: widget.keyString != null ? Key(widget.keyString!) : null,
-      controller: _controller,
-      onChanged: widget.onChanged,
-      style: theme.textTheme.bodyMedium?.copyWith(
-        color: theme.colorScheme.onSurface,
-      ),
-      decoration: InputDecoration(
-        hintText: widget.hintText,
-        hintStyle: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant.withAlpha(140),
+    return Material(
+      color: Colors.transparent,
+      child: TextField(
+        key: widget.keyString != null ? Key(widget.keyString!) : null,
+        controller: _controller,
+        onChanged: widget.onChanged,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: colorScheme.onSurface,
+          fontWeight: FontWeight.w500,
         ),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          size: 20,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        suffixIcon: _hasText
-            ? IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18),
-                onPressed: () {
-                  _controller.clear();
-                  widget.onChanged('');
-                  widget.onClear?.call();
-                },
-              )
-            : null,
-        filled: true,
-        fillColor: theme.colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant.withAlpha(160),
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 10),
+            child: Icon(
+              Icons.search_rounded,
+              size: 22,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          suffixIcon: _hasText
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: IconButton(
+                    icon: const Icon(Icons.clear_rounded, size: 18),
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _controller.clear();
+                      widget.onChanged('');
+                      widget.onClear?.call();
+                    },
+                  ),
+                )
+              : null,
+          filled: true,
+          fillColor: colorScheme.surfaceContainerLow,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: colorScheme.outlineVariant.withAlpha(140)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: colorScheme.outlineVariant.withAlpha(140)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          ),
         ),
       ),
     );
   }
 }
+

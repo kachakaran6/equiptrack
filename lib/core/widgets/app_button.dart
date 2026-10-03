@@ -4,7 +4,7 @@ enum AppButtonVariant { primary, secondary, outline, danger, text }
 
 enum AppButtonSize { small, medium, large }
 
-/// Standard reusable button for the application
+/// Standard reusable Material 3 button for the application
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -33,9 +33,9 @@ class AppButton extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final padding = switch (size) {
-      AppButtonSize.small => const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      AppButtonSize.medium => const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      AppButtonSize.large => const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      AppButtonSize.small => const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      AppButtonSize.medium => const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+      AppButtonSize.large => const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
     };
 
     final textStyle = switch (size) {
@@ -45,8 +45,8 @@ class AppButton extends StatelessWidget {
     };
 
     final foregroundColor = switch (variant) {
-      AppButtonVariant.primary => Colors.white,
-      AppButtonVariant.danger => Colors.white,
+      AppButtonVariant.primary => colorScheme.onPrimary,
+      AppButtonVariant.danger => colorScheme.onError,
       AppButtonVariant.secondary => colorScheme.onSecondaryContainer,
       AppButtonVariant.outline => colorScheme.primary,
       AppButtonVariant.text => colorScheme.primary,
@@ -61,7 +61,7 @@ class AppButton extends StatelessWidget {
             width: size == AppButtonSize.small ? 14 : 18,
             height: size == AppButtonSize.small ? 14 : 18,
             child: CircularProgressIndicator(
-              strokeWidth: 2,
+              strokeWidth: 2.2,
               valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
             ),
           ),
@@ -78,14 +78,14 @@ class AppButton extends StatelessWidget {
 
     switch (variant) {
       case AppButtonVariant.primary:
-        button = ElevatedButton(
+        button = FilledButton(
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
+          style: FilledButton.styleFrom(
             backgroundColor: colorScheme.primary,
             foregroundColor: colorScheme.onPrimary,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
           child: content,
@@ -97,8 +97,10 @@ class AppButton extends StatelessWidget {
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
           style: FilledButton.styleFrom(
+            backgroundColor: colorScheme.secondaryContainer,
+            foregroundColor: colorScheme.onSecondaryContainer,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: content,
         );
@@ -110,22 +112,22 @@ class AppButton extends StatelessWidget {
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             padding: padding,
-            side: BorderSide(color: colorScheme.outlineVariant),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            side: BorderSide(color: colorScheme.outlineVariant.withAlpha(180)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: content,
         );
         break;
 
       case AppButtonVariant.danger:
-        button = ElevatedButton(
+        button = FilledButton(
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
+          style: FilledButton.styleFrom(
             backgroundColor: colorScheme.error,
             foregroundColor: colorScheme.onError,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
           child: content,
@@ -138,7 +140,7 @@ class AppButton extends StatelessWidget {
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: content,
         );
@@ -151,3 +153,4 @@ class AppButton extends StatelessWidget {
     return button;
   }
 }
+

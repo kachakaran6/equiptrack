@@ -21,21 +21,28 @@ class AppDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
       title: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 24, color: iconColor ?? theme.colorScheme.primary),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (iconColor ?? theme.colorScheme.primary).withAlpha(30),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: iconColor ?? theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 14),
           ],
           Expanded(
             child: Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -46,3 +53,4 @@ class AppDialog extends StatelessWidget {
     );
   }
 }
+
