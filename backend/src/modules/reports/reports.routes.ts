@@ -7,12 +7,10 @@ export const reportRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /api/reports/summary
   fastify.get('/summary', async (request, reply) => {
-    const userId = request.user.id;
-
     const [machinesRes, sectionsRes, recordsRes] = await Promise.all([
-      query('SELECT COUNT(*)::int as count FROM machines WHERE user_id = $1', [userId]),
-      query('SELECT COUNT(*)::int as count FROM sections WHERE user_id = $1', [userId]),
-      query('SELECT COUNT(*)::int as count FROM usage_records WHERE user_id = $1', [userId]),
+      query('SELECT COUNT(*)::int as count FROM machines'),
+      query('SELECT COUNT(*)::int as count FROM sections'),
+      query('SELECT COUNT(*)::int as count FROM usage_records'),
     ]);
 
     return reply.status(200).send({
@@ -24,4 +22,5 @@ export const reportRoutes: FastifyPluginAsync = async (fastify) => {
       },
     });
   });
+
 };

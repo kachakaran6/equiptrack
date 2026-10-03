@@ -4,7 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import * as db from '../src/db/index.js';
 
-// In-memory relational state simulator to test isolation logic without requiring external live database
+// In-memory relational state simulator to test global shared workspace logic
 class TestDatabaseHarness {
   users: Array<{ id: string; email: string; password_hash: string; created_at: string; updated_at: string }> = [];
   machines: Array<{ id: string; user_id: string; name: string; description: string | null; created_at: string; updated_at: string }> = [];
@@ -47,16 +47,15 @@ class TestDatabaseHarness {
     }
 
     // 2. Machines Queries
-    if (cleanSql.includes('SELECT id, user_id, name, description, created_at, updated_at FROM machines WHERE user_id = $1')) {
-      const rows = this.machines.filter((m) => m.user_id === params[0]);
+    if (cleanSql.includes('SELECT id, user_id, name, description, created_at, updated_at FROM machines ORDER BY name ASC')) {
+      return { rows: [...this.machines], rowCount: this.machines.length };
+    }
+    if (cleanSql.includes('SELECT id, user_id, name, description, created_at, updated_at FROM machines WHERE id = $1')) {
+      const rows = this.machines.filter((m) => m.id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id, user_id, name, description, created_at, updated_at FROM machines WHERE id = $1 AND user_id = $2')) {
-      const rows = this.machines.filter((m) => m.id === params[0] && m.user_id === params[1]);
-      return { rows, rowCount: rows.length };
-    }
-    if (cleanSql.includes('SELECT id FROM machines WHERE id = $1 AND user_id = $2')) {
-      const rows = this.machines.filter((m) => m.id === params[0] && m.user_id === params[1]);
+    if (cleanSql.includes('SELECT id FROM machines WHERE id = $1')) {
+      const rows = this.machines.filter((m) => m.id === params[0]);
       return { rows, rowCount: rows.length };
     }
     if (cleanSql.includes('INSERT INTO machines')) {
@@ -72,30 +71,30 @@ class TestDatabaseHarness {
       return { rows: [newMachine], rowCount: 1 };
     }
     if (cleanSql.includes('UPDATE machines')) {
-      const index = this.machines.findIndex((m) => m.id === params[2] && m.user_id === params[3]);
+      const index = this.machines.findIndex((m) => m.id === params[2]);
       if (index === -1) return { rows: [], rowCount: 0 };
       this.machines[index].name = params[0];
       this.machines[index].description = params[1] || null;
       this.machines[index].updated_at = new Date().toISOString();
       return { rows: [this.machines[index]], rowCount: 1 };
     }
-    if (cleanSql.includes('DELETE FROM machines WHERE id = $1 AND user_id = $2')) {
+    if (cleanSql.includes('DELETE FROM machines WHERE id = $1')) {
       const initialLen = this.machines.length;
-      this.machines = this.machines.filter((m) => !(m.id === params[0] && m.user_id === params[1]));
+      this.machines = this.machines.filter((m) => m.id !== params[0]);
       return { rowCount: initialLen - this.machines.length };
     }
 
     // 3. Sections Queries
-    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 AND user_id = $2')) {
-      const rows = this.sections.filter((s) => s.machine_id === params[0] && s.user_id === params[1]);
+    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC')) {
+      const rows = this.sections.filter((s) => s.machine_id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE id = $1 AND user_id = $2')) {
-      const rows = this.sections.filter((s) => s.id === params[0] && s.user_id === params[1]);
+    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE id = $1')) {
+      const rows = this.sections.filter((s) => s.id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id FROM sections WHERE id = $1 AND user_id = $2')) {
-      const rows = this.sections.filter((s) => s.id === params[0] && s.user_id === params[1]);
+    if (cleanSql.includes('SELECT id FROM sections WHERE id = $1')) {
+      const rows = this.sections.filter((s) => s.id === params[0]);
       return { rows, rowCount: rows.length };
     }
     if (cleanSql.includes('INSERT INTO sections')) {
@@ -111,30 +110,30 @@ class TestDatabaseHarness {
       return { rows: [newSection], rowCount: 1 };
     }
     if (cleanSql.includes('UPDATE sections')) {
-      const index = this.sections.findIndex((s) => s.id === params[1] && s.user_id === params[2]);
+      const index = this.sections.findIndex((s) => s.id === params[1]);
       if (index === -1) return { rows: [], rowCount: 0 };
       this.sections[index].name = params[0];
       return { rows: [this.sections[index]], rowCount: 1 };
     }
-    if (cleanSql.includes('DELETE FROM sections WHERE id = $1 AND user_id = $2')) {
+    if (cleanSql.includes('DELETE FROM sections WHERE id = $1')) {
       const initialLen = this.sections.length;
-      this.sections = this.sections.filter((s) => !(s.id === params[0] && s.user_id === params[1]));
+      this.sections = this.sections.filter((s) => s.id !== params[0]);
       return { rowCount: initialLen - this.sections.length };
     }
 
     // 4. Usage Records Queries
-    if (cleanSql.includes('SELECT id, section_id, user_id, name, usage_date, created_at, updated_at FROM usage_records WHERE section_id = $1 AND user_id = $2')) {
-      const rows = this.usageRecords.filter((r) => r.section_id === params[0] && r.user_id === params[1]);
+    if (cleanSql.includes('SELECT id, section_id, user_id, name, usage_date, created_at, updated_at FROM usage_records WHERE section_id = $1 ORDER BY usage_date ASC, created_at ASC')) {
+      const rows = this.usageRecords.filter((r) => r.section_id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id, section_id, user_id, name, usage_date, created_at, updated_at FROM usage_records WHERE id = $1 AND user_id = $2')) {
-      const rows = this.usageRecords.filter((r) => r.id === params[0] && r.user_id === params[1]);
+    if (cleanSql.includes('SELECT id, section_id, user_id, name, usage_date, created_at, updated_at FROM usage_records WHERE id = $1')) {
+      const rows = this.usageRecords.filter((r) => r.id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id FROM usage_records WHERE section_id = $1 AND user_id = $2 AND usage_date = $3')) {
-      let rows = this.usageRecords.filter((r) => r.section_id === params[0] && r.user_id === params[1] && r.usage_date === params[2]);
-      if (params[3]) {
-        rows = rows.filter((r) => r.id !== params[3]);
+    if (cleanSql.includes('SELECT id FROM usage_records WHERE section_id = $1 AND usage_date = $2')) {
+      let rows = this.usageRecords.filter((r) => r.section_id === params[0] && r.usage_date === params[1]);
+      if (params[2]) {
+        rows = rows.filter((r) => r.id !== params[2]);
       }
       return { rows, rowCount: rows.length };
     }
@@ -151,31 +150,35 @@ class TestDatabaseHarness {
       this.usageRecords.push(newRecord);
       return { rows: [newRecord], rowCount: 1 };
     }
-    if (cleanSql.includes('DELETE FROM usage_records WHERE id = $1 AND user_id = $2')) {
+    if (cleanSql.includes('UPDATE usage_records')) {
+      const index = this.usageRecords.findIndex((r) => r.id === params[2]);
+      if (index === -1) return { rows: [], rowCount: 0 };
+      this.usageRecords[index].name = params[0];
+      this.usageRecords[index].usage_date = params[1];
+      return { rows: [this.usageRecords[index]], rowCount: 1 };
+    }
+    if (cleanSql.includes('DELETE FROM usage_records WHERE id = $1')) {
       const initialLen = this.usageRecords.length;
-      this.usageRecords = this.usageRecords.filter((r) => !(r.id === params[0] && r.user_id === params[1]));
+      this.usageRecords = this.usageRecords.filter((r) => r.id !== params[0]);
       return { rowCount: initialLen - this.usageRecords.length };
     }
 
     // Reports Queries
-    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM machines WHERE user_id = $1')) {
-      const count = this.machines.filter((m) => m.user_id === params[0]).length;
-      return { rows: [{ count }], rowCount: 1 };
+    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM machines')) {
+      return { rows: [{ count: this.machines.length }], rowCount: 1 };
     }
-    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM sections WHERE user_id = $1')) {
-      const count = this.sections.filter((s) => s.user_id === params[0]).length;
-      return { rows: [{ count }], rowCount: 1 };
+    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM sections')) {
+      return { rows: [{ count: this.sections.length }], rowCount: 1 };
     }
-    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM usage_records WHERE user_id = $1')) {
-      const count = this.usageRecords.filter((r) => r.user_id === params[0]).length;
-      return { rows: [{ count }], rowCount: 1 };
+    if (cleanSql.includes('SELECT COUNT(*)::int as count FROM usage_records')) {
+      return { rows: [{ count: this.usageRecords.length }], rowCount: 1 };
     }
 
     return { rows: [], rowCount: 0 };
   }
 }
 
-describe('EquipTrack User Data Isolation & Security Test Suite', () => {
+describe('EquipTrack Global Shared Workspace Test Suite', () => {
   let app: FastifyInstance;
   const dbHarness = new TestDatabaseHarness();
 
@@ -190,7 +193,6 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
   let recordAId: string;
 
   before(async () => {
-    // Intercept db.query to use our in-memory isolation harness
     db.setCustomQueryHandler((text: string, params?: any[]) => dbHarness.mockQuery(text, params));
     app = buildApp();
     await app.ready();
@@ -202,7 +204,6 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
   });
 
   test('1. Register User A and User B', async () => {
-    // Register User A
     const resA = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
@@ -215,7 +216,6 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     tokenUserA = bodyA.data.token;
     userAId = bodyA.data.user.id;
 
-    // Register User B
     const resB = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
@@ -232,24 +232,22 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
   });
 
   test('2. User A creates Machine A, User B creates Machine B', async () => {
-    // User A creates machine
     const resA = await app.inject({
       method: 'POST',
       url: '/api/machines',
       headers: { authorization: `Bearer ${tokenUserA}` },
-      payload: { name: 'CNC Lathe - User A', description: 'User A exclusive machine' },
+      payload: { name: 'CNC Lathe - User A', description: 'User A created machine' },
     });
     assert.strictEqual(resA.statusCode, 201);
     const bodyA = JSON.parse(resA.payload);
     machineAId = bodyA.data.id;
     assert.strictEqual(bodyA.data.name, 'CNC Lathe - User A');
 
-    // User B creates machine
     const resB = await app.inject({
       method: 'POST',
       url: '/api/machines',
       headers: { authorization: `Bearer ${tokenUserB}` },
-      payload: { name: 'Milling Rig - User B', description: 'User B exclusive machine' },
+      payload: { name: 'Milling Rig - User B', description: 'User B created machine' },
     });
     assert.strictEqual(resB.statusCode, 201);
     const bodyB = JSON.parse(resB.payload);
@@ -257,8 +255,7 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     assert.strictEqual(bodyB.data.name, 'Milling Rig - User B');
   });
 
-  test('3. CROSS-USER ISOLATION: User A only sees Machine A, User B only sees Machine B', async () => {
-    // User A list
+  test('3. GLOBAL VISIBILITY: Both User A and User B see all machines', async () => {
     const resA = await app.inject({
       method: 'GET',
       url: '/api/machines',
@@ -266,11 +263,8 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     });
     assert.strictEqual(resA.statusCode, 200);
     const listA = JSON.parse(resA.payload).data;
-    assert.strictEqual(listA.length, 1);
-    assert.strictEqual(listA[0].id, machineAId);
-    assert.strictEqual(listA[0].name, 'CNC Lathe - User A');
+    assert.strictEqual(listA.length, 2);
 
-    // User B list
     const resB = await app.inject({
       method: 'GET',
       url: '/api/machines',
@@ -278,86 +272,50 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     });
     assert.strictEqual(resB.statusCode, 200);
     const listB = JSON.parse(resB.payload).data;
-    assert.strictEqual(listB.length, 1);
-    assert.strictEqual(listB[0].id, machineBId);
-    assert.strictEqual(listB[0].name, 'Milling Rig - User B');
+    assert.strictEqual(listB.length, 2);
   });
 
-  test('4. IDOR PREVENTION: User A cannot read, update, or delete User B machine', async () => {
-    // User A attempts to GET Machine B -> 404
+  test('4. COLLABORATION: User B can read and update Machine A', async () => {
     const getRes = await app.inject({
       method: 'GET',
-      url: `/api/machines/${machineBId}`,
-      headers: { authorization: `Bearer ${tokenUserA}` },
+      url: `/api/machines/${machineAId}`,
+      headers: { authorization: `Bearer ${tokenUserB}` },
     });
-    assert.strictEqual(getRes.statusCode, 404);
+    assert.strictEqual(getRes.statusCode, 200);
+    assert.strictEqual(JSON.parse(getRes.payload).data.name, 'CNC Lathe - User A');
 
-    // User A attempts to PATCH Machine B -> 404
     const patchRes = await app.inject({
       method: 'PATCH',
-      url: `/api/machines/${machineBId}`,
-      headers: { authorization: `Bearer ${tokenUserA}` },
-      payload: { name: 'Hacked Machine Name' },
-    });
-    assert.strictEqual(patchRes.statusCode, 404);
-
-    // User A attempts to DELETE Machine B -> 404
-    const deleteRes = await app.inject({
-      method: 'DELETE',
-      url: `/api/machines/${machineBId}`,
-      headers: { authorization: `Bearer ${tokenUserA}` },
-    });
-    assert.strictEqual(deleteRes.statusCode, 404);
-
-    // Verify User B's machine is intact
-    const verifyRes = await app.inject({
-      method: 'GET',
-      url: `/api/machines/${machineBId}`,
+      url: `/api/machines/${machineAId}`,
       headers: { authorization: `Bearer ${tokenUserB}` },
+      payload: { name: 'CNC Lathe - Updated by User B' },
     });
-    assert.strictEqual(verifyRes.statusCode, 200);
-    assert.strictEqual(JSON.parse(verifyRes.payload).data.name, 'Milling Rig - User B');
+    assert.strictEqual(patchRes.statusCode, 200);
+    assert.strictEqual(JSON.parse(patchRes.payload).data.name, 'CNC Lathe - Updated by User B');
   });
 
-  test('5. SECTION ISOLATION: User B cannot add or view sections on User A machine', async () => {
-    // User A creates Section A
-    const createSecA = await app.inject({
+  test('5. SECTION COLLABORATION: User B can create and view sections on Machine A', async () => {
+    const createSecB = await app.inject({
       method: 'POST',
       url: `/api/machines/${machineAId}/sections`,
-      headers: { authorization: `Bearer ${tokenUserA}` },
+      headers: { authorization: `Bearer ${tokenUserB}` },
       payload: { name: 'Spindle Assembly' },
     });
-    assert.strictEqual(createSecA.statusCode, 201);
-    sectionAId = JSON.parse(createSecA.payload).data.id;
+    assert.strictEqual(createSecB.statusCode, 201);
+    sectionAId = JSON.parse(createSecB.payload).data.id;
 
-    // User B attempts to create section on Machine A -> 404
-    const illegalCreate = await app.inject({
-      method: 'POST',
-      url: `/api/machines/${machineAId}/sections`,
-      headers: { authorization: `Bearer ${tokenUserB}` },
-      payload: { name: 'Unauthorized Section' },
-    });
-    assert.strictEqual(illegalCreate.statusCode, 404);
-
-    // User B attempts to list sections of Machine A -> 404
-    const illegalList = await app.inject({
+    const listSecA = await app.inject({
       method: 'GET',
       url: `/api/machines/${machineAId}/sections`,
-      headers: { authorization: `Bearer ${tokenUserB}` },
+      headers: { authorization: `Bearer ${tokenUserA}` },
     });
-    assert.strictEqual(illegalList.statusCode, 404);
-
-    // User B attempts to fetch Section A by direct ID -> 404
-    const illegalGet = await app.inject({
-      method: 'GET',
-      url: `/api/sections/${sectionAId}`,
-      headers: { authorization: `Bearer ${tokenUserB}` },
-    });
-    assert.strictEqual(illegalGet.statusCode, 404);
+    assert.strictEqual(listSecA.statusCode, 200);
+    const sections = JSON.parse(listSecA.payload).data;
+    assert.strictEqual(sections.length, 1);
+    assert.strictEqual(sections[0].name, 'Spindle Assembly');
   });
 
-  test('6. USAGE RECORD ISOLATION: User B cannot add, read, or delete User A records', async () => {
-    // User A creates record
+  test('6. USAGE RECORD COLLABORATION: User A and User B share usage records', async () => {
     const createRecA = await app.inject({
       method: 'POST',
       url: `/api/sections/${sectionAId}/usage-records`,
@@ -367,34 +325,16 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     assert.strictEqual(createRecA.statusCode, 201);
     recordAId = JSON.parse(createRecA.payload).data.id;
 
-    // User B attempts to create record on Section A -> 404
-    const illegalRecCreate = await app.inject({
-      method: 'POST',
-      url: `/api/sections/${sectionAId}/usage-records`,
-      headers: { authorization: `Bearer ${tokenUserB}` },
-      payload: { name: 'Malicious Record', usage_date: '2026-03-02' },
-    });
-    assert.strictEqual(illegalRecCreate.statusCode, 404);
-
-    // User B attempts to GET Record A -> 404
-    const illegalRecGet = await app.inject({
+    const getRecB = await app.inject({
       method: 'GET',
       url: `/api/usage-records/${recordAId}`,
       headers: { authorization: `Bearer ${tokenUserB}` },
     });
-    assert.strictEqual(illegalRecGet.statusCode, 404);
-
-    // User B attempts to DELETE Record A -> 404
-    const illegalRecDelete = await app.inject({
-      method: 'DELETE',
-      url: `/api/usage-records/${recordAId}`,
-      headers: { authorization: `Bearer ${tokenUserB}` },
-    });
-    assert.strictEqual(illegalRecDelete.statusCode, 404);
+    assert.strictEqual(getRecB.statusCode, 200);
+    assert.strictEqual(JSON.parse(getRecB.payload).data.name, 'Bearing Lubrication');
   });
 
-  test('7. SUMMARY REPORT ISOLATION: Summary stats strictly count only own resources', async () => {
-    // User A summary
+  test('7. SUMMARY REPORT: Summary metrics show company-wide totals', async () => {
     const resA = await app.inject({
       method: 'GET',
       url: '/api/reports/summary',
@@ -402,11 +342,10 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     });
     assert.strictEqual(resA.statusCode, 200);
     const summaryA = JSON.parse(resA.payload).data;
-    assert.strictEqual(summaryA.totalMachines, 1);
+    assert.strictEqual(summaryA.totalMachines, 2);
     assert.strictEqual(summaryA.totalSections, 1);
     assert.strictEqual(summaryA.totalUsageRecords, 1);
 
-    // User B summary (only Machine B, 0 sections, 0 records)
     const resB = await app.inject({
       method: 'GET',
       url: '/api/reports/summary',
@@ -414,8 +353,9 @@ describe('EquipTrack User Data Isolation & Security Test Suite', () => {
     });
     assert.strictEqual(resB.statusCode, 200);
     const summaryB = JSON.parse(resB.payload).data;
-    assert.strictEqual(summaryB.totalMachines, 1);
-    assert.strictEqual(summaryB.totalSections, 0);
-    assert.strictEqual(summaryB.totalUsageRecords, 0);
+    assert.strictEqual(summaryB.totalMachines, 2);
+    assert.strictEqual(summaryB.totalSections, 1);
+    assert.strictEqual(summaryB.totalUsageRecords, 1);
   });
 });
+
