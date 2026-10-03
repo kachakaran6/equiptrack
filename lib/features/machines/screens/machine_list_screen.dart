@@ -22,6 +22,8 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/machine_repository.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../models/machine.dart';
+import 'package:flutter/services.dart';
+import '../../../core/widgets/exit_confirm_dialog.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/machines_controller.dart';
 import '../widgets/add_edit_machine_dialog.dart';
@@ -35,11 +37,20 @@ class MachineListScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final query = ref.watch(searchQueryProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppAppBar(
-        title: 'EquipTrack',
-        subtitle: 'Machine Lifecycle & Maintenance',
-        showBackButton: false,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await ExitConfirmDialog.show(context);
+        if (shouldExit && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: ResponsiveScaffold(
+        appBar: AppAppBar(
+          title: 'EquipTrack',
+          subtitle: 'Machine Lifecycle & Maintenance',
+          showBackButton: false,
         actions: [
           const ThemeToggleButton(),
           IconButton(
@@ -151,7 +162,8 @@ class MachineListScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

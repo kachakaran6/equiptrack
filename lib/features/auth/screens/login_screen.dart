@@ -9,6 +9,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
+import 'package:flutter/services.dart';
+import '../../../core/widgets/exit_confirm_dialog.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/theme_toggle_button.dart';
 import '../controllers/auth_controller.dart';
@@ -52,7 +54,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final authState = ref.watch(authControllerProvider);
 
-    return ResponsiveScaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await ExitConfirmDialog.show(context);
+        if (shouldExit && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: ResponsiveScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -191,6 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
