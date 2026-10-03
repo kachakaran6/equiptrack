@@ -178,6 +178,23 @@ DATABASE_URL="postgres://postgres:password@localhost:5432/equiptrack" ./backend/
 
 ---
 
+## 🌐 Active Production Deployment
+
+| Property | Value |
+| :--- | :--- |
+| **Coolify URL** | `https://coolify.kachakaran.tech` |
+| **Project UUID** | `z3ljpw0bywqd36bjdnpnv6yh` |
+| **Environment** | `cwotblzmprpnuvlhdhvazcdu` (`production`) |
+| **Server** | `oracle-2` (`m2du2dvc271q9ob4mi8nrxd9` - `141.148.214.132`) |
+| **API Application UUID** | `rnienon3ddqefpnpr3easjfk` (`equiptrack-api`) |
+| **PostgreSQL Resource UUID**| `tmwxr6avcnjb8kiip8ypmpls` (`database`) |
+| **Live HTTPS API Endpoint** | `https://rnienon3ddqefpnpr3easjfk.kachakaran.me` |
+| **Health Check Endpoint** | `https://rnienon3ddqefpnpr3easjfk.kachakaran.me/health` |
+| **Live Migration Status** | ✅ Completed (3 Users, 3 Machines, 20 Sections, 2 Usage Records) |
+| **IDOR & Isolation Check**| ✅ 100% Passed (Cross-user access returns `404 Not Found`) |
+
+---
+
 ## 🔄 Rollback & Maintenance Procedures
 
 1. **Zero-Downtime Updates:**
@@ -186,3 +203,4 @@ DATABASE_URL="postgres://postgres:password@localhost:5432/equiptrack" ./backend/
    - When updating or stopping, the API intercepts `SIGTERM` and `SIGINT`, finishes pending HTTP requests, closes the PostgreSQL connection pool, and shuts down cleanly without dropping transactions.
 3. **Rollback to Previous Commit:**
    - In Coolify, navigate to **Deployments** ➔ Click on any previously successful deployment ➔ Select **Redeploy**.
+
