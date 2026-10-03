@@ -4,28 +4,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:machine_usage_app/core/router/app_router.dart';
 import 'package:machine_usage_app/data/repositories/auth_repository.dart';
 import 'package:machine_usage_app/features/auth/controllers/auth_controller.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:machine_usage_app/models/app_user.dart';
 
 class MockAuthRepository implements AuthRepository {
   bool signOutCalled = false;
-  final StreamController<AuthState> _controller = StreamController<AuthState>.broadcast();
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
 
   @override
-  User? get currentUser => null;
+  AppUser? get currentUser => null;
 
   @override
   bool get isAuthenticated => false;
 
   @override
-  Stream<AuthState> get authStateChanges => _controller.stream;
+  Stream<bool> get authStateChanges => _controller.stream;
+
+  @override
+  Future<void> initSession() async {}
 
   @override
   Future<void> signInWithEmailPassword(String email, String password) async {}
 
   @override
+  Future<void> registerWithEmailPassword(String email, String password) async {}
+
+  @override
   Future<void> signOut() async {
     signOutCalled = true;
-    _controller.add(AuthState(AuthChangeEvent.signedOut, null));
+    _controller.add(false);
   }
 
   void dispose() {
@@ -59,7 +65,7 @@ void main() {
     });
 
     test('GoRouterRefreshStream notifies listeners when stream emits event', () async {
-      final controller = StreamController<AuthState>.broadcast();
+      final controller = StreamController<bool>.broadcast();
       addTearDown(controller.close);
 
       final refreshStream = GoRouterRefreshStream(controller.stream);
@@ -70,7 +76,7 @@ void main() {
         notified = true;
       });
 
-      controller.add(AuthState(AuthChangeEvent.signedOut, null));
+      controller.add(false);
       await Future<void>.delayed(Duration.zero);
 
       expect(notified, isTrue);

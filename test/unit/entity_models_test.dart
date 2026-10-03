@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:machine_usage_app/models/app_user.dart';
 import 'package:machine_usage_app/models/machine.dart';
 import 'package:machine_usage_app/models/section.dart';
 import 'package:machine_usage_app/models/usage_record.dart';
@@ -64,6 +65,16 @@ void main() {
       expect(fromJson.usageDate.year, 2026);
       expect(fromJson.usageDate.month, 10);
       expect(fromJson.usageDate.day, 2);
+    });
+
+    test('AppUser serialization and equality', () {
+      const user = AppUser(id: 'u1', email: 'test@example.com');
+      final json = user.toJson();
+      final fromJson = AppUser.fromJson(json);
+
+      expect(fromJson.id, 'u1');
+      expect(fromJson.email, 'test@example.com');
+      expect(fromJson, equals(user));
     });
   });
 }

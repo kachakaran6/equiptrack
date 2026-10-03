@@ -103,10 +103,13 @@ void main() {
         ),
       );
 
-      expect(find.text('Server connection timeout'), findsOneWidget);
-      expect(find.text('Retry'), findsOneWidget);
+      expect(
+        find.text('The server took too long to respond. Please try again in a moment.'),
+        findsOneWidget,
+      );
+      expect(find.text('Try Again'), findsOneWidget);
 
-      await tester.tap(find.text('Retry'));
+      await tester.tap(find.text('Try Again'));
       expect(retryTriggered, isTrue);
     });
 
@@ -135,12 +138,12 @@ void main() {
         ),
       );
 
-      expect(find.text('Update available'), findsOneWidget);
-      expect(find.text('Build #105 is ready'), findsOneWidget);
-      expect(find.text('Update now'), findsOneWidget);
+      expect(find.text('Update Available'), findsOneWidget);
+      expect(find.text('Build #105 is ready to install'), findsOneWidget);
+      expect(find.text('Update Now'), findsOneWidget);
       expect(find.text('Later'), findsOneWidget);
 
-      await tester.tap(find.text('Update now'));
+      await tester.tap(find.text('Update Now'));
       expect(updateTapped, isTrue);
 
       await tester.tap(find.text('Later'));
