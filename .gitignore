@@ -25,6 +25,12 @@ upload-keystore.jks
 upload-keystore-backup.jks
 android_release_credentials_backup.txt
 *credentials_backup*
+api-key.json
+app.json
+**/fastlane/api-key.json
+**/fastlane/report.xml
+fastlane/report.xml
+
 
 migrate_working_dir/
 

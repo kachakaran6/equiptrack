@@ -1,0 +1,302 @@
+# frozen_string_literal: true
+
+default_platform(:android)
+
+platform :android do
+  # ─── HELPERS ─────────────────────────────────────────────────────────────
+
+  # Resolves the root directory of the Flutter project
+  def project_root
+    File.expand_path("../..", __dir__)
+  end
+
+  # Resolves Google Play API Key JSON file
+  def resolve_play_store_json_key
+    root_dir = project_root
+    candidates = [
+      ENV["PLAY_STORE_JSON_KEY"],
+      File.join(__dir__, "api-key.json"),
+      File.join(root_dir, "app.json"),
+      File.join(root_dir, "api-key.json")
+    ].compact
+
+    key_path = candidates.find { |path| File.exist?(path) }
+
+    if key_path.nil?
+      UI.user_error!(
+        "❌ Google Play API key not found!\n" \
+        "Please provide your service account key by doing one of the following:\n" \
+        "  1. Set the PLAY_STORE_JSON_KEY environment variable to the path of your JSON key file.\n" \
+        "  2. Place 'api-key.json' in 'android/fastlane/api-key.json'.\n" \
+        "  3. Place 'app.json' or 'api-key.json' in the project root directory.\n"
+      )
+    end
+
+    resolved = File.expand_path(key_path)
+    UI.success("🔑 Using Google Play service account key: #{resolved}")
+    resolved
+  end
+
+
+  # Reads, prompts/increments, and updates pubspec.yaml with the target build number
+  def get_target_build_number(options)
+    root_dir = project_root
+    pubspec_path = File.join(root_dir, "pubspec.yaml")
+
+    UI.user_error!("❌ pubspec.yaml not found at #{pubspec_path}") unless File.exist?(pubspec_path)
+
+    content = File.read(pubspec_path)
+    match = content.match(/^version:\s*([^\s+]+)\+(\d+)/)
+
+    UI.user_error!("❌ Could not parse version from pubspec.yaml (expected 'version: x.y.z+build')") unless match
+
+    version_name = match[1]
+    current_build = match[2].to_i
+    suggested_build = current_build + 1
+
+    override_build = options[:build_number] || options[:version_code]
+
+    target_build = if override_build
+                     override_build.to_i
+                   elsif UI.interactive?
+                     UI.input("Enter build number (current is #{current_build}, default: #{suggested_build}): ")
+                   else
+                     suggested_build.to_s
+                   end
+
+    target_build = suggested_build if target_build.to_s.strip.empty?
+    target_build = target_build.to_i
+
+    # Update pubspec.yaml in place
+    new_version_string = "version: #{version_name}+#{target_build}"
+    updated_content = content.sub(/^version:\s*[^\s+]+\+\d+/, new_version_string)
+    File.write(pubspec_path, updated_content)
+
+    UI.success("📦 Updated pubspec.yaml version to #{version_name}+#{target_build}")
+    target_build
+  end
+
+  # Builds Flutter Release AAB
+  def build_flutter_aab(build_num)
+    root_dir = project_root
+    UI.message("🚀 Building Flutter App Bundle (AAB) for build ##{build_num}...")
+
+    Dir.chdir(root_dir) do
+      sh("flutter build appbundle --release --build-number=#{build_num}")
+    end
+
+    aab_path = File.join(root_dir, "build", "app", "outputs", "bundle", "release", "app-release.aab")
+    UI.user_error!("❌ Build failed: AAB not found at #{aab_path}") unless File.exist?(aab_path)
+
+    UI.success("✅ App Bundle built successfully: #{aab_path}")
+    aab_path
+  end
+
+  # Builds Flutter Release APK
+  def build_flutter_apk(build_num)
+    root_dir = project_root
+    UI.message("🚀 Building Flutter APK for build ##{build_num}...")
+
+    Dir.chdir(root_dir) do
+      sh("flutter build apk --release --build-number=#{build_num}")
+    end
+
+    apk_path = File.join(root_dir, "build", "app", "outputs", "flutter-apk", "app-release.apk")
+    UI.user_error!("❌ Build failed: APK not found at #{apk_path}") unless File.exist?(apk_path)
+
+    UI.success("✅ APK built successfully: #{apk_path}")
+    apk_path
+  end
+
+  # Automated Git Version Archiving Helper
+  def git_version_backup(build_num, track_name)
+    root_dir = project_root
+    pubspec_path = File.join(root_dir, "pubspec.yaml")
+    version_name = "1.0.0"
+
+    if File.exist?(pubspec_path)
+      content = File.read(pubspec_path)
+      if (match = content.match(/^version:\s*([^\s+]+)\+(\d+)/))
+        version_name = match[1]
+      end
+    end
+
+    version_str = "#{version_name}+#{build_num}"
+    version_branch = "v#{build_num}"
+    version_tag = "v#{version_str}"
+
+    UI.message("📌 Running automatic Git backup for version #{version_str}...")
+
+    Dir.chdir(root_dir) do
+      current_branch = `git rev-parse --abbrev-ref HEAD`.strip
+      current_branch = "master" if current_branch.empty? || current_branch == "HEAD"
+
+      # Stage all changes (including bumped pubspec.yaml)
+      sh("git add -A")
+
+      has_staged_changes = !system("git diff --cached --quiet")
+      if has_staged_changes
+        commit_msg = "chore(release): publish build ##{build_num} (#{version_str}) to #{track_name} [skip ci]"
+        sh("git commit -m \"#{commit_msg}\"")
+        UI.success("📝 Created release commit on branch '#{current_branch}'")
+      else
+        UI.message("✨ Working directory clean, no uncommitted changes.")
+      end
+
+      UI.message("⬆️ Pushing current branch '#{current_branch}' to origin...")
+      begin
+        sh("git push origin #{current_branch}")
+        UI.success("✅ Pushed branch '#{current_branch}' to origin!")
+      rescue => ex
+        UI.important("⚠️ Note: Could not push current branch to origin: #{ex.message}")
+      end
+
+      UI.message("🌿 Creating dedicated version branch '#{version_branch}'...")
+      sh("git branch -f #{version_branch} HEAD")
+      begin
+        sh("git push -f origin #{version_branch}")
+        UI.success("🚀 Dedicated version branch '#{version_branch}' pushed to GitHub!")
+      rescue => ex
+        UI.important("⚠️ Failed to push version branch '#{version_branch}': #{ex.message}")
+      end
+
+      UI.message("🏷️ Creating release tag '#{version_tag}'...")
+      sh("git tag -f -a \"#{version_tag}\" -m \"Release #{version_str} published to Google Play #{track_name}\"")
+      begin
+        sh("git push -f origin \"#{version_tag}\"")
+        UI.success("🏷️ Release tag '#{version_tag}' pushed to GitHub!")
+      rescue => ex
+        UI.important("⚠️ Failed to push tag '#{version_tag}': #{ex.message}")
+      end
+
+      UI.success("🎉 Git version archiving complete! Branch '#{version_branch}' & Tag '#{version_tag}' are permanently accessible on GitHub.")
+    end
+  end
+
+  # ─── LANES ───────────────────────────────────────────────────────────────
+
+  desc "Run Flutter tests"
+  lane :test do
+    root_dir = project_root
+    Dir.chdir(root_dir) do
+      sh("flutter test")
+    end
+  end
+
+  desc "Build Flutter App Bundle (AAB) without uploading"
+  lane :build do |options|
+    build_num = get_target_build_number(options)
+    build_flutter_aab(build_num)
+  end
+
+  desc "Build Flutter APK without uploading"
+  lane :build_apk do |options|
+    build_num = get_target_build_number(options)
+    build_flutter_apk(build_num)
+  end
+
+  desc "Build and upload to Google Play Internal track"
+  lane :internal do |options|
+    key_path = resolve_play_store_json_key
+    build_num = get_target_build_number(options)
+    aab_path = build_flutter_aab(build_num)
+
+    upload_to_play_store(
+      json_key: key_path,
+      track: "internal",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    git_version_backup(build_num, "Internal")
+    UI.success("🚀 Build ##{build_num} successfully published to Google Play Internal Sharing!")
+  end
+
+  desc "Build and upload to Google Play Closed Testing track (default: alpha)"
+  lane :closed do |options|
+    key_path = resolve_play_store_json_key
+    track_name = options[:track] || "alpha"
+    build_num = get_target_build_number(options)
+    aab_path = build_flutter_aab(build_num)
+
+    upload_to_play_store(
+      json_key: key_path,
+      track: track_name,
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    git_version_backup(build_num, track_name)
+    UI.success("🚀 Build ##{build_num} successfully published to Google Play Closed Track '#{track_name}'!")
+  end
+
+  desc "Build and upload to Google Play Beta track"
+  lane :beta do |options|
+    key_path = resolve_play_store_json_key
+    build_num = get_target_build_number(options)
+    aab_path = build_flutter_aab(build_num)
+
+    upload_to_play_store(
+      json_key: key_path,
+      track: "beta",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    git_version_backup(build_num, "Beta")
+    UI.success("🚀 Build ##{build_num} successfully published to Google Play Beta Track!")
+  end
+
+  desc "Build and upload to Google Play Production track (supports rollout percentage)"
+  lane :production do |options|
+    key_path = resolve_play_store_json_key
+    build_num = get_target_build_number(options)
+    aab_path = build_flutter_aab(build_num)
+
+    upload_params = {
+      json_key: key_path,
+      track: "production",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    }
+
+    if options[:rollout]
+      rollout_val = options[:rollout].to_f
+      rollout_val = rollout_val / 100.0 if rollout_val > 1.0 # normalize 20 to 0.20
+      upload_params[:rollout] = rollout_val.to_s
+      UI.message("📊 Applying staged rollout at #{(rollout_val * 100).round}%")
+    end
+
+    upload_to_play_store(upload_params)
+
+    git_version_backup(build_num, "Production")
+    UI.success("🚀 Build ##{build_num} successfully published to Google Play Production Track!")
+  end
+
+  desc "Promote existing build from Internal track to Closed testing (alpha)"
+  lane :promote_to_closed do |options|
+    key_path = resolve_play_store_json_key
+    to_track = options[:track] || "alpha"
+
+    upload_to_play_store(
+      json_key: key_path,
+      track: "internal",
+      track_promote_to: to_track,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+
+    UI.success("🎉 Successfully promoted Internal release to '#{to_track}'!")
+  end
+end
