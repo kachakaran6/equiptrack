@@ -12,10 +12,25 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client', err);
 });
 
+export type QueryFn = <T extends QueryResultRow = any>(
+  text: string,
+  params?: any[]
+) => Promise<QueryResult<T>>;
+
+let customQueryHandler: QueryFn | null = null;
+
+export function setCustomQueryHandler(fn: QueryFn | null): void {
+  customQueryHandler = fn;
+}
+
 export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
+  if (customQueryHandler) {
+    return customQueryHandler<T>(text, params);
+  }
+
   const start = Date.now();
   const res = await pool.query<T>(text, params);
   const duration = Date.now() - start;
@@ -26,5 +41,8 @@ export async function query<T extends QueryResultRow = any>(
 }
 
 export async function closePool(): Promise<void> {
-  await pool.end();
+  if (pool) {
+    await pool.end();
+  }
 }
+
