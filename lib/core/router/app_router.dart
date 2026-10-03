@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,11 +10,30 @@ import '../../features/sections/screens/machine_detail_screen.dart';
 import '../../features/usage_records/screens/section_usage_screen.dart';
 import 'app_routes.dart';
 
+/// Listenable adapter that triggers GoRouter redirects whenever the stream emits
+class GoRouterRefreshStream extends ChangeNotifier {
+  late final StreamSubscription<dynamic> _subscription;
+
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
+  final refreshNotifier = GoRouterRefreshStream(authRepo.authStateChanges);
+  ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
     initialLocation: AppRoutes.machines,
+    refreshListenable: refreshNotifier,
     routes: [
       GoRoute(
         path: AppRoutes.login,

@@ -52,10 +52,12 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     try {
       AppLogger.info('Signing out user: ${currentUser?.email}');
-      await _client.auth.signOut();
-    } catch (e, st) {
-      AppLogger.error('Sign out error', e, st);
-      throw AuthenticationFailure('Failed to sign out: $e');
+      await _client.auth.signOut(scope: SignOutScope.local);
+    } catch (e) {
+      AppLogger.warning('Remote sign out encountered an error, forcing local session clear: $e');
+      try {
+        await _client.auth.signOut();
+      } catch (_) {}
     }
   }
 }

@@ -47,13 +47,12 @@ class AuthController extends Notifier<AuthStateData> {
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.signOut();
-      state = state.copyWith(isLoading: false, errorMessage: null);
     } catch (e) {
       AppLogger.error('Logout error', e);
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Logout failed: $e',
-      );
+    } finally {
+      ref.invalidate(currentUserProvider);
+      ref.invalidate(authStateStreamProvider);
+      state = const AuthStateData();
     }
   }
 

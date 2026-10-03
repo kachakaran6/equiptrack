@@ -4,16 +4,19 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_loading.dart';
-import '../../../core/widgets/app_search_field.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
+import '../../../core/widgets/theme_toggle_button.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/machine_repository.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../models/machine.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/machines_controller.dart';
 import '../widgets/add_edit_machine_dialog.dart';
 
@@ -29,6 +32,8 @@ class MachineListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('EquipTrack'),
         actions: [
+          const ThemeToggleButton(),
+          const SizedBox(width: 4),
           IconButton(
             key: const Key(AppKeys.signOutButton),
             icon: const Icon(Icons.logout_rounded),
@@ -39,13 +44,20 @@ class MachineListScreen extends ConsumerWidget {
                 title: 'Sign Out',
                 message: 'Are you sure you want to sign out?',
                 confirmLabel: 'Sign Out',
-                isDestructive: false,
+                isDestructive: true,
               );
               if (confirm == true) {
-                await ref.read(authRepositoryProvider).signOut();
+                if (context.mounted) {
+                  context.showInfoSnackBar('Signing out...');
+                }
+                await ref.read(authControllerProvider.notifier).signOut();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
               }
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
