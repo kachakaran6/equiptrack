@@ -1,69 +1,59 @@
-# Machine Usage Tracking & Reporting Application
+# EquipTrack — Machine Lifecycle & Usage Tracking Application
 
-Production-ready Flutter / Android application for tracking machine usage history, calculating operational component durations, generating PDF/Excel reports, and synchronizing data across team members in real-time.
+Production-ready Flutter mobile application backed by a dedicated, lightweight **Fastify + TypeScript + PostgreSQL** REST API backend with strict user data isolation.
 
 ---
 
-## 🏗 Technology Stack & Architecture
+## 🏗 Architecture Overview
 
-- **Framework:** Flutter 3.44.8+ / Dart 3.12.2+
-- **Architecture:** Clean Feature-First Architecture + Repository Pattern
-- **State Management:** Riverpod (modern `Notifier` & `AsyncNotifier` providers)
-- **Navigation:** GoRouter with named routes, auth redirects, and system back guards
-- **Backend / Database:** Supabase PostgreSQL + Row Level Security (RLS) + Supabase Realtime
-- **Design System:** Material 3 foundation with FlexColorScheme
-- **Reporting:** Vector PDF (A4 multi-page, repeating headers) & Excel (.xlsx formatted workbooks)
-- **App Updates:** Native Google Play In-App Updates (`in_app_update`) — no custom update server
+```text
+Flutter Mobile App (Android / iOS / Web)
+       │
+       │ HTTPS REST API + Bearer JWT
+       ▼
+Fastify + TypeScript API Gateway (Port 3000)
+       │
+       │ Native PostgreSQL Driver (pg with Connection Pool)
+       ▼
+PostgreSQL Database
+```
+
+- **Client:** Flutter 3.44.8+ / Dart 3.12.2+ with Riverpod state management & GoRouter navigation.
+- **Backend:** Node.js + Fastify + TypeScript + Zod validation.
+- **Database:** PostgreSQL directly via `pg` connection pool with granular foreign keys, indexes, and parameterized queries.
+- **Security:** 100% strict user data isolation. Ownership (`user_id = $1`) is verified on every query using the cryptographically verified JWT token.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-machine_usage_app/
-├── android/                          # Android native project configuration
-├── assets/
-│   ├── icons/
-│   └── images/
-├── lib/
-│   ├── app/
-│   │   ├── app.dart                  # Root MaterialApp with theme & router
-│   │   └── app_bootstrap.dart        # Initialization lifecycle & orientations
+EquipTrack/
+├── backend/                          # Fastify + TypeScript + PostgreSQL API
+│   ├── migrations/                   # SQL schema migrations (001 to 006)
+│   ├── src/
+│   │   ├── config/                   # Environment & runtime config
+│   │   ├── db/                       # Database connection pool & migrator
+│   │   ├── middleware/               # JWT authentication guard
+│   │   ├── modules/                  # Auth, Machines, Sections, Usage-Records, Reports
+│   │   └── server.ts                 # Fastify server entry
+│   ├── tests/                        # Data isolation & IDOR automated tests
+│   └── package.json
+├── lib/                              # Flutter Application
+│   ├── app/                          # App root & bootstrap lifecycle
 │   ├── core/
-│   │   ├── constants/                # App constants, keys, table names
+│   │   ├── constants/                # App spacing, keys, constants
 │   │   ├── errors/                   # Typed AppFailure hierarchy
-│   │   ├── extensions/               # Date, context, and theme extensions
-│   │   ├── router/                   # GoRouter configuration & route paths
-│   │   ├── services/
-│   │   │   ├── usage_calculation_service.dart # Single Source of Truth for durations
-│   │   │   ├── app_update_service.dart        # Native Google Play update handling
-│   │   │   ├── report_service.dart            # Report coordinator
-│   │   │   ├── pdf_service.dart               # A4 multi-page PDF generator
-│   │   │   └── excel_service.dart             # Formatted .xlsx generator
-│   │   ├── theme/                    # Color tokens, typography, light/dark themes
-│   │   ├── utils/                    # Structured logger, form validators
-│   │   └── widgets/                  # Reusable component design system
+│   │   ├── network/                  # ApiClient with secure token storage
+│   │   ├── router/                   # GoRouter configuration
+│   │   ├── services/                 # Calculations, PDF, Excel, In-App Update
+│   │   ├── theme/                    # App colors, typography, themes
+│   │   └── widgets/                  # Reusable UI components
 │   ├── data/
-│   │   ├── datasources/              # Supabase client provider & bootstrap
-│   │   └── repositories/             # Auth, Machine, Section, Usage Record repos
-│   ├── models/                       # Machine, Section, UsageRecord, CalculatedUsageRow
-│   ├── features/
-│   │   ├── auth/                     # Login screen & auth controller
-│   │   ├── machines/                 # Machine list, search, add/edit dialogs
-│   │   ├── sections/                 # Machine details, section management
-│   │   ├── usage_records/            # 3-column table, date picker, duplicate warning
-│   │   ├── reports/                  # PDF & Excel export actions sheet
-│   │   └── app_update/               # App update listener & bottom sheet
-│   └── main.dart                     # Main entry point
-├── supabase/
-│   └── migrations/
-│       ├── 001_create_machines.sql
-│       ├── 002_create_sections.sql
-│       ├── 003_create_usage_records.sql
-│       ├── 004_create_indexes.sql
-│       ├── 005_enable_rls.sql
-│       ├── 006_create_rls_policies.sql
-│       └── 007_enable_realtime.sql
+│   │   └── repositories/             # REST API repositories (Auth, Machine, Section, Records)
+│   ├── features/                     # Feature modules (Auth, Machines, Sections, Usage, Reports)
+│   ├── models/                       # Domain entities
+│   └── main.dart                     # Flutter entrypoint
 ├── test/
 │   ├── unit/                         # Unit tests (calculations, models, services)
 │   └── widget/                       # Widget tests (components, login, tables)
@@ -71,6 +61,14 @@ machine_usage_app/
 ├── analysis_options.yaml
 └── pubspec.yaml
 ```
+
+---
+
+## 🔒 Strict User Data Isolation & Ownership
+
+- **Client ID Agnostic:** Flutter never passes client-claimed `user_id` to authorization queries. The backend extracts `req.user.id` solely from the verified JWT.
+- **Enforced at Database Layer:** Every single `SELECT`, `INSERT`, `UPDATE`, and `DELETE` explicitly filters by `user_id = $1`.
+- **IDOR Protection:** Accessing, updating, or deleting any machine, component, or record that belongs to another user returns `404 Not Found`.
 
 ---
 
@@ -92,53 +90,36 @@ machine_usage_app/
 
 ---
 
-## 🔒 Security & Shared Workspace Data Model
-
-- **Shared Dataset:** All authenticated users share the same machines and records.
-- **Row Level Security (RLS):** Enabled on all tables with `(auth.uid() IS NOT NULL)` policy check.
-- **Audit Logging:** `created_by` and `updated_by` track user actions without restricting access.
-- **Service Role Credentials:** **Never** shipped in Dart source, APK, or repository.
-
----
-
-## 🔄 Google Play In-App Updates
-
-The application integrates with Google Play's In-App Update API directly:
-- **Flexible Update:** Background download for standard releases, with completion prompt.
-- **Immediate Update:** Full-screen blocking flow for critical releases.
-- **Session Guard:** Updates are surfaced in a polished bottom sheet at most once per active session to avoid user fatigue.
-- **Platform Resilience:** Silently falls back on non-Android platforms or dev environments without crashing.
-
----
-
-## 🧪 Quality Gates & Testing
-
-Run all unit & widget tests:
-```bash
-flutter test
-```
-
-Run static analysis:
-```bash
-flutter analyze
-```
-
----
-
 ## 🚀 Getting Started
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Fill in your Supabase project URL and publishable key:
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_ANON_KEY=eyJhbGciOi...
-   ```
-3. Run migrations on your Supabase project:
-   Execute files in `supabase/migrations/001_...` through `007_...` in sequential order.
-4. Launch the application:
-   ```bash
-   flutter run
-   ```
+### 1. Start the Backend & PostgreSQL
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Configure DATABASE_URL and JWT_SECRET in .env
+npm run migrate
+npm run dev
+```
+
+Run backend tests:
+```bash
+npm test
+```
+
+### 2. Configure & Run Flutter
+
+```bash
+# In the root directory:
+cp .env.example .env
+# Set API_BASE_URL=http://10.0.2.2:3000 (Android Emulator) or http://localhost:3000 (Web/Desktop)
+flutter pub get
+flutter run
+```
+
+Run Flutter tests and analysis:
+```bash
+flutter analyze
+flutter test
+```
