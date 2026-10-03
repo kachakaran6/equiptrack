@@ -1,15 +1,16 @@
 # EquipTrack Private Backend
 
-Lightweight, high-performance Fastify + TypeScript + PostgreSQL REST API backend with strict user-level data isolation.
+Lightweight, high-performance Fastify + TypeScript + PostgreSQL REST API backend with strict user-level data isolation, containerized for one-click **Coolify** deployment.
 
 ## 🏗 Technology Stack
 
-- **Runtime:** Node.js (v20+)
+- **Runtime:** Node.js (v22 LTS Alpine Container)
 - **Framework:** Fastify v5
 - **Language:** TypeScript
 - **Database:** PostgreSQL (accessed via native `pg` connection pooling)
 - **Authentication:** JWT with Bearer tokens (`@fastify/jwt`)
 - **Password Security:** Salted BCrypt hashing (Argon2id compatible)
+- **Deployment Platform:** Coolify (Multi-stage Dockerfile / Docker Compose)
 - **Validation:** Zod request schema validation & parameterized SQL queries
 - **Security:** `@fastify/cors`, `@fastify/rate-limit`, IDOR prevention on all entities
 
@@ -28,6 +29,9 @@ Lightweight, high-performance Fastify + TypeScript + PostgreSQL REST API backend
 
 ```text
 backend/
+├── Dockerfile                        # Production multi-stage Docker build
+├── docker-compose.yml                # Coolify / local stack orchestration
+├── .dockerignore                     # Build context exclusions
 ├── migrations/
 │   ├── 001_create_users.sql
 │   ├── 002_create_machines.sql
@@ -62,58 +66,47 @@ backend/
 │   │   └── crypto.ts
 │   ├── app.ts
 │   └── server.ts
+├── scripts/
+│   ├── backup.sh                     # Automated PostgreSQL backup
+│   ├── restore.sh                    # Automated PostgreSQL restore
+│   └── migrate-from-supabase/        # Supabase data migration tooling
 ├── tests/
-│   └── data-isolation.test.ts
+│   ├── data-isolation.test.ts        # IDOR & cross-user isolation suite
+│   └── migration-integrity.test.ts   # Relational & ownership test suite
 ├── .env.example
 ├── package.json
-├── tsconfig.json
-└── README.md
+└── tsconfig.json
 ```
 
 ---
 
-## 🚀 Setup & Execution
+## 🚀 Coolify & Docker Deployment
 
-### 1. Install Dependencies
+For complete, step-by-step Coolify deployment instructions, see [docs/COOLIFY_DEPLOYMENT.md](file:///d:/Machine/docs/COOLIFY_DEPLOYMENT.md).
+
+### Quick Local Docker Start
 ```bash
-cd backend
+docker compose up -d --build
+```
+
+### Manual Development Setup
+```bash
 npm install
-```
-
-### 2. Configure Environment
-Create `.env` based on `.env.example`:
-```env
-PORT=3000
-HOST=0.0.0.0
-DATABASE_URL=postgres://equiptrack_user:password@localhost:5432/equiptrack
-JWT_SECRET=your_ultra_secure_jwt_secret_at_least_32_characters_long
-NODE_ENV=development
-```
-
-### 3. Run Database Migrations
-```bash
 npm run migrate
-```
-
-### 4. Run Automated Data Isolation & Security Tests
-```bash
-npm test
-```
-
-### 5. Start Development Server
-```bash
 npm run dev
 ```
 
-### 6. Build & Run in Production
+### Run Tests
 ```bash
-npm run build
-npm start
+npm test
 ```
 
 ---
 
 ## 📡 API Endpoints
+
+### Health & Monitoring
+- `GET /health` — Coolify health check & uptime probe (returns 200 OK + database status)
 
 ### Authentication
 - `POST /api/auth/register` — Register new user account
@@ -142,6 +135,5 @@ npm start
 - `PATCH /api/usage-records/:id` — Update usage record (enforces ownership)
 - `DELETE /api/usage-records/:id` — Delete usage record (enforces ownership)
 
-### Reports & Health
+### Reports
 - `GET /api/reports/summary` — Aggregate summary stats for authenticated user
-- `GET /health` — Health check probe
