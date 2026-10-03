@@ -1,12 +1,45 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { pool } from './index.js';
+import pg from 'pg';
+import { env } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+async function ensureDatabaseExists(): Promise<void> {
+  try {
+    const dbUrl = new URL(env.DATABASE_URL);
+    const targetDbName = dbUrl.pathname.replace('/', '') || 'equiptrack';
+    
+    // Connect to standard maintenance database to verify/create target database
+    const adminUrl = new URL(env.DATABASE_URL);
+    adminUrl.pathname = '/postgres';
+
+    const adminPool = new pg.Pool({ connectionString: adminUrl.toString() });
+    const client = await adminPool.connect();
+    try {
+      const checkRes = await client.query(
+        'SELECT 1 FROM pg_database WHERE datname = $1',
+        [targetDbName]
+      );
+      if (checkRes.rows.length === 0) {
+        console.log(`📦 Creating target database '${targetDbName}'...`);
+        await client.query(`CREATE DATABASE "${targetDbName}"`);
+        console.log(`✅ Target database '${targetDbName}' created.`);
+      }
+    } finally {
+      client.release();
+      await adminPool.end();
+    }
+  } catch (err: any) {
+    console.warn(`[INFO] Ensure database check note: ${err.message}`);
+  }
+}
+
 export async function runMigrations(): Promise<void> {
+  await ensureDatabaseExists();
+  const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
   const client = await pool.connect();
   try {
     console.log('🔄 Checking database migrations...');
@@ -61,13 +94,11 @@ export async function runMigrations(): Promise<void> {
 // If run directly from CLI
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   runMigrations()
-    .then(async () => {
-      await pool.end();
+    .then(() => {
       process.exit(0);
     })
-    .catch(async (err) => {
+    .catch((err) => {
       console.error('Fatal migration error:', err);
-      await pool.end();
       process.exit(1);
     });
 }
