@@ -14,7 +14,6 @@ import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/theme_toggle_button.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/machine_repository.dart';
-import '../../../data/repositories/section_repository.dart';
 import '../../../models/machine.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/machines_controller.dart';
@@ -134,179 +133,110 @@ class _MachineCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.theme;
-    final sectionsAsync = ref.watch(sectionsStreamFamily(machine.id));
 
     return AppCard(
       keyString: '${AppKeys.machineCardPrefix}${machine.id}',
       onTap: () {
         context.go('/machines/${machine.id}');
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withAlpha(100),
-                  borderRadius: BorderRadius.circular(10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withAlpha(100),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.precision_manufacturing_rounded,
+              color: theme.colorScheme.primary,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  machine.name,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Icon(
-                  Icons.precision_manufacturing_rounded,
-                  color: theme.colorScheme.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      machine.name,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                if (machine.description != null &&
+                    machine.description!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    machine.description!.trim(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    if (machine.description != null &&
-                        machine.description!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        machine.description!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, size: 20),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            onSelected: (action) async {
+              if (action == 'edit') {
+                AddEditMachineDialog.show(context, machine: machine);
+              } else if (action == 'delete') {
+                final confirm = await AppConfirmDialog.show(
+                  context: context,
+                  title: 'Delete machine?',
+                  message: 'Are you sure you want to delete "${machine.name}"?',
+                  cascadeNotice:
+                      'Deleting this machine will permanently delete all its sections and usage records.',
+                );
+                if (confirm == true) {
+                  final ok = await ref
+                      .read(machinesControllerProvider.notifier)
+                      .deleteMachine(machine.id);
+                  if (context.mounted) {
+                    if (ok) {
+                      context.showSuccessSnackBar('Machine deleted');
+                    } else {
+                      context.showErrorSnackBar('Failed to delete machine');
+                    }
+                  }
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Edit'),
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, size: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                onSelected: (action) async {
-                  if (action == 'edit') {
-                    AddEditMachineDialog.show(context, machine: machine);
-                  } else if (action == 'delete') {
-                    final confirm = await AppConfirmDialog.show(
-                      context: context,
-                      title: 'Delete machine?',
-                      message: 'Are you sure you want to delete "${machine.name}"?',
-                      cascadeNotice:
-                          'Deleting this machine will permanently delete all its sections and usage records.',
-                    );
-                    if (confirm == true) {
-                      final ok = await ref
-                          .read(machinesControllerProvider.notifier)
-                          .deleteMachine(machine.id);
-                      if (context.mounted) {
-                        if (ok) {
-                          context.showSuccessSnackBar('Machine deleted');
-                        } else {
-                          context.showErrorSnackBar('Failed to delete machine');
-                        }
-                      }
-                    }
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18),
-                        SizedBox(width: 10),
-                        Text('Edit'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                        const SizedBox(width: 10),
-                        const Text('Delete', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    SizedBox(width: 10),
+                    Text('Delete', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
-          // Sections summary tag / preview
-          sectionsAsync.when(
-            loading: () => const Text('Loading sections...', style: TextStyle(fontSize: 12)),
-            error: (_, _) => const SizedBox.shrink(),
-            data: (sections) {
-              if (sections.isEmpty) {
-                return Row(
-                  children: [
-                    Icon(
-                      Icons.folder_open_rounded,
-                      size: 14,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'No sections yet — tap to add',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 20,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                );
-              }
-
-              final sectionNames = sections.map((s) => s.name).take(4).join(' • ');
-              final hasMore = sections.length > 4 ? ' +${sections.length - 4} more' : '';
-
-              return Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${sections.length} ${sections.length == 1 ? "Section" : "Sections"}',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$sectionNames$hasMore',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              );
-            },
+          const SizedBox(width: 4),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 22,
+            color: theme.colorScheme.onSurfaceVariant.withAlpha(160),
           ),
         ],
       ),
