@@ -27,7 +27,7 @@ class MachineListScreen extends ConsumerWidget {
 
     return ResponsiveScaffold(
       appBar: AppBar(
-        title: const Text('Machines'),
+        title: const Text('EquipTrack'),
         actions: [
           IconButton(
             key: const Key(AppKeys.signOutButton),

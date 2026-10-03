@@ -124,15 +124,9 @@ class MachineDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
 
                 // Sections Header
-                AppSectionHeader(
+                const AppSectionHeader(
                   title: 'Sections / Components',
                   subtitle: 'Select a section to manage usage logs and duration history',
-                  trailing: TextButton.icon(
-                    onPressed: () =>
-                        AddEditSectionDialog.show(context, machineId: machineId),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Section'),
-                  ),
                 ),
                 const SizedBox(height: 8),
 
@@ -256,7 +250,7 @@ class _SectionCard extends ConsumerWidget {
                 if (confirm == true) {
                   final ok = await ref
                       .read(sectionsControllerProvider.notifier)
-                      .deleteSection(section.id);
+                      .deleteSection(section.id, section.machineId);
                   if (context.mounted) {
                     if (ok) {
                       context.showSuccessSnackBar('Section deleted');

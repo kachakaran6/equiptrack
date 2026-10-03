@@ -49,6 +49,7 @@ class MachinesController extends AsyncNotifier<void> {
         name: name,
         description: description,
       );
+      ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
       return machine;
     } catch (e, st) {
@@ -72,6 +73,7 @@ class MachinesController extends AsyncNotifier<void> {
         name: name,
         description: description,
       );
+      ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
       return machine;
     } catch (e, st) {
@@ -87,6 +89,7 @@ class MachinesController extends AsyncNotifier<void> {
     try {
       final repo = ref.read(machineRepositoryProvider);
       await repo.deleteMachine(id);
+      ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

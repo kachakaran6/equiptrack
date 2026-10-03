@@ -25,6 +25,7 @@ class SectionsController extends AsyncNotifier<void> {
         machineId: machineId,
         name: name,
       );
+      ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
       return section;
     } catch (e, st) {
@@ -37,6 +38,7 @@ class SectionsController extends AsyncNotifier<void> {
 
   Future<Section?> updateSection({
     required String id,
+    required String machineId,
     required String name,
   }) async {
     state = const AsyncValue.loading();
@@ -46,6 +48,7 @@ class SectionsController extends AsyncNotifier<void> {
         id: id,
         name: name,
       );
+      ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
       return section;
     } catch (e, st) {
@@ -56,11 +59,12 @@ class SectionsController extends AsyncNotifier<void> {
     }
   }
 
-  Future<bool> deleteSection(String id) async {
+  Future<bool> deleteSection(String id, String machineId) async {
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(sectionRepositoryProvider);
       await repo.deleteSection(id);
+      ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

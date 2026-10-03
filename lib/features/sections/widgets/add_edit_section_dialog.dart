@@ -77,6 +77,7 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
     } else {
       result = await controller.updateSection(
         id: widget.section!.id,
+        machineId: widget.machineId,
         name: _nameController.text.trim(),
       );
     }
