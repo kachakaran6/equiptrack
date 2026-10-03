@@ -82,6 +82,26 @@ class UsageRecordsController extends AsyncNotifier<void> {
     }
   }
 
+  Future<bool> duplicateRecord(UsageRecord record) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = ref.read(usageRecordRepositoryProvider);
+      await repo.createRecord(
+        sectionId: record.sectionId,
+        name: '${record.name} (Copy)',
+        usageDate: record.usageDate,
+      );
+      ref.invalidate(usageRecordsStreamFamily(record.sectionId));
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (e, st) {
+      AppLogger.error('UsageRecordsController: Failed to duplicate record', e, st);
+      final failure = e is AppFailure ? e : DatabaseFailure('Failed to duplicate record: $e');
+      state = AsyncValue.error(failure, st);
+      return false;
+    }
+  }
+
   Future<bool> deleteRecord(String id, String sectionId) async {
     state = const AsyncValue.loading();
     try {

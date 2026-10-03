@@ -12,6 +12,7 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_popup_menu.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -23,17 +24,24 @@ import '../../machines/widgets/add_edit_machine_dialog.dart';
 import '../controllers/sections_controller.dart';
 import '../widgets/add_edit_section_dialog.dart';
 
-class MachineDetailScreen extends ConsumerWidget {
+class MachineDetailScreen extends ConsumerStatefulWidget {
   final String machineId;
 
   const MachineDetailScreen({super.key, required this.machineId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MachineDetailScreen> createState() => _MachineDetailScreenState();
+}
+
+class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final machineAsync = ref.watch(singleMachineProvider(machineId));
-    final sectionsAsync = ref.watch(sectionsStreamFamily(machineId));
+    final machineAsync = ref.watch(singleMachineProvider(widget.machineId));
+    final sectionsAsync = ref.watch(sectionsStreamFamily(widget.machineId));
 
     return ResponsiveScaffold(
       appBar: AppAppBar(
@@ -56,7 +64,7 @@ class MachineDetailScreen extends ConsumerWidget {
                         machine: machine,
                       );
                       if (updated != null) {
-                        ref.invalidate(singleMachineProvider(machineId));
+                        ref.invalidate(singleMachineProvider(widget.machineId));
                       }
                     },
                   )
@@ -68,7 +76,7 @@ class MachineDetailScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key(AppKeys.addSectionButton),
-        onPressed: () => AddEditSectionDialog.show(context, machineId: machineId),
+        onPressed: () => AddEditSectionDialog.show(context, machineId: widget.machineId),
         icon: const Icon(Icons.add_rounded, size: 20),
         label: const Text(
           'Add Component',
@@ -79,7 +87,7 @@ class MachineDetailScreen extends ConsumerWidget {
         loading: () => const AppLoading(message: 'Loading machine info...'),
         error: (err, _) => AppErrorState(
           message: err.toString(),
-          onRetry: () => ref.invalidate(singleMachineProvider(machineId)),
+          onRetry: () => ref.invalidate(singleMachineProvider(widget.machineId)),
         ),
         data: (machine) {
           if (machine == null) {
@@ -91,8 +99,8 @@ class MachineDetailScreen extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(singleMachineProvider(machineId));
-              ref.invalidate(sectionsStreamFamily(machineId));
+              ref.invalidate(singleMachineProvider(widget.machineId));
+              ref.invalidate(sectionsStreamFamily(widget.machineId));
             },
             child: ListView(
               padding: AppSpacing.screenPadding,
@@ -152,59 +160,91 @@ class MachineDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // Sections Header
-                sectionsAsync.maybeWhen(
-                  data: (sections) => AppSectionHeader(
-                    title: 'Components',
-                    subtitle: 'Select a component to view and manage usage logs',
-                    badge: CountBadge(
-                      count: sections.length,
-                      singular: 'component',
-                      plural: 'components',
-                    ),
-                    padding: const EdgeInsets.only(top: 4, bottom: 8),
-                  ),
-                  orElse: () => const AppSectionHeader(
-                    title: 'Components',
-                    subtitle: 'Select a component to view and manage usage logs',
-                    padding: EdgeInsets.only(top: 4, bottom: 8),
-                  ),
+                // Search Component Field
+                AppSearchField(
+                  hintText: 'Search components...',
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.trim().toLowerCase();
+                    });
+                  },
                 ),
+                const SizedBox(height: 12),
 
-                // Sections List
+                // Sections Header & List
                 sectionsAsync.when(
                   loading: () => const AppLoading(message: 'Loading components...'),
                   error: (err, _) => AppErrorState(
                     message: err.toString(),
-                    onRetry: () => ref.invalidate(sectionsStreamFamily(machineId)),
+                    onRetry: () => ref.invalidate(sectionsStreamFamily(widget.machineId)),
                   ),
                   data: (sections) {
                     if (sections.isEmpty) {
-                      return AppEmptyState(
-                        title: 'No components yet',
-                        message:
-                            'Add a component (e.g. Big ID Fan, Gearbox, Spindle) to start logging usage.',
-                        icon: Icons.category_outlined,
-                        actionLabel: 'Add Component',
-                        onAction: () =>
-                            AddEditSectionDialog.show(context, machineId: machineId),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AppSectionHeader(
+                            title: 'Components',
+                            subtitle: 'Select a component to view and manage usage logs',
+                            padding: EdgeInsets.only(top: 4, bottom: 8),
+                          ),
+                          AppEmptyState(
+                            title: 'No components yet',
+                            message:
+                                'Add a component (e.g. Big ID Fan, Gearbox, Spindle) to start logging usage.',
+                            icon: Icons.category_outlined,
+                            actionLabel: 'Add Component',
+                            onAction: () => AddEditSectionDialog.show(
+                              context,
+                              machineId: widget.machineId,
+                            ),
+                          ),
+                        ],
                       );
                     }
 
-                    return ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: sections.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final section = sections[index];
-                        return _ComponentRowCard(
-                          machineId: machineId,
-                          section: section,
-                        );
-                      },
+                    final filteredSections = _searchQuery.isEmpty
+                        ? sections
+                        : sections
+                            .where((s) => s.name.toLowerCase().contains(_searchQuery))
+                            .toList();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppSectionHeader(
+                          title: 'Components',
+                          subtitle: 'Select a component to view and manage usage logs',
+                          badge: CountBadge(
+                            count: filteredSections.length,
+                            singular: 'component',
+                            plural: 'components',
+                          ),
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        ),
+                        if (filteredSections.isEmpty)
+                          AppEmptyState(
+                            title: 'No matching components',
+                            message: 'No component names match "$_searchQuery".',
+                            icon: Icons.search_off_rounded,
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filteredSections.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final section = filteredSections[index];
+                              return _ComponentRowCard(
+                                machineId: widget.machineId,
+                                section: section,
+                              );
+                            },
+                          ),
+                      ],
                     );
                   },
                 ),
@@ -347,13 +387,6 @@ class _ComponentRowCard extends ConsumerWidget {
                 }
               }
             },
-          ),
-          const SizedBox(width: 4),
-          // Chevron
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 19,
-            color: colorScheme.onSurfaceVariant.withAlpha(120),
           ),
         ],
       ),

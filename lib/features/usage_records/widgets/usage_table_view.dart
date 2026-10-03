@@ -12,7 +12,7 @@ import '../../../models/usage_record.dart';
 import '../controllers/usage_records_controller.dart';
 import 'add_edit_record_sheet.dart';
 
-/// Responsive data list / table view for component usage records
+/// Clean table view matching reference design: Name | Date | Usage Days | ···
 class UsageTableView extends ConsumerWidget {
   final String sectionId;
   final List<CalculatedUsageRow> rows;
@@ -27,151 +27,86 @@ class UsageTableView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isSmall = context.isSmallScreen;
     final recordsMap = {for (final r in rawRecords) r.id: r};
-
-    if (isSmall) {
-      return _buildMobileRecordList(context, ref, recordsMap);
-    } else {
-      return _buildDesktopTable(context, ref, recordsMap);
-    }
-  }
-
-  /// Mobile-first responsive record cards/rows (clean, compact, no horizontal scrolling needed)
-  Widget _buildMobileRecordList(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, UsageRecord> recordsMap,
-  ) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: rows.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        final rawRecord = recordsMap[row.recordId];
-
-        return _MobileUsageRowCard(
-          row: row,
-          rawRecord: rawRecord,
-          sectionId: sectionId,
-          onEdit: () {
-            if (rawRecord != null) {
-              AddEditRecordSheet.show(
-                context,
-                sectionId: sectionId,
-                record: rawRecord,
-              );
-            }
-          },
-          onDelete: () => _handleDelete(context, ref, rawRecord, row),
-        );
-      },
-    );
-  }
-
-  /// Desktop / Tablet clean data table
-  Widget _buildDesktopTable(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, UsageRecord> recordsMap,
-  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return AppCard(
       padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        child: DataTable(
-          headingRowHeight: 40,
-          dataRowMinHeight: 46,
-          dataRowMaxHeight: 52,
-          headingRowColor: WidgetStateProperty.all(
-            isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLight,
-          ),
-          horizontalMargin: 16,
-          columnSpacing: 24,
-          headingTextStyle: theme.textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface,
-          ),
-          dataTextStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-          columns: const [
-            DataColumn(label: Text('Record Name')),
-            DataColumn(label: Text('Usage Date')),
-            DataColumn(label: Text('Duration'), numeric: true),
-            DataColumn(label: SizedBox(width: 24)),
-          ],
-          rows: rows.map((row) {
-            final rawRecord = recordsMap[row.recordId];
-
-            return DataRow(
-              cells: [
-                DataCell(
-                  Text(
-                    row.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    row.formattedDate,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  row.isRunning
-                      ? const RunningBadge()
-                      : Text(
-                          '${row.usageDays} ${row.usageDays == 1 ? "day" : "days"}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.primaryLight : AppColors.primary,
-                          ),
-                        ),
-                ),
-                DataCell(
-                  AppPopupMenu<String>(
-                    items: const [
-                      AppPopupMenuItem(
-                        value: 'edit',
-                        label: 'Edit',
-                        icon: Icons.edit_outlined,
-                      ),
-                      AppPopupMenuItem(
-                        value: 'delete',
-                        label: 'Delete',
-                        icon: Icons.delete_outline_rounded,
-                        isDestructive: true,
-                      ),
-                    ],
-                    onSelected: (action) {
-                      if (rawRecord == null) return;
-                      if (action == 'edit') {
-                        AddEditRecordSheet.show(
-                          context,
-                          sectionId: sectionId,
-                          record: rawRecord,
-                        );
-                      } else if (action == 'delete') {
-                        _handleDelete(context, ref, rawRecord, row);
-                      }
-                    },
-                  ),
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header Row ──────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.surfaceContainerDark
+                  : AppColors.surfaceContainerLight,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppSpacing.radiusLg),
+                topRight: Radius.circular(AppSpacing.radiusLg),
+              ),
+            ),
+            child: Row(
+              children: [
+                _HeaderCell(label: 'Name', flex: 3),
+                _HeaderCell(label: 'Date', flex: 2),
+                _HeaderCell(label: 'Usage Days', flex: 2, align: TextAlign.right),
+                // space for ··· menu
+                const SizedBox(width: 40),
               ],
-            );
-          }).toList(),
-        ),
+            ),
+          ),
+
+          // ── Data Rows ────────────────────────────────────────────────────
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: rows.length,
+            separatorBuilder: (_, _) => Divider(
+              height: 1,
+              thickness: 1,
+              indent: 0,
+              endIndent: 0,
+              color: (isDark ? AppColors.borderDark : AppColors.borderLight)
+                  .withAlpha(120),
+            ),
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              final rawRecord = recordsMap[row.recordId];
+              return _DataRow(
+                row: row,
+                rawRecord: rawRecord,
+                sectionId: sectionId,
+                isLast: index == rows.length - 1,
+                onEdit: () {
+                  if (rawRecord != null) {
+                    AddEditRecordSheet.show(
+                      context,
+                      sectionId: sectionId,
+                      record: rawRecord,
+                    );
+                  }
+                },
+                onDuplicate: () async {
+                  if (rawRecord == null) return;
+                  final ok = await ref
+                      .read(usageRecordsControllerProvider.notifier)
+                      .duplicateRecord(rawRecord);
+                  if (context.mounted) {
+                    if (ok) {
+                      context.showSuccessSnackBar('Record duplicated');
+                    } else {
+                      context.showErrorSnackBar('Failed to duplicate');
+                    }
+                  }
+                },
+                onDelete: () => _handleDelete(context, ref, rawRecord, row),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -183,12 +118,11 @@ class UsageTableView extends ConsumerWidget {
     CalculatedUsageRow row,
   ) async {
     if (rawRecord == null) return;
-
     final confirm = await AppConfirmDialog.show(
       context: context,
       title: 'Delete record?',
       message:
-          'Are you sure you want to delete "${rawRecord.name}" (${row.formattedDate})? Durations will be automatically recalculated.',
+          'Delete "${rawRecord.name}" (${row.formattedDate})? Durations will be recalculated.',
       confirmLabel: 'Delete',
       isDestructive: true,
     );
@@ -207,19 +141,56 @@ class UsageTableView extends ConsumerWidget {
   }
 }
 
-/// Mobile-optimized record row card with high information density
-class _MobileUsageRowCard extends StatelessWidget {
+// ── Header cell helper ─────────────────────────────────────────────────────────
+
+class _HeaderCell extends StatelessWidget {
+  final String label;
+  final int flex;
+  final TextAlign align;
+
+  const _HeaderCell({
+    required this.label,
+    required this.flex,
+    this.align = TextAlign.left,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      flex: flex,
+      child: Text(
+        label,
+        textAlign: align,
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.3,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Single data row ────────────────────────────────────────────────────────────
+
+class _DataRow extends StatelessWidget {
   final CalculatedUsageRow row;
   final UsageRecord? rawRecord;
   final String sectionId;
+  final bool isLast;
   final VoidCallback onEdit;
+  final VoidCallback onDuplicate;
   final VoidCallback onDelete;
 
-  const _MobileUsageRowCard({
+  const _DataRow({
     required this.row,
     required this.rawRecord,
     required this.sectionId,
+    required this.isLast,
     required this.onEdit,
+    required this.onDuplicate,
     required this.onDelete,
   });
 
@@ -229,98 +200,111 @@ class _MobileUsageRowCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return AppCard(
-      onTap: onEdit,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Top Row: Record Name + Duration/Status
-          Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onEdit,
+        borderRadius: isLast
+            ? BorderRadius.only(
+                bottomLeft: Radius.circular(AppSpacing.radiusLg),
+                bottomRight: Radius.circular(AppSpacing.radiusLg),
+              )
+            : BorderRadius.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Name
               Expanded(
+                flex: 3,
                 child: Text(
                   row.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                     color: colorScheme.onSurface,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
-              if (row.isRunning)
-                const RunningBadge()
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.surfaceContainerDark
-                        : AppColors.surfaceContainerLight,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Text(
-                    '${row.usageDays} ${row.usageDays == 1 ? "day" : "days"}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.primaryLight : AppColors.primary,
-                    ),
+
+              // Date
+              Expanded(
+                flex: 2,
+                child: Text(
+                  row.formattedDate,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // Bottom Row: Date + Overflow Actions
-          Row(
-            children: [
-              Icon(
-                Icons.event_outlined,
-                size: 14,
-                color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 6),
-              Text(
-                row.formattedDate,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+
+              // Usage Days / Running badge
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: row.isRunning
+                      ? FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: const RunningBadge(),
+                        )
+                      : Text(
+                          '${row.usageDays ?? 0}',
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? AppColors.primaryLight
+                                : AppColors.primary,
+                            fontSize: 17,
+                          ),
+                        ),
                 ),
               ),
-              const Spacer(),
-              AppPopupMenu<String>(
-                iconSize: 18,
-                items: const [
-                  AppPopupMenuItem(
-                    value: 'edit',
-                    label: 'Edit',
-                    icon: Icons.edit_outlined,
-                  ),
-                  AppPopupMenuItem(
-                    value: 'delete',
-                    label: 'Delete',
-                    icon: Icons.delete_outline_rounded,
-                    isDestructive: true,
-                  ),
-                ],
-                onSelected: (action) {
-                  if (action == 'edit') {
-                    onEdit();
-                  } else if (action == 'delete') {
-                    onDelete();
-                  }
-                },
+
+              // ··· overflow menu
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 36,
+                child: AppPopupMenu<String>(
+                  iconSize: 18,
+                  items: const [
+                    AppPopupMenuItem(
+                      value: 'edit',
+                      label: 'Edit',
+                      icon: Icons.edit_outlined,
+                    ),
+                    AppPopupMenuItem(
+                      value: 'duplicate',
+                      label: 'Duplicate',
+                      icon: Icons.content_copy_rounded,
+                    ),
+                    AppPopupMenuItem(
+                      value: 'delete',
+                      label: 'Delete',
+                      icon: Icons.delete_outline_rounded,
+                      isDestructive: true,
+                    ),
+                  ],
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      onEdit();
+                    } else if (action == 'duplicate') {
+                      onDuplicate();
+                    } else if (action == 'delete') {
+                      onDelete();
+                    }
+                  },
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

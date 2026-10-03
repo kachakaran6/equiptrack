@@ -58,13 +58,6 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      if (result.error === 'DUPLICATE_DATE') {
-        return reply.status(409).send({
-          success: false,
-          message: 'A usage record with this date already exists for this section.',
-        });
-      }
-
       return reply.status(201).send({
         success: true,
         data: result.record,
@@ -109,13 +102,6 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(404).send({
         success: false,
         message: 'Usage record not found',
-      });
-    }
-
-    if (result.error === 'DUPLICATE_DATE') {
-      return reply.status(409).send({
-        success: false,
-        message: 'A usage record with this date already exists for this section.',
       });
     }
 

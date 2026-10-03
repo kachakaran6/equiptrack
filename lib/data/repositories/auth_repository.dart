@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/network/api_client.dart';
@@ -31,6 +32,19 @@ class ApiAuthRepository implements AuthRepository {
   @override
   Stream<bool> get authStateChanges => _authStateController.stream;
 
+  static Map<String, dynamic>? _parseJwtPayload(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      var normalized = base64Url.normalize(parts[1]);
+      final resp = utf8.decode(base64Url.decode(normalized));
+      final payload = jsonDecode(resp);
+      if (payload is Map<String, dynamic>) return payload;
+      if (payload is Map) return Map<String, dynamic>.from(payload);
+    } catch (_) {}
+    return null;
+  }
+
   @override
   Future<void> initSession() async {
     try {
@@ -41,20 +55,50 @@ class ApiAuthRepository implements AuthRepository {
         return;
       }
 
-      final data = await _apiClient.get('/auth/me');
-      if (data is Map && data['user'] != null) {
-        _currentUser = AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+      // 1. Check cached user object or decode from JWT token
+      AppUser? user = await _apiClient.getUser();
+      if (user == null) {
+        final payload = _parseJwtPayload(token);
+        if (payload != null && payload['id'] != null && payload['email'] != null) {
+          user = AppUser(
+            id: payload['id'].toString(),
+            email: payload['email'].toString(),
+          );
+          await _apiClient.saveUser(user);
+        }
+      }
+
+      if (user != null) {
+        _currentUser = user;
         _authStateController.add(true);
-      } else {
-        await _apiClient.clearToken();
+      }
+
+      // 2. Verify and refresh user info from server
+      try {
+        final data = await _apiClient.get('/auth/me');
+        if (data is Map && data['user'] != null) {
+          _currentUser = AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+          await _apiClient.saveUser(_currentUser!);
+          _authStateController.add(true);
+        } else if (data is Map && data['id'] != null && data['email'] != null) {
+          _currentUser = AppUser.fromJson(Map<String, dynamic>.from(data));
+          await _apiClient.saveUser(_currentUser!);
+          _authStateController.add(true);
+        }
+      } on AuthenticationFailure catch (e) {
+        AppLogger.warning('Token rejected by server (expired or invalid): ${e.message}');
+        await _apiClient.clearAuth();
         _currentUser = null;
         _authStateController.add(false);
+      } catch (e) {
+        // Retain cached session on network drop or timeout
+        AppLogger.warning('Could not refresh session online (offline mode): $e');
+        if (_currentUser != null) {
+          _authStateController.add(true);
+        }
       }
     } catch (e) {
-      AppLogger.warning('Session check failed or expired: $e');
-      await _apiClient.clearToken();
-      _currentUser = null;
-      _authStateController.add(false);
+      AppLogger.error('Unexpected error during initSession', e);
     }
   }
 
@@ -75,6 +119,7 @@ class ApiAuthRepository implements AuthRepository {
         final token = data['token'] as String;
         await _apiClient.saveToken(token);
         _currentUser = AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+        await _apiClient.saveUser(_currentUser!);
         _authStateController.add(true);
         AppLogger.info('Sign in successful for user: ${_currentUser?.email}');
       } else {
@@ -104,6 +149,7 @@ class ApiAuthRepository implements AuthRepository {
         final token = data['token'] as String;
         await _apiClient.saveToken(token);
         _currentUser = AppUser.fromJson(Map<String, dynamic>.from(data['user'] as Map));
+        await _apiClient.saveUser(_currentUser!);
         _authStateController.add(true);
       } else {
         throw const AuthenticationFailure('Registration failed: Invalid response format');
@@ -122,7 +168,7 @@ class ApiAuthRepository implements AuthRepository {
       try {
         await _apiClient.post('/auth/logout');
       } catch (_) {}
-      await _apiClient.clearToken();
+      await _apiClient.clearAuth();
     } finally {
       _currentUser = null;
       _authStateController.add(false);

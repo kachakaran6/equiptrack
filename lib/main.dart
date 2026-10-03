@@ -4,11 +4,12 @@ import 'app/app.dart';
 import 'app/app_bootstrap.dart';
 
 Future<void> main() async {
-  await AppBootstrap.initialize();
+  final container = await AppBootstrap.initialize();
 
   runApp(
-    const ProviderScope(
-      child: MachineUsageApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const MachineUsageApp(),
     ),
   );
 }

@@ -55,15 +55,10 @@ export class UsageRecordsService {
     userId: string,
     sectionId: string,
     input: CreateUsageRecordInput
-  ): Promise<{ record?: UsageRecordRow; error?: 'SECTION_NOT_FOUND' | 'DUPLICATE_DATE' }> {
+  ): Promise<{ record?: UsageRecordRow; error?: 'SECTION_NOT_FOUND' }> {
     const sectionCheck = await query('SELECT id FROM sections WHERE id = $1', [sectionId]);
     if (sectionCheck.rows.length === 0) {
       return { error: 'SECTION_NOT_FOUND' };
-    }
-
-    const isDup = await this.isDuplicateDate(userId, sectionId, input.usage_date);
-    if (isDup) {
-      return { error: 'DUPLICATE_DATE' };
     }
 
     const result = await query<UsageRecordRow>(
@@ -77,15 +72,10 @@ export class UsageRecordsService {
     userId: string,
     recordId: string,
     input: UpdateUsageRecordInput
-  ): Promise<{ record?: UsageRecordRow; error?: 'RECORD_NOT_FOUND' | 'DUPLICATE_DATE' }> {
+  ): Promise<{ record?: UsageRecordRow; error?: 'RECORD_NOT_FOUND' }> {
     const existing = await this.getRecordById(userId, recordId);
     if (!existing) {
       return { error: 'RECORD_NOT_FOUND' };
-    }
-
-    const isDup = await this.isDuplicateDate(userId, existing.section_id, input.usage_date, recordId);
-    if (isDup) {
-      return { error: 'DUPLICATE_DATE' };
     }
 
     const result = await query<UsageRecordRow>(

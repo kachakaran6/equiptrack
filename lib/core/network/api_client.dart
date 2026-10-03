@@ -8,25 +8,37 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../errors/app_failure.dart';
 import '../utils/app_logger.dart';
+import '../../models/app_user.dart';
 
 class ApiClient {
   final http.Client _httpClient;
   final FlutterSecureStorage _storage;
   String? _cachedToken;
 
+  AppUser? _cachedUser;
+
   static const String _tokenKey = 'equiptrack_jwt_token';
+  static const String _userKey = 'equiptrack_user_data';
 
   ApiClient({
     http.Client? httpClient,
     FlutterSecureStorage? storage,
   })  : _httpClient = httpClient ?? http.Client(),
-        _storage = storage ?? const FlutterSecureStorage();
+        _storage = storage ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(resetOnError: true),
+              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+            );
 
   String get baseUrl {
-    final envUrl = dotenv.env['API_BASE_URL'];
-    if (envUrl != null && envUrl.trim().isNotEmpty) {
-      return envUrl.trim();
-    }
+    try {
+      if (dotenv.isInitialized) {
+        final envUrl = dotenv.env['API_BASE_URL'];
+        if (envUrl != null && envUrl.trim().isNotEmpty) {
+          return envUrl.trim();
+        }
+      }
+    } catch (_) {}
 
     if (!kIsWeb && Platform.isAndroid) {
       // 10.0.2.2 is Android emulator host loopback
@@ -54,14 +66,45 @@ class ApiClient {
     return _cachedToken;
   }
 
-  Future<void> clearToken() async {
-    _cachedToken = null;
+  Future<void> saveUser(AppUser user) async {
+    _cachedUser = user;
     try {
-      await _storage.delete(key: _tokenKey);
+      await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
     } catch (e) {
-      AppLogger.warning('Could not clear token from secure storage: $e');
+      AppLogger.warning('Could not persist user to secure storage: $e');
     }
   }
+
+  Future<AppUser?> getUser() async {
+    if (_cachedUser != null) return _cachedUser;
+    try {
+      final userJson = await _storage.read(key: _userKey);
+      if (userJson != null && userJson.isNotEmpty) {
+        final map = jsonDecode(userJson);
+        if (map is Map<String, dynamic>) {
+          _cachedUser = AppUser.fromJson(map);
+        } else if (map is Map) {
+          _cachedUser = AppUser.fromJson(Map<String, dynamic>.from(map));
+        }
+      }
+    } catch (e) {
+      AppLogger.warning('Could not read user from secure storage: $e');
+    }
+    return _cachedUser;
+  }
+
+  Future<void> clearAuth() async {
+    _cachedToken = null;
+    _cachedUser = null;
+    try {
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _userKey);
+    } catch (e) {
+      AppLogger.warning('Could not clear auth from secure storage: $e');
+    }
+  }
+
+  Future<void> clearToken() async => clearAuth();
 
   Future<Map<String, String>> _headers({bool requiresAuth = true}) async {
     final headers = <String, String>{

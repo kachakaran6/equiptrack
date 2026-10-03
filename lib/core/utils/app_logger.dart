@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 /// Lightweight structured logger that sanitizes sensitive data in production
+/// and forwards runtime errors to backend DB for diagnosis.
 class AppLogger {
   AppLogger._();
 
@@ -35,6 +39,37 @@ class AppLogger {
     if (kDebugMode && stackTrace != null) {
       // ignore: avoid_print
       print(stackTrace);
+    }
+    _reportToBackend(message, error, stackTrace);
+  }
+
+  static void _reportToBackend(String message, dynamic error, StackTrace? stackTrace) {
+    try {
+      if (!dotenv.isInitialized) return;
+      final baseUrl = dotenv.env['API_BASE_URL']?.trim();
+      if (baseUrl == null || baseUrl.isEmpty) return;
+
+      final url = Uri.parse('$baseUrl/logs/error');
+      final body = jsonEncode({
+        'source': 'client',
+        'level': 'error',
+        'message': message,
+        'stackTrace': error != null ? '$error\n${stackTrace ?? ""}' : (stackTrace?.toString() ?? ''),
+        'metadata': {
+          'platform': defaultTargetPlatform.toString(),
+          'kDebugMode': kDebugMode,
+        },
+      });
+
+      http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+          )
+          .catchError((_) => http.Response('', 500));
+    } catch (_) {
+      // Ignore background reporting errors
     }
   }
 }

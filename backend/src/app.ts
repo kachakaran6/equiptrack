@@ -9,6 +9,8 @@ import { sectionRoutes } from './modules/sections/sections.routes.js';
 import { usageRecordRoutes } from './modules/usage-records/usage-records.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
+import { errorLogRoutes } from './modules/error-logs/error-logs.routes.js';
+import { ErrorLogsService } from './modules/error-logs/error-logs.service.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -64,11 +66,34 @@ export function buildApp(): FastifyInstance {
   app.register(usageRecordRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api/reports' });
   app.register(adminRoutes, { prefix: '/api/admin' });
+  app.register(errorLogRoutes, { prefix: '/api' });
 
   // 6. Global Error Handler
-  app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
+  app.setErrorHandler(async (error: Error & { statusCode?: number }, request, reply) => {
     app.log.error(error);
     const statusCode = error.statusCode || 500;
+
+    // Log to DB if 4xx/5xx error
+    try {
+      const user = (request as any).user;
+      await ErrorLogsService.logError({
+        userId: user?.id,
+        userEmail: user?.email,
+        source: 'server',
+        level: statusCode >= 500 ? 'error' : 'warn',
+        endpoint: request.url,
+        method: request.method,
+        statusCode: statusCode,
+        message: error.message || 'Server error',
+        stackTrace: error.stack,
+        metadata: {
+          params: request.params,
+          query: request.query,
+        },
+      });
+    } catch {
+      // Best-effort error logging
+    }
 
     reply.status(statusCode).send({
       success: false,
