@@ -16,6 +16,16 @@
 !.env.example
 *.env
 
+# Android release signing & credentials
+key.properties
+**/android/key.properties
+*.jks
+*.keystore
+upload-keystore.jks
+upload-keystore-backup.jks
+android_release_credentials_backup.txt
+*credentials_backup*
+
 migrate_working_dir/
 
 # IntelliJ related
@@ -49,3 +59,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local screenshots and scratch files
+flutter_*.png
+/flutter_*.png
+check_*.dart
+process_icon.dart
+
