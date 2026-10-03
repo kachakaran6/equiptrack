@@ -78,6 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     AppConstants.appName,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
                     ),
                     textAlign: TextAlign.center,
                   ),

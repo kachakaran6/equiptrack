@@ -46,6 +46,7 @@ class UsageRecordsController extends AsyncNotifier<void> {
         name: name,
         usageDate: usageDate,
       );
+      ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
       return record;
     } catch (e, st) {
@@ -58,6 +59,7 @@ class UsageRecordsController extends AsyncNotifier<void> {
 
   Future<UsageRecord?> updateRecord({
     required String id,
+    required String sectionId,
     required String name,
     required DateTime usageDate,
   }) async {
@@ -69,6 +71,7 @@ class UsageRecordsController extends AsyncNotifier<void> {
         name: name,
         usageDate: usageDate,
       );
+      ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
       return record;
     } catch (e, st) {
@@ -79,11 +82,12 @@ class UsageRecordsController extends AsyncNotifier<void> {
     }
   }
 
-  Future<bool> deleteRecord(String id) async {
+  Future<bool> deleteRecord(String id, String sectionId) async {
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(usageRecordRepositoryProvider);
       await repo.deleteRecord(id);
+      ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

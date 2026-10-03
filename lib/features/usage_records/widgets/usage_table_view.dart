@@ -155,7 +155,7 @@ class UsageTableView extends ConsumerWidget {
                             if (confirm == true) {
                               final ok = await ref
                                   .read(usageRecordsControllerProvider.notifier)
-                                  .deleteRecord(rawRecord.id);
+                                  .deleteRecord(rawRecord.id, rawRecord.sectionId);
                               if (context.mounted) {
                                 if (ok) {
                                   context.showSuccessSnackBar(

@@ -110,6 +110,7 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
     } else {
       result = await controller.updateRecord(
         id: widget.record!.id,
+        sectionId: widget.sectionId,
         name: _nameController.text.trim(),
         usageDate: _selectedDate!,
       );
