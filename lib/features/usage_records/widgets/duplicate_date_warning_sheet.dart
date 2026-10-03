@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_keys.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/date_extensions.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_button.dart';
 
+/// Compact warning sheet for handling duplicate record dates
 class DuplicateDateWarningSheet extends StatelessWidget {
   final DateTime date;
   final VoidCallback onConfirm;
@@ -30,16 +33,25 @@ class DuplicateDateWarningSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final sheetBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     return Container(
       key: const Key(AppKeys.duplicateWarningDialog),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        color: sheetBg,
+        borderRadius: AppSpacing.sheetRadius,
+        border: Border(
+          top: BorderSide(color: borderColor, width: 1),
+          left: BorderSide(color: borderColor, width: 1),
+          right: BorderSide(color: borderColor, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(20),
-            blurRadius: 16,
+            color: Colors.black.withAlpha(isDark ? 80 : 30),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -47,7 +59,7 @@ class DuplicateDateWarningSheet extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -55,11 +67,11 @@ class DuplicateDateWarningSheet extends StatelessWidget {
               // Drag Handle
               Center(
                 child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  width: 36,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  width: 32,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
+                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -67,52 +79,57 @@ class DuplicateDateWarningSheet extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer.withAlpha(80),
-                      shape: BoxShape.circle,
+                      color: isDark
+                          ? AppColors.warningContainerDark
+                          : AppColors.warningContainer,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.event_repeat_rounded,
-                      color: theme.colorScheme.error,
-                      size: 24,
+                      color: AppColors.warning,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Duplicate Date Detected',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
-                'A record already exists for ${date.toReadableDate()}.\n\nDo you want to add another record for this date? (Calculated duration between equal dates will be 0 days).',
+                'A record already exists for ${date.toReadableDate()}.\n\nAdding another record on this date will calculate a 0-day duration between them.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
                     child: AppButton(
                       text: 'Cancel',
                       variant: AppButtonVariant.outline,
+                      size: AppButtonSize.medium,
                       onPressed: onCancel,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: AppButton(
                       keyString: AppKeys.duplicateConfirmButton,
                       text: 'Add Anyway',
                       variant: AppButtonVariant.primary,
+                      size: AppButtonSize.medium,
                       onPressed: onConfirm,
                     ),
                   ),

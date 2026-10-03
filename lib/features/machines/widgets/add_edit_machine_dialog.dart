@@ -85,8 +85,8 @@ class _AddEditMachineDialogState extends ConsumerState<AddEditMachineDialog> {
         _isDirty = false;
         context.showSuccessSnackBar(
           widget.machine == null
-              ? 'Machine "${result.name}" added successfully'
-              : 'Machine updated successfully',
+              ? 'Machine "${result.name}" added'
+              : 'Machine updated',
         );
         Navigator.of(context).pop(result);
       } else {
@@ -105,7 +105,7 @@ class _AddEditMachineDialogState extends ConsumerState<AddEditMachineDialog> {
         title: isEditing ? 'Edit Machine' : 'Add Machine',
         icon: isEditing ? Icons.edit_rounded : Icons.precision_manufacturing_rounded,
         content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 380),
           child: Form(
             key: _formKey,
             child: Column(
@@ -115,19 +115,19 @@ class _AddEditMachineDialogState extends ConsumerState<AddEditMachineDialog> {
                 AppTextField(
                   keyString: AppKeys.machineNameField,
                   label: 'Machine Name',
-                  hintText: 'e.g. CNC Milling Machine 01',
+                  hintText: 'e.g. Boiler, CNC Milling 01',
                   controller: _nameController,
                   isRequired: true,
                   autofocus: true,
                   validator: FormValidators.machineName,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 AppTextField(
                   keyString: AppKeys.machineDescField,
-                  label: 'Description',
-                  hintText: 'Optional notes, serial no., or location',
+                  label: 'Description / Notes',
+                  hintText: 'Optional location, model, or serial details',
                   controller: _descController,
-                  maxLines: 3,
+                  maxLines: 2,
                 ),
               ],
             ),
@@ -136,13 +136,16 @@ class _AddEditMachineDialogState extends ConsumerState<AddEditMachineDialog> {
         actions: [
           AppButton(
             text: 'Cancel',
-            variant: AppButtonVariant.text,
+            variant: AppButtonVariant.outline,
+            size: AppButtonSize.small,
             onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           ),
+          const SizedBox(width: 4),
           AppButton(
             keyString: AppKeys.saveMachineButton,
             text: isEditing ? 'Save Changes' : 'Add Machine',
             icon: Icons.check_rounded,
+            size: AppButtonSize.small,
             isLoading: _isSubmitting,
             onPressed: _isSubmitting ? null : _submit,
           ),

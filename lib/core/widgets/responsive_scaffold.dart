@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Responsive scaffold with max content width constraints for tablets and large screens
+/// Responsive scaffold with adaptive width constraints and clean system bar styling
 class ResponsiveScaffold extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget body;
@@ -15,7 +15,7 @@ class ResponsiveScaffold extends StatelessWidget {
     required this.body,
     this.floatingActionButton,
     this.bottomNavigationBar,
-    this.maxContentWidth = 800,
+    this.maxContentWidth = 720,
     this.padding = EdgeInsets.zero,
   });
 
@@ -26,6 +26,8 @@ class ResponsiveScaffold extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       body: SafeArea(
+        top: appBar == null,
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxContentWidth),

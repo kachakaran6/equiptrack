@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../constants/app_spacing.dart';
+import '../theme/app_colors.dart';
 import 'app_button.dart';
 
+/// Concise, platform-aligned confirmation dialog for destructive and unsaved actions
 class AppConfirmDialog extends StatelessWidget {
   final String title;
   final String message;
@@ -50,34 +53,44 @@ class AppConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final dialogBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      backgroundColor: dialogBg,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppSpacing.dialogRadius,
+        side: BorderSide(color: borderColor, width: 1),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: isDestructive
-                  ? theme.colorScheme.errorContainer
-                  : theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(10),
+                  ? (isDark ? AppColors.errorContainerDark : AppColors.errorContainer)
+                  : (isDark ? AppColors.primaryContainerDark : AppColors.primaryContainerLight),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
             ),
             child: Icon(
-              isDestructive ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
-              color: isDestructive ? theme.colorScheme.error : theme.colorScheme.primary,
-              size: 20,
+              isDestructive ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
+              color: isDestructive ? AppColors.error : theme.colorScheme.primary,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -91,33 +104,34 @@ class AppConfirmDialog extends StatelessWidget {
             message,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              height: 1.4,
             ),
           ),
           if (cascadeNotice != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withAlpha(90),
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? AppColors.errorContainerDark.withAlpha(120) : AppColors.errorContainer.withAlpha(140),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 border: Border.all(
-                  color: theme.colorScheme.error.withAlpha(80),
+                  color: isDark ? AppColors.error.withAlpha(60) : AppColors.error.withAlpha(80),
                 ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.info_outline_rounded,
-                    size: 18,
-                    color: theme.colorScheme.error,
+                    size: 16,
+                    color: AppColors.error,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       cascadeNotice!,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
+                        color: isDark ? AppColors.onErrorContainerDark : AppColors.onErrorContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -131,16 +145,18 @@ class AppConfirmDialog extends StatelessWidget {
       actions: [
         AppButton(
           text: cancelLabel,
-          variant: AppButtonVariant.text,
+          variant: AppButtonVariant.outline,
+          size: AppButtonSize.small,
           onPressed: onCancel ?? () => Navigator.of(context).pop(false),
         ),
+        const SizedBox(width: 4),
         AppButton(
           text: confirmLabel,
           variant: isDestructive ? AppButtonVariant.danger : AppButtonVariant.primary,
+          size: AppButtonSize.small,
           onPressed: onConfirm,
         ),
       ],
     );
   }
 }
-

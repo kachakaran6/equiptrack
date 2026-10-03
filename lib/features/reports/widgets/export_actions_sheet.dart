@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_keys.dart';
+import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../models/machine.dart';
@@ -39,7 +41,8 @@ class ExportActionsSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = context.theme;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -47,19 +50,24 @@ class ExportActionsSheet extends ConsumerWidget {
       children: [
         // Summary info
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withAlpha(60),
-            borderRadius: BorderRadius.circular(10),
+            color: isDark
+                ? AppColors.primaryContainerDark
+                : AppColors.primaryContainerLight,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(
+              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            ),
           ),
           child: Row(
             children: [
               Icon(
                 Icons.assessment_outlined,
-                color: theme.colorScheme.primary,
-                size: 20,
+                color: isDark ? AppColors.primaryLight : AppColors.primary,
+                size: 18,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   '${machine.name} • ${section.name} (${records.length} records)',
@@ -71,7 +79,7 @@ class ExportActionsSheet extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // Option 1: PDF Preview & Print
         AppCard(
@@ -85,46 +93,54 @@ class ExportActionsSheet extends ConsumerWidget {
                   records: records,
                 );
           },
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  color: isDark
+                      ? AppColors.errorContainerDark
+                      : AppColors.errorContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: const Icon(
                   Icons.picture_as_pdf_rounded,
-                  color: Colors.red,
-                  size: 24,
+                  color: AppColors.error,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Preview / Print PDF',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'A4 document layout ready for printing or preview',
+                      'A4 document layout ready for printing or viewing',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // Option 2: Share PDF
         AppCard(
@@ -143,46 +159,54 @@ class ExportActionsSheet extends ConsumerWidget {
               }
             }
           },
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  color: isDark
+                      ? AppColors.primaryContainerDark
+                      : AppColors.primaryContainerLight,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.share_rounded,
-                  color: Colors.blue,
-                  size: 24,
+                  color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Share PDF File',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Export and send via WhatsApp, Email, or Drive',
+                      'Export document and send via WhatsApp, Email, or Drive',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // Option 3: Share Excel (.xlsx)
         AppCard(
@@ -201,46 +225,53 @@ class ExportActionsSheet extends ConsumerWidget {
               }
             }
           },
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  color: isDark
+                      ? AppColors.successContainerDark
+                      : AppColors.successContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: const Icon(
                   Icons.table_chart_rounded,
-                  color: Colors.green,
-                  size: 24,
+                  color: AppColors.success,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Export Excel Spreadsheet (.xlsx)',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Formatted workbook with columns and calculated days',
+                      'Formatted spreadsheet with calculated replacement durations',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
       ],
     );
   }

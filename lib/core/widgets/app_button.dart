@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../constants/app_spacing.dart';
+import '../theme/app_colors.dart';
 
 enum AppButtonVariant { primary, secondary, outline, danger, text }
 
 enum AppButtonSize { small, medium, large }
 
-/// Standard reusable Material 3 button for the application
+/// Standard reusable Material 3 button for EquipTrack
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -31,25 +33,50 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    final padding = switch (size) {
-      AppButtonSize.small => const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      AppButtonSize.medium => const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-      AppButtonSize.large => const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+    final (padding, minHeight, iconSize, spinnerSize) = switch (size) {
+      AppButtonSize.small => (
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          34.0,
+          15.0,
+          13.0,
+        ),
+      AppButtonSize.medium => (
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          42.0,
+          18.0,
+          16.0,
+        ),
+      AppButtonSize.large => (
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          48.0,
+          20.0,
+          18.0,
+        ),
     };
 
     final textStyle = switch (size) {
-      AppButtonSize.small => theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-      AppButtonSize.medium => theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-      AppButtonSize.large => theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      AppButtonSize.small => theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      AppButtonSize.medium => theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      AppButtonSize.large => theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
     };
 
     final foregroundColor = switch (variant) {
-      AppButtonVariant.primary => colorScheme.onPrimary,
-      AppButtonVariant.danger => colorScheme.onError,
-      AppButtonVariant.secondary => colorScheme.onSecondaryContainer,
-      AppButtonVariant.outline => colorScheme.primary,
-      AppButtonVariant.text => colorScheme.primary,
+      AppButtonVariant.primary => Colors.white,
+      AppButtonVariant.danger => Colors.white,
+      AppButtonVariant.secondary => isDark ? AppColors.textPrimaryDark : colorScheme.onSurface,
+      AppButtonVariant.outline => isDark ? AppColors.textPrimaryDark : colorScheme.onSurface,
+      AppButtonVariant.text => isDark ? AppColors.primaryLight : AppColors.primary,
     };
 
     Widget content = Row(
@@ -58,21 +85,28 @@ class AppButton extends StatelessWidget {
       children: [
         if (isLoading) ...[
           SizedBox(
-            width: size == AppButtonSize.small ? 14 : 18,
-            height: size == AppButtonSize.small ? 14 : 18,
+            width: spinnerSize,
+            height: spinnerSize,
             child: CircularProgressIndicator(
-              strokeWidth: 2.2,
+              strokeWidth: 2.0,
               valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
             ),
           ),
           const SizedBox(width: 8),
         ] else if (icon != null) ...[
-          Icon(icon, size: size == AppButtonSize.small ? 16 : 18, color: foregroundColor),
+          Icon(icon, size: iconSize, color: foregroundColor),
           const SizedBox(width: 8),
         ],
-        Text(text, style: textStyle?.copyWith(color: foregroundColor)),
+        Text(
+          text,
+          style: textStyle?.copyWith(color: foregroundColor),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
+
+    final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
 
     Widget button;
 
@@ -82,10 +116,11 @@ class AppButton extends StatelessWidget {
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: colorScheme.primary,
-            foregroundColor: colorScheme.onPrimary,
+            backgroundColor: isDark ? AppColors.primaryLight : AppColors.primary,
+            foregroundColor: Colors.white,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size(0, minHeight),
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
             elevation: 0,
           ),
           child: content,
@@ -97,23 +132,33 @@ class AppButton extends StatelessWidget {
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: colorScheme.secondaryContainer,
-            foregroundColor: colorScheme.onSecondaryContainer,
+            backgroundColor: isDark ? AppColors.surfaceContainerDark : colorScheme.surfaceContainerHigh,
+            foregroundColor: foregroundColor,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size(0, minHeight),
+            shape: RoundedRectangleBorder(
+              borderRadius: borderRadius,
+              side: BorderSide(
+                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                width: 1,
+              ),
+            ),
+            elevation: 0,
           ),
           child: content,
         );
         break;
 
       case AppButtonVariant.outline:
+        final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
         button = OutlinedButton(
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             padding: padding,
-            side: BorderSide(color: colorScheme.outlineVariant.withAlpha(180)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size(0, minHeight),
+            side: BorderSide(color: borderColor, width: 1),
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
           ),
           child: content,
         );
@@ -124,10 +169,11 @@ class AppButton extends StatelessWidget {
           key: keyString != null ? Key(keyString!) : null,
           onPressed: isLoading ? null : onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: colorScheme.error,
-            foregroundColor: colorScheme.onError,
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size(0, minHeight),
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
             elevation: 0,
           ),
           child: content,
@@ -140,7 +186,8 @@ class AppButton extends StatelessWidget {
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
             padding: padding,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: Size(0, minHeight),
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
           ),
           child: content,
         );
@@ -153,4 +200,3 @@ class AppButton extends StatelessWidget {
     return button;
   }
 }
-

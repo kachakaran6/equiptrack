@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../constants/app_spacing.dart';
+import '../theme/app_colors.dart';
 
-/// Authentic Material Design 3 Card with interactive ripple, proper tonal surface, and clipping
+/// Authentic industrial card with crisp hairline border, tonal surface, and interactive ripple
 class AppCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -15,10 +17,10 @@ class AppCard extends StatelessWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = AppSpacing.cardPadding,
     this.backgroundColor,
     this.borderColor,
-    this.borderRadius = 16,
+    this.borderRadius = AppSpacing.radiusLg,
     this.elevation = 0,
     this.keyString,
   });
@@ -26,11 +28,13 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final cardColor = backgroundColor ??
-        theme.cardTheme.color ??
-        theme.colorScheme.surfaceContainerLow;
-    final effectiveBorderColor =
-        borderColor ?? theme.colorScheme.outlineVariant.withAlpha(140);
+        (isDark ? AppColors.cardDark : AppColors.cardLight);
+
+    final effectiveBorderColor = borderColor ??
+        (isDark ? AppColors.borderDark : AppColors.borderLight);
 
     final cardShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -45,8 +49,8 @@ class AppCard extends StatelessWidget {
       child: onTap != null
           ? InkWell(
               onTap: onTap,
-              splashColor: theme.colorScheme.primary.withAlpha(25),
-              highlightColor: theme.colorScheme.primary.withAlpha(15),
+              splashColor: theme.colorScheme.primary.withAlpha(20),
+              highlightColor: theme.colorScheme.primary.withAlpha(10),
               child: Padding(
                 padding: padding,
                 child: child,
@@ -68,4 +72,3 @@ class AppCard extends StatelessWidget {
     return cardWidget;
   }
 }
-

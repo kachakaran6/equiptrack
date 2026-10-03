@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../constants/app_spacing.dart';
 import '../extensions/date_extensions.dart';
+import '../theme/app_colors.dart';
 
+/// Clean, platform-friendly Date Field component
 class AppDateField extends StatelessWidget {
   final String label;
   final DateTime? selectedDate;
@@ -30,12 +33,6 @@ class AppDateField extends StatelessWidget {
       initialDate: selectedDate ?? now,
       firstDate: firstDate ?? DateTime(2000),
       lastDate: lastDate ?? DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
@@ -46,7 +43,13 @@ class AppDateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasError = errorText != null && errorText!.isNotEmpty;
+
+    final borderColor = hasError
+        ? AppColors.error
+        : (isDark ? AppColors.borderDark : AppColors.borderLight);
+    final fillColor = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,30 +64,28 @@ class AppDateField extends StatelessWidget {
             ),
             children: [
               if (isRequired)
-                TextSpan(
+                const TextSpan(
                   text: ' *',
                   style: TextStyle(
-                    color: theme.colorScheme.error,
+                    color: AppColors.error,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         InkWell(
           key: keyString != null ? Key(keyString!) : null,
           onTap: () => _pickDate(context),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(10),
+              color: fillColor,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
-                color: hasError
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.outlineVariant,
+                color: borderColor,
                 width: hasError ? 1.5 : 1,
               ),
             ),
@@ -92,10 +93,10 @@ class AppDateField extends StatelessWidget {
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
-                  size: 18,
-                  color: theme.colorScheme.primary,
+                  size: 17,
+                  color: isDark ? AppColors.primaryLight : AppColors.primary,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     selectedDate != null
@@ -104,13 +105,15 @@ class AppDateField extends StatelessWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: selectedDate != null
                           ? theme.colorScheme.onSurface
-                          : theme.colorScheme.onSurfaceVariant.withAlpha(128),
+                          : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                      fontWeight: selectedDate != null ? FontWeight.w500 : FontWeight.w400,
                     ),
                   ),
                 ),
                 Icon(
-                  Icons.arrow_drop_down,
+                  Icons.arrow_drop_down_rounded,
                   color: theme.colorScheme.onSurfaceVariant,
+                  size: 20,
                 ),
               ],
             ),
@@ -119,11 +122,11 @@ class AppDateField extends StatelessWidget {
         if (hasError) ...[
           const SizedBox(height: 4),
           Padding(
-            padding: const EdgeInsets.only(left: 12),
+            padding: const EdgeInsets.only(left: 8),
             child: Text(
               errorText!,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
+                color: AppColors.error,
               ),
             ),
           ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../constants/app_spacing.dart';
+import '../theme/app_colors.dart';
 
-/// Authentic Material Design 3 Search Bar component
+/// Compact, industrial Search Field component
 class AppSearchField extends StatefulWidget {
   final String hintText;
   final ValueChanged<String> onChanged;
@@ -50,9 +52,13 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Material(
-      color: Colors.transparent,
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final fillColor = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+
+    return SizedBox(
+      height: 42,
       child: TextField(
         key: widget.keyString != null ? Key(widget.keyString!) : null,
         controller: _controller,
@@ -61,52 +67,49 @@ class _AppSearchFieldState extends State<AppSearchField> {
           color: colorScheme.onSurface,
           fontWeight: FontWeight.w500,
         ),
+        textAlignVertical: TextAlignVertical.center,
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant.withAlpha(160),
+            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
           ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 10),
-            child: Icon(
-              Icons.search_rounded,
-              size: 22,
-              color: colorScheme.onSurfaceVariant,
-            ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 19,
+            color: colorScheme.onSurfaceVariant,
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 38),
           suffixIcon: _hasText
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: IconButton(
-                    icon: const Icon(Icons.clear_rounded, size: 18),
-                    tooltip: 'Clear search',
-                    onPressed: () {
-                      _controller.clear();
-                      widget.onChanged('');
-                      widget.onClear?.call();
-                    },
-                  ),
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 16),
+                  tooltip: 'Clear search',
+                  splashRadius: 16,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: () {
+                    _controller.clear();
+                    widget.onChanged('');
+                    widget.onClear?.call();
+                  },
                 )
               : null,
           filled: true,
-          fillColor: colorScheme.surfaceContainerLow,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          fillColor: fillColor,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: colorScheme.outlineVariant.withAlpha(140)),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderSide: BorderSide(color: borderColor, width: 1),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: colorScheme.outlineVariant.withAlpha(140)),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderSide: BorderSide(color: borderColor, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
           ),
         ),
       ),
     );
   }
 }
-

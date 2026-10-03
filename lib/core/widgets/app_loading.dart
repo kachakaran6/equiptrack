@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
+/// Subtle industrial loading indicator with optional status message
 class AppLoading extends StatelessWidget {
   final String? message;
   final double size;
@@ -7,12 +9,13 @@ class AppLoading extends StatelessWidget {
   const AppLoading({
     super.key,
     this.message,
-    this.size = 32,
+    this.size = 24,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Center(
       child: Padding(
@@ -24,16 +27,19 @@ class AppLoading extends StatelessWidget {
               width: size,
               height: size,
               child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDark ? AppColors.primaryLight : AppColors.primary,
+                ),
               ),
             ),
             if (message != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 message!,
-                style: theme.textTheme.bodyMedium?.copyWith(
+                style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
               ),

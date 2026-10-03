@@ -88,12 +88,12 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
         _isDirty = false;
         context.showSuccessSnackBar(
           widget.section == null
-              ? 'Section "${result.name}" created'
-              : 'Section updated',
+              ? 'Component "${result.name}" added'
+              : 'Component updated',
         );
         Navigator.of(context).pop(result);
       } else {
-        context.showErrorSnackBar('Failed to save section. Please try again.');
+        context.showErrorSnackBar('Failed to save component. Please try again.');
       }
     }
   }
@@ -105,10 +105,10 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
     return UnsavedChangesScope(
       hasUnsavedChanges: _isDirty && !_isSubmitting,
       child: AppDialog(
-        title: isEditing ? 'Edit Section' : 'Add Section / Component',
-        icon: isEditing ? Icons.edit_rounded : Icons.category_rounded,
+        title: isEditing ? 'Edit Component' : 'Add Component',
+        icon: isEditing ? Icons.edit_rounded : Icons.tune_rounded,
         content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
+          constraints: const BoxConstraints(maxWidth: 380),
           child: Form(
             key: _formKey,
             child: Column(
@@ -117,8 +117,8 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
               children: [
                 AppTextField(
                   keyString: AppKeys.sectionNameField,
-                  label: 'Section / Component Name',
-                  hintText: 'e.g. Side A, Spindle, Gearbox, Hydraulic Seal',
+                  label: 'Component Name',
+                  hintText: 'e.g. Big ID Fan, Gearbox, Spindle',
                   controller: _nameController,
                   isRequired: true,
                   autofocus: true,
@@ -131,13 +131,16 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
         actions: [
           AppButton(
             text: 'Cancel',
-            variant: AppButtonVariant.text,
+            variant: AppButtonVariant.outline,
+            size: AppButtonSize.small,
             onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           ),
+          const SizedBox(width: 4),
           AppButton(
             keyString: AppKeys.saveSectionButton,
-            text: isEditing ? 'Save Changes' : 'Add Section',
+            text: isEditing ? 'Save Changes' : 'Add Component',
             icon: Icons.check_rounded,
+            size: AppButtonSize.small,
             isLoading: _isSubmitting,
             onPressed: _isSubmitting ? null : _submit,
           ),

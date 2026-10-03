@@ -125,7 +125,7 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
         );
         Navigator.of(context).pop(result);
       } else {
-        context.showErrorSnackBar('Failed to save usage record. Please try again.');
+        context.showErrorSnackBar('Failed to save record. Please try again.');
       }
     }
   }
@@ -147,13 +147,13 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
               AppTextField(
                 keyString: AppKeys.recordNameField,
                 label: 'Record Name / Operation',
-                hintText: 'e.g. Bearing Replacement, Belt Change, Oil Flush',
+                hintText: 'e.g. Belt Replacement, Bearing Swap, Oil Flush',
                 controller: _nameController,
                 isRequired: true,
                 autofocus: true,
                 validator: FormValidators.recordName,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               AppDateField(
                 keyString: AppKeys.recordDateField,
                 label: 'Usage Date',
@@ -168,22 +168,24 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
                   });
                 },
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 22),
               Row(
                 children: [
                   Expanded(
                     child: AppButton(
                       text: 'Cancel',
                       variant: AppButtonVariant.outline,
+                      size: AppButtonSize.medium,
                       onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: AppButton(
                       keyString: AppKeys.saveRecordButton,
                       text: isEditing ? 'Save Changes' : 'Add Record',
                       icon: Icons.check_rounded,
+                      size: AppButtonSize.medium,
                       isLoading: _isSubmitting,
                       onPressed: _isSubmitting ? null : _submit,
                     ),

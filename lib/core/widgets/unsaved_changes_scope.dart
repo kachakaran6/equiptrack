@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app_button.dart';
+import 'app_confirm_dialog.dart';
 
-/// Wraps form screens to intercept Android system/gesture back button when changes are unsaved.
+/// Wraps form screens/sheets to intercept back navigation when unsaved changes exist
 class UnsavedChangesScope extends StatelessWidget {
   final bool hasUnsavedChanges;
   final Widget child;
@@ -13,28 +13,13 @@ class UnsavedChangesScope extends StatelessWidget {
   });
 
   Future<bool> _showDiscardDialog(BuildContext context) async {
-    final result = await showDialog<bool>(
+    final result = await AppConfirmDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Discard changes?'),
-        content: const Text(
-          'You have unsaved changes that will be lost if you leave this screen.',
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        actions: [
-          AppButton(
-            text: 'Keep Editing',
-            variant: AppButtonVariant.outline,
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          AppButton(
-            text: 'Discard',
-            variant: AppButtonVariant.danger,
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-        ],
-      ),
+      title: 'Discard changes?',
+      message: 'You have unsaved changes that will be lost if you leave this screen.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep Editing',
+      isDestructive: true,
     );
 
     return result ?? false;
