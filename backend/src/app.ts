@@ -36,13 +36,24 @@ export function buildApp(): FastifyInstance {
     },
   });
 
-  // 4. Health Check
-  app.get('/health', async () => {
-    return {
-      status: 'ok',
+  // 4. Health Check Endpoint (for Coolify & Docker probes)
+  app.get('/health', async (request, reply) => {
+    let dbStatus = 'connected';
+    try {
+      await import('./db/index.js').then((m) => m.query('SELECT 1'));
+    } catch {
+      dbStatus = 'disconnected';
+    }
+
+    const isHealthy = dbStatus === 'connected';
+    reply.status(isHealthy ? 200 : 503).send({
+      status: isHealthy ? 'ok' : 'degraded',
       service: 'equiptrack-api',
+      version: '1.0.0',
+      uptime: Math.floor(process.uptime()),
+      database: dbStatus,
       timestamp: new Date().toISOString(),
-    };
+    });
   });
 
   // 5. Register API Routes

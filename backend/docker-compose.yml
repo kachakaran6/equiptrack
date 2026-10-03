@@ -1,0 +1,64 @@
+# ==============================================================================
+# EquipTrack Production Docker Compose Configuration for Coolify & Local Hosting
+# ==============================================================================
+# Supports two deployment topologies:
+# 1. Combined Stack: Starts both Fastify API and PostgreSQL database containers.
+# 2. Coolify-Managed: If PostgreSQL is provisioned separately in Coolify, comment
+#    out the 'postgres' service and inject the Coolify PostgreSQL DATABASE_URL.
+# ==============================================================================
+
+services:
+  # Fastify + TypeScript API Gateway
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: equiptrack-api:latest
+    container_name: equiptrack_api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:password@postgres:5432/equiptrack}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - equiptrack_net
+
+  # PostgreSQL Database Container
+  postgres:
+    image: postgres:17-alpine
+    container_name: equiptrack_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-equiptrack}
+    volumes:
+      - equiptrack_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-equiptrack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - equiptrack_net
+    # Port is internal to the Docker network. Uncomment below ONLY if external DB access is required:
+    # ports:
+    #   - "5432:5432"
+
+networks:
+  equiptrack_net:
+    driver: bridge
+
+volumes:
+  equiptrack_pgdata:
+    driver: local
