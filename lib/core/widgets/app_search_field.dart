@@ -53,7 +53,9 @@ class _AppSearchFieldState extends State<AppSearchField> {
       key: widget.keyString != null ? Key(widget.keyString!) : null,
       controller: _controller,
       onChanged: widget.onChanged,
-      style: theme.textTheme.bodyMedium,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: theme.textTheme.bodyMedium?.copyWith(

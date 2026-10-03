@@ -58,6 +58,13 @@ class AppTheme {
         ),
         margin: EdgeInsets.zero,
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        hoverElevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
       dividerTheme: const DividerThemeData(
         color: AppColors.dividerLight,
         thickness: 1,
@@ -113,6 +120,13 @@ class AppTheme {
           side: const BorderSide(color: AppColors.borderDark, width: 1),
         ),
         margin: EdgeInsets.zero,
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primaryLight,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        hoverElevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.dividerDark,

@@ -91,11 +91,14 @@ class _AppTextFieldState extends State<AppTextField> {
           enabled: widget.enabled,
           focusNode: widget.focusNode,
           autofocus: widget.autofocus,
-          style: theme.textTheme.bodyMedium,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant.withAlpha(128),
+              color: theme.colorScheme.onSurfaceVariant.withAlpha(160),
             ),
             prefixIcon: widget.prefixIcon,
             suffixIcon: widget.isPassword

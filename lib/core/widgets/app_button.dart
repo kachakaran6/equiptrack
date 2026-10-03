@@ -44,6 +44,14 @@ class AppButton extends StatelessWidget {
       AppButtonSize.large => theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     };
 
+    final foregroundColor = switch (variant) {
+      AppButtonVariant.primary => Colors.white,
+      AppButtonVariant.danger => Colors.white,
+      AppButtonVariant.secondary => colorScheme.onSecondaryContainer,
+      AppButtonVariant.outline => colorScheme.primary,
+      AppButtonVariant.text => colorScheme.primary,
+    };
+
     Widget content = Row(
       mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -54,19 +62,15 @@ class AppButton extends StatelessWidget {
             height: size == AppButtonSize.small ? 14 : 18,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                variant == AppButtonVariant.primary || variant == AppButtonVariant.danger
-                    ? Colors.white
-                    : colorScheme.primary,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
             ),
           ),
           const SizedBox(width: 8),
         ] else if (icon != null) ...[
-          Icon(icon, size: size == AppButtonSize.small ? 16 : 18),
+          Icon(icon, size: size == AppButtonSize.small ? 16 : 18, color: foregroundColor),
           const SizedBox(width: 8),
         ],
-        Text(text, style: textStyle),
+        Text(text, style: textStyle?.copyWith(color: foregroundColor)),
       ],
     );
 
