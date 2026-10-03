@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package manifests
 COPY package.json package-lock.json* ./
 
-# Install all dependencies (including devDependencies for TypeScript compiler)
-RUN npm install
+# Install all dependencies (including devDependencies like typescript)
+RUN npm install --include=dev
 
 # Copy source code and TypeScript config
 COPY tsconfig.json ./
