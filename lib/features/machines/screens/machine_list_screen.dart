@@ -133,25 +133,28 @@ class _MachineCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = context.theme;
+    final colorScheme = theme.colorScheme;
 
     return AppCard(
       keyString: '${AppKeys.machineCardPrefix}${machine.id}',
       onTap: () {
         context.go('/machines/${machine.id}');
       },
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withAlpha(100),
-              borderRadius: BorderRadius.circular(12),
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
               Icons.precision_manufacturing_rounded,
-              color: theme.colorScheme.primary,
-              size: 26,
+              color: colorScheme.onPrimaryContainer,
+              size: 24,
             ),
           ),
           const SizedBox(width: 16),
@@ -163,16 +166,18 @@ class _MachineCard extends ConsumerWidget {
                 Text(
                   machine.name,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 if (machine.description != null &&
                     machine.description!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     machine.description!.trim(),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 13,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -182,8 +187,12 @@ class _MachineCard extends ConsumerWidget {
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, size: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            icon: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (action) async {
               if (action == 'edit') {
                 AddEditMachineDialog.show(context, machine: machine);
@@ -215,7 +224,7 @@ class _MachineCard extends ConsumerWidget {
                 child: Row(
                   children: [
                     Icon(Icons.edit_outlined, size: 18),
-                    SizedBox(width: 10),
+                    SizedBox(width: 12),
                     Text('Edit'),
                   ],
                 ),
@@ -224,22 +233,23 @@ class _MachineCard extends ConsumerWidget {
                 value: 'delete',
                 child: Row(
                   children: [
-                    Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text('Delete', style: TextStyle(color: Colors.red)),
+                    Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
+                    const SizedBox(width: 12),
+                    Text('Delete', style: TextStyle(color: colorScheme.error)),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
           Icon(
             Icons.chevron_right_rounded,
             size: 22,
-            color: theme.colorScheme.onSurfaceVariant.withAlpha(160),
+            color: colorScheme.onSurfaceVariant.withAlpha(140),
           ),
         ],
       ),
     );
   }
 }
+

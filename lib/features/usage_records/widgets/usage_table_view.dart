@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../models/calculated_usage_row.dart';
@@ -32,7 +31,7 @@ class UsageTableView extends ConsumerWidget {
     return AppCard(
       padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -41,7 +40,7 @@ class UsageTableView extends ConsumerWidget {
             ),
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(
-                theme.colorScheme.surfaceContainerHighest.withAlpha(60),
+                theme.colorScheme.surfaceContainerHigh,
               ),
               horizontalMargin: 16,
               columnSpacing: 20,
@@ -78,7 +77,7 @@ class UsageTableView extends ConsumerWidget {
                         constraints: const BoxConstraints(maxWidth: 160),
                         child: Text(
                           row.name,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -102,16 +101,16 @@ class UsageTableView extends ConsumerWidget {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.runningBadgeBg,
-                                borderRadius: BorderRadius.circular(12),
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: AppColors.runningBadgeText.withAlpha(50),
+                                  color: theme.colorScheme.primary.withAlpha(50),
                                 ),
                               ),
                               child: Text(
                                 AppConstants.runningText,
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                  color: AppColors.runningBadgeText,
+                                  color: theme.colorScheme.onPrimaryContainer,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -119,7 +118,7 @@ class UsageTableView extends ConsumerWidget {
                           : Text(
                               '${row.usageDays}',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: theme.colorScheme.primary,
                               ),
                             ),
@@ -133,7 +132,7 @@ class UsageTableView extends ConsumerWidget {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         onSelected: (action) async {
                           if (rawRecord == null) return;
@@ -174,7 +173,7 @@ class UsageTableView extends ConsumerWidget {
                             child: Row(
                               children: [
                                 Icon(Icons.edit_outlined, size: 18),
-                                SizedBox(width: 10),
+                                SizedBox(width: 12),
                                 Text('Edit'),
                               ],
                             ),
@@ -183,9 +182,9 @@ class UsageTableView extends ConsumerWidget {
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                const SizedBox(width: 10),
-                                Text('Delete', style: TextStyle(color: Colors.red)),
+                                Icon(Icons.delete_outline, size: 18, color: theme.colorScheme.error),
+                                const SizedBox(width: 12),
+                                Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
                               ],
                             ),
                           ),
@@ -202,3 +201,4 @@ class UsageTableView extends ConsumerWidget {
     );
   }
 }
+
