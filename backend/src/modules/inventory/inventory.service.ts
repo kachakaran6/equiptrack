@@ -506,13 +506,19 @@ export class InventoryService {
   // ─── Transactions & Stock Management ──────────────────────────────────────
 
   static async getCurrentStock(subProductId: string, client?: any): Promise<number> {
-    const executor = client || { query };
-    const res = await executor.query<{ current_stock: string }>(
-      `SELECT COALESCE(SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END), 0) AS current_stock
-       FROM inventory_transactions
-       WHERE sub_product_id = $1`,
-      [subProductId]
-    );
+    const res = client
+      ? await client.query(
+          `SELECT COALESCE(SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END), 0) AS current_stock
+           FROM inventory_transactions
+           WHERE sub_product_id = $1`,
+          [subProductId]
+        )
+      : await query<{ current_stock: string }>(
+          `SELECT COALESCE(SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END), 0) AS current_stock
+           FROM inventory_transactions
+           WHERE sub_product_id = $1`,
+          [subProductId]
+        );
     return parseInt(res.rows[0]?.current_stock ?? '0', 10);
   }
 
@@ -779,7 +785,7 @@ export class InventoryService {
 
       await client.query('COMMIT');
 
-      const txList = await this.listTransactions({ limit: 1 });
+      const txList = await this.listTransactions({ page: 1, limit: 1 });
       const updatedTx = txList.transactions.find((t) => t.id === transactionId);
       if (updatedTx) return updatedTx;
 

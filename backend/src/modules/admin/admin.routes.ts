@@ -139,7 +139,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
         status: dbInfo.connected ? 'connected' : 'disconnected',
         latency_ms: dbInfo.latencyMs ?? 0,
         pg_version: dbInfo.version || 'PostgreSQL 17',
-        database_name: env.DB_NAME || 'equiptrack',
+        database_name: (env as any).DB_NAME || 'equiptrack',
         database_size: `${dbInfo.databaseSizeMb || 0} MB`,
         tables_count: tableCount,
         total_records_approx: totalRecords,
