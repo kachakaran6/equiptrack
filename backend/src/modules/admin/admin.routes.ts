@@ -913,12 +913,131 @@ export async function adminRoutes(fastify: FastifyInstance) {
       return r;
     });
 
+    const total = parseInt(countRes.rows[0]?.count ?? '0', 10);
+
     return reply.send({
       success: true,
       table: tableName,
-      data: sanitizedRows,
-      pagination: { page, limit, total: parseInt(countRes.rows[0]?.count ?? '0', 10) },
+      data: {
+        rows: sanitizedRows,
+        total,
+        page,
+        limit,
+      },
+      rows: sanitizedRows,
+      pagination: { page, limit, total },
     });
+  });
+
+  // POST /api/admin/tables/:table (Insert Record)
+  fastify.post<{ Params: { table: string } }>('/tables/:table', async (request, reply) => {
+    const allowed = [
+      'users',
+      'machines',
+      'sections',
+      'usage_records',
+      'inventory_products',
+      'inventory_sub_products',
+      'inventory_transactions',
+      'error_logs',
+      'audit_logs',
+      'backup_history',
+      'backup_config'
+    ];
+    const tableName = request.params.table.toLowerCase();
+    if (!allowed.includes(tableName)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
+    }
+
+    const body = request.body as Record<string, unknown>;
+    if (!body || typeof body !== 'object' || Object.keys(body).length === 0) {
+      return reply.status(400).send({ success: false, error: { code: 'EMPTY_BODY', message: 'No data provided to insert' } });
+    }
+
+    const keys = Object.keys(body).filter((k) => /^[a-zA-Z0-9_]+$/.test(k));
+    const values = keys.map((k) => body[k]);
+    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+    const res = await query(
+      `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+      values
+    );
+
+    return reply.status(201).send({ success: true, data: res.rows[0] });
+  });
+
+  // PATCH /api/admin/tables/:table/:id (Update Record)
+  fastify.patch<{ Params: { table: string; id: string } }>('/tables/:table/:id', async (request, reply) => {
+    const allowed = [
+      'users',
+      'machines',
+      'sections',
+      'usage_records',
+      'inventory_products',
+      'inventory_sub_products',
+      'inventory_transactions',
+      'error_logs',
+      'audit_logs',
+      'backup_history',
+      'backup_config'
+    ];
+    const tableName = request.params.table.toLowerCase();
+    if (!allowed.includes(tableName)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
+    }
+
+    const body = request.body as Record<string, unknown>;
+    if (!body || typeof body !== 'object' || Object.keys(body).length === 0) {
+      return reply.status(400).send({ success: false, error: { code: 'EMPTY_BODY', message: 'No data provided to update' } });
+    }
+
+    const keys = Object.keys(body).filter((k) => k !== 'id' && /^[a-zA-Z0-9_]+$/.test(k));
+    if (keys.length === 0) {
+      return reply.status(400).send({ success: false, error: { code: 'EMPTY_BODY', message: 'No valid fields provided' } });
+    }
+
+    const setClauses = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+    const values = keys.map((k) => body[k]);
+    values.push(request.params.id);
+
+    const res = await query(
+      `UPDATE ${tableName} SET ${setClauses} WHERE id = $${values.length} RETURNING *`,
+      values
+    );
+
+    if (res.rows.length === 0) {
+      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Record not found' } });
+    }
+
+    return reply.send({ success: true, data: res.rows[0] });
+  });
+
+  // DELETE /api/admin/tables/:table/:id (Delete Record)
+  fastify.delete<{ Params: { table: string; id: string } }>('/tables/:table/:id', async (request, reply) => {
+    const allowed = [
+      'users',
+      'machines',
+      'sections',
+      'usage_records',
+      'inventory_products',
+      'inventory_sub_products',
+      'inventory_transactions',
+      'error_logs',
+      'audit_logs',
+      'backup_history',
+      'backup_config'
+    ];
+    const tableName = request.params.table.toLowerCase();
+    if (!allowed.includes(tableName)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
+    }
+
+    const res = await query(`DELETE FROM ${tableName} WHERE id = $1 RETURNING id`, [request.params.id]);
+    if ((res.rowCount ?? 0) === 0) {
+      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Record not found' } });
+    }
+
+    return reply.send({ success: true, message: 'Record deleted' });
   });
 
   // ──────────────────────────────────────────────────────────────────

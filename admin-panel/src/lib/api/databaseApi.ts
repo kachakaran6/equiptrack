@@ -31,8 +31,38 @@ export const databaseApi = {
     if (params?.sortDir) query.set('sortDir', params.sortDir)
 
     const queryString = query.toString() ? `?${query.toString()}` : ''
-    const res = await apiRequest<{ success: boolean; data: TableRowsResult<T> }>(`/api/admin/tables/${table}${queryString}`)
-    return res.data
+    const res = await apiRequest<any>(`/api/admin/tables/${table}${queryString}`)
+
+    if (res?.data && Array.isArray(res.data.rows)) {
+      return {
+        rows: res.data.rows,
+        total: res.data.total ?? res.data.rows.length,
+        page: res.data.page ?? params?.page ?? 1,
+        limit: res.data.limit ?? params?.limit ?? 25,
+      }
+    } else if (Array.isArray(res?.data)) {
+      const total = res.pagination?.total ?? res.data.length
+      return {
+        rows: res.data,
+        total,
+        page: res.pagination?.page ?? params?.page ?? 1,
+        limit: res.pagination?.limit ?? params?.limit ?? 25,
+      }
+    } else if (Array.isArray(res?.rows)) {
+      return {
+        rows: res.rows,
+        total: res.total ?? res.rows.length,
+        page: res.page ?? params?.page ?? 1,
+        limit: res.limit ?? params?.limit ?? 25,
+      }
+    }
+
+    return {
+      rows: [],
+      total: 0,
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 25,
+    }
   },
 
   async createRow(table: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
