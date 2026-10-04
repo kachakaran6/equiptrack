@@ -5,12 +5,12 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_date_field.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/unsaved_changes_scope.dart';
 import '../../../models/usage_record.dart';
 import '../controllers/usage_records_controller.dart';
-import 'duplicate_date_warning_sheet.dart';
 
 class AddEditRecordSheet extends ConsumerStatefulWidget {
   final String sectionId;
@@ -74,31 +74,9 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
       return;
     }
 
-    final controller = ref.read(usageRecordsControllerProvider.notifier);
-
-    // Check for duplicate date if date has changed or it's a new record
-    final isDateDifferent = widget.record == null ||
-        !_selectedDate!.isAtSameMomentAs(widget.record!.usageDate);
-
-    if (isDateDifferent) {
-      final isDuplicate = await controller.checkForDuplicateDate(
-        sectionId: widget.sectionId,
-        date: _selectedDate!,
-        excludeRecordId: widget.record?.id,
-      );
-
-      if (isDuplicate && mounted) {
-        final confirm = await DuplicateDateWarningSheet.show(
-          context,
-          date: _selectedDate!,
-        );
-        if (confirm != true) {
-          return;
-        }
-      }
-    }
-
     setState(() => _isSubmitting = true);
+
+    final controller = ref.read(usageRecordsControllerProvider.notifier);
 
     UsageRecord? result;
     if (widget.record == null) {
@@ -126,6 +104,35 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
         Navigator.of(context).pop(result);
       } else {
         context.showErrorSnackBar('Failed to save record. Please try again.');
+      }
+    }
+  }
+
+  Future<void> _deleteRecord() async {
+    if (widget.record == null) return;
+    final confirm = await AppConfirmDialog.show(
+      context: context,
+      title: 'Delete record?',
+      message:
+          'Delete "${widget.record!.name}"? Durations will be recalculated automatically.',
+      confirmLabel: 'Delete',
+      isDestructive: true,
+    );
+
+    if (confirm == true && mounted) {
+      setState(() => _isSubmitting = true);
+      final ok = await ref
+          .read(usageRecordsControllerProvider.notifier)
+          .deleteRecord(widget.record!.id, widget.sectionId);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        if (ok) {
+          _isDirty = false;
+          context.showSuccessSnackBar('Record deleted & durations updated');
+          Navigator.of(context).pop();
+        } else {
+          context.showErrorSnackBar('Failed to delete record. Please try again.');
+        }
       }
     }
   }
@@ -169,29 +176,57 @@ class _AddEditRecordSheetState extends ConsumerState<AddEditRecordSheet> {
                 },
               ),
               const SizedBox(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      text: 'Cancel',
-                      variant: AppButtonVariant.outline,
-                      size: AppButtonSize.medium,
-                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+              if (isEditing) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        text: 'Delete',
+                        icon: Icons.delete_outline_rounded,
+                        variant: AppButtonVariant.danger,
+                        size: AppButtonSize.medium,
+                        isLoading: _isSubmitting,
+                        onPressed: _isSubmitting ? null : _deleteRecord,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppButton(
-                      keyString: AppKeys.saveRecordButton,
-                      text: isEditing ? 'Save Changes' : 'Add Record',
-                      icon: Icons.check_rounded,
-                      size: AppButtonSize.medium,
-                      isLoading: _isSubmitting,
-                      onPressed: _isSubmitting ? null : _submit,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppButton(
+                        keyString: AppKeys.saveRecordButton,
+                        text: 'Save Changes',
+                        icon: Icons.check_rounded,
+                        size: AppButtonSize.medium,
+                        isLoading: _isSubmitting,
+                        onPressed: _isSubmitting ? null : _submit,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        text: 'Cancel',
+                        variant: AppButtonVariant.outline,
+                        size: AppButtonSize.medium,
+                        onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppButton(
+                        keyString: AppKeys.saveRecordButton,
+                        text: 'Add Record',
+                        icon: Icons.check_rounded,
+                        size: AppButtonSize.medium,
+                        isLoading: _isSubmitting,
+                        onPressed: _isSubmitting ? null : _submit,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
