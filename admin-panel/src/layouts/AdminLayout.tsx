@@ -20,6 +20,8 @@ import {
   LogOut,
   Search,
   ExternalLink,
+  Boxes,
+  ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -56,6 +58,13 @@ const navSections: NavSection[] = [
   {
     items: [
       { label: 'Overview', to: '/', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'Inventory',
+    items: [
+      { label: 'Products & Stock', to: '/inventory/products', icon: Boxes },
+      { label: 'Stock Reports', to: '/inventory/reports', icon: ClipboardList },
     ],
   },
   {
@@ -300,6 +309,12 @@ export const AdminLayout: React.FC = () => {
           <CommandGroup heading="Navigation">
             <CommandItem onSelect={() => { navigate('/'); setCommandOpen(false) }}>
               <LayoutDashboard className="mr-2 h-3.5 w-3.5" /> Overview
+            </CommandItem>
+            <CommandItem onSelect={() => { navigate('/inventory/products'); setCommandOpen(false) }}>
+              <Boxes className="mr-2 h-3.5 w-3.5" /> Inventory Products & Stock
+            </CommandItem>
+            <CommandItem onSelect={() => { navigate('/inventory/reports'); setCommandOpen(false) }}>
+              <ClipboardList className="mr-2 h-3.5 w-3.5" /> Inventory Stock Reports
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/database'); setCommandOpen(false) }}>
               <Database className="mr-2 h-3.5 w-3.5" /> Database Tables

@@ -4,6 +4,8 @@ import { AdminLayout } from '@/layouts/AdminLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { InventoryProductsPage } from '@/features/inventory/InventoryProductsPage'
+import { InventoryReportsPage } from '@/features/inventory/InventoryReportsPage'
 import { UsersPage } from '@/features/users/UsersPage'
 import { UserDetailPage } from '@/features/users/UserDetailPage'
 import { MachinesPage } from '@/features/machines/MachinesPage'
@@ -32,6 +34,9 @@ export const AppRouter: React.FC = () => {
         {/* Protected Admin routes */}
         <Route element={<AdminLayout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/inventory" element={<Navigate to="/inventory/products" replace />} />
+          <Route path="/inventory/products" element={<InventoryProductsPage />} />
+          <Route path="/inventory/reports" element={<InventoryReportsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserDetailPage />} />
           <Route path="/machines" element={<MachinesPage />} />

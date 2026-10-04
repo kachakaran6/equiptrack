@@ -16,6 +16,7 @@ import { usageRecordRoutes } from './modules/usage-records/usage-records.routes.
 import { reportRoutes } from './modules/reports/reports.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { errorLogRoutes } from './modules/error-logs/error-logs.routes.js';
+import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { ErrorLogsService } from './modules/error-logs/error-logs.service.js';
 import { query } from './db/index.js';
 
@@ -129,6 +130,7 @@ export function buildApp(): FastifyInstance {
   app.register(usageRecordRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api/reports' });
   app.register(errorLogRoutes, { prefix: '/api' });
+  app.register(inventoryRoutes, { prefix: '/api/inventory' });
 
   // Admin routes with stricter rate limiting (30 req/min)
   app.register(
