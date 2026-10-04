@@ -43,6 +43,7 @@ export function setStoredUser<T>(user: T): void {
 }
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ""
+const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/$/, "")
 
 export async function apiRequest<T>(
   endpoint: string,
@@ -70,8 +71,8 @@ export async function apiRequest<T>(
     if (response.status === 401) {
       removeAuthToken()
       // Only redirect if not already on the login page
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login?session=expired"
+      if (!window.location.pathname.endsWith("/login")) {
+        window.location.href = `${BASE_PATH}/login?session=expired`
       }
       throw new ApiError("Session expired. Please log in again.", 401)
     }

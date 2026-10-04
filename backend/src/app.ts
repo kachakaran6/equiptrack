@@ -93,8 +93,12 @@ export function buildApp(): FastifyInstance {
     return reply.redirect('/admin/');
   });
 
+  app.get('/login', async (request, reply) => {
+    return reply.redirect('/admin/login');
+  });
+
   app.setNotFoundHandler((request, reply) => {
-    if (request.url.startsWith('/admin') && !request.url.startsWith('/api')) {
+    if (!request.url.startsWith('/api') && !request.url.startsWith('/health')) {
       return reply.sendFile('index.html');
     }
     return reply.status(404).send({

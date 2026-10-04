@@ -45,9 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = () => {
+    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
     authApi.logout()
     setUser(null)
-    window.location.href = '/login'
+    window.location.href = `${basePath}/login`
   }
 
   return (
