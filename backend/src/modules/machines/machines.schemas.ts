@@ -10,5 +10,11 @@ export const updateMachineSchema = z.object({
   description: z.string().max(1000).optional().nullable().transform((s) => s?.trim() || null),
 });
 
+export const duplicateMachineSchema = z.object({
+  name: z.string().min(1, 'Machine name is required').max(255).transform((s) => s.trim()).optional(),
+  description: z.string().max(1000).optional().nullable().transform((s) => s?.trim() || null),
+});
+
 export type CreateMachineInput = z.infer<typeof createMachineSchema>;
 export type UpdateMachineInput = z.infer<typeof updateMachineSchema>;
+export type DuplicateMachineInput = z.infer<typeof duplicateMachineSchema>;

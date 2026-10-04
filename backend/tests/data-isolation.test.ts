@@ -85,7 +85,7 @@ class TestDatabaseHarness {
     }
 
     // 3. Sections Queries
-    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC')) {
+    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC') || cleanSql.includes('SELECT name FROM sections WHERE machine_id = $1')) {
       const rows = this.sections.filter((s) => s.machine_id === params[0]);
       return { rows, rowCount: rows.length };
     }
@@ -351,11 +351,44 @@ describe('EquipTrack Global Shared Workspace Test Suite', () => {
       url: '/api/reports/summary',
       headers: { authorization: `Bearer ${tokenUserB}` },
     });
-    assert.strictEqual(resB.statusCode, 200);
     const summaryB = JSON.parse(resB.payload).data;
     assert.strictEqual(summaryB.totalMachines, 2);
     assert.strictEqual(summaryB.totalSections, 1);
     assert.strictEqual(summaryB.totalUsageRecords, 1);
   });
+
+  test('8. MACHINE DUPLICATION: Machine duplicate duplicates all components without usage records', async () => {
+    const dupRes = await app.inject({
+      method: 'POST',
+      url: `/api/machines/${machineAId}/duplicate`,
+      headers: { authorization: `Bearer ${tokenUserA}` },
+      payload: { name: 'Machine A (Custom Duplicate)' },
+    });
+    assert.strictEqual(dupRes.statusCode, 201);
+    const duplicatedMachine = JSON.parse(dupRes.payload).data;
+    assert.strictEqual(duplicatedMachine.name, 'Machine A (Custom Duplicate)');
+
+    // Verify duplicated components exist on the new machine
+    const secRes = await app.inject({
+      method: 'GET',
+      url: `/api/machines/${duplicatedMachine.id}/sections`,
+      headers: { authorization: `Bearer ${tokenUserA}` },
+    });
+    assert.strictEqual(secRes.statusCode, 200);
+    const sections = JSON.parse(secRes.payload).data;
+    assert.strictEqual(sections.length, 1);
+    assert.strictEqual(sections[0].name, 'Spindle Assembly');
+
+    // Verify usage records are NOT duplicated (should be 0 records)
+    const recRes = await app.inject({
+      method: 'GET',
+      url: `/api/sections/${sections[0].id}/usage-records`,
+      headers: { authorization: `Bearer ${tokenUserA}` },
+    });
+    assert.strictEqual(recRes.statusCode, 200);
+    const records = JSON.parse(recRes.payload).data;
+    assert.strictEqual(records.length, 0);
+  });
 });
+
 

@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
-import { createMachineSchema, updateMachineSchema } from './machines.schemas.js';
+import { createMachineSchema, updateMachineSchema, duplicateMachineSchema } from './machines.schemas.js';
 import { MachinesService } from './machines.service.js';
 
 export const machineRoutes: FastifyPluginAsync = async (fastify) => {
@@ -46,6 +46,37 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(201).send({
       success: true,
       data: machine,
+    });
+  });
+
+  // POST /api/machines/:id/duplicate
+  fastify.post<{ Params: { id: string } }>('/:id/duplicate', async (request, reply) => {
+    const parsed = duplicateMachineSchema.safeParse(request.body || {});
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        message: parsed.error.issues[0]?.message || 'Invalid duplication data',
+        errors: parsed.error.issues,
+      });
+    }
+
+    const machine = await MachinesService.duplicateMachine(
+      request.user.id,
+      request.params.id,
+      parsed.data
+    );
+
+    if (!machine) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Machine not found',
+      });
+    }
+
+    return reply.status(201).send({
+      success: true,
+      data: machine,
+      message: 'Machine duplicated successfully with all components',
     });
   });
 
@@ -95,3 +126,4 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 };
+
