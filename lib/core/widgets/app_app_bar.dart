@@ -79,7 +79,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
                         letterSpacing: -0.2,
                         color: theme.colorScheme.onSurface,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[

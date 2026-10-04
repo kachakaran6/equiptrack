@@ -340,8 +340,6 @@ class _ComponentRowCard extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                     color: colorScheme.onSurface,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
                 recordsAsync.when(
