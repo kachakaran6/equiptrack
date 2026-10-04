@@ -2,8 +2,14 @@ import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { machineRoutes } from './modules/machines/machines.routes.js';
 import { sectionRoutes } from './modules/sections/sections.routes.js';
 import { usageRecordRoutes } from './modules/usage-records/usage-records.routes.js';
@@ -74,6 +80,17 @@ export function buildApp(): FastifyInstance {
   // Liveness check — just confirms the process is alive
   app.get('/health/live', async (request, reply) => {
     reply.status(200).send({ status: 'alive' });
+  });
+
+  // 5. Admin Panel Static UI (/admin/)
+  const publicDir = path.resolve(__dirname, '..', 'public', 'admin');
+  app.register(fastifyStatic, {
+    root: publicDir,
+    prefix: '/admin/',
+  });
+
+  app.get('/admin', async (request, reply) => {
+    return reply.redirect('/admin/');
   });
 
   // 5. Register API Routes

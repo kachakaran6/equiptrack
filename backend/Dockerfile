@@ -38,9 +38,10 @@ RUN apk add --no-cache wget
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 
-# Copy compiled JavaScript and SQL migrations from builder stage
+# Copy compiled JavaScript, public static UI, and SQL migrations from builder stage
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/migrations ./migrations
+COPY public/ ./public/
 
 # Use non-root node user for security
 USER node

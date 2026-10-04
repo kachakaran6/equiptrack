@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EquipTrack — Admin Control Panel</title>
+  <meta name="description" content="Lightweight, secure administration and Telegram database backup control center for EquipTrack" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- Global Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- AUTH / LOGIN MODAL / SCREEN -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card glass-panel">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="logo-icon">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h1 class="auth-title">EquipTrack <span class="badge-admin">ADMIN</span></h1>
+        <p class="auth-subtitle">API Administration & Backup Control Hub</p>
+      </div>
+
+      <form id="loginForm" class="auth-form" onsubmit="return false;">
+        <div class="form-group">
+          <label for="apiUrlInput">API Base URL</label>
+          <div class="input-with-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <input type="text" id="apiUrlInput" placeholder="http://localhost:3000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginEmail">Administrator Email</label>
+          <div class="input-with-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="loginEmail" placeholder="admin@equiptrack.com" required autocomplete="username" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <div class="input-with-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPassword" placeholder="••••••••••••" required autocomplete="current-password" />
+            <button type="button" id="togglePwdBtn" class="icon-btn-inline" title="Toggle password visibility">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btnLogin" class="btn btn-primary btn-block">
+          <span class="btn-text">Authenticate as Admin</span>
+          <span class="spinner hidden"></span>
+        </button>
+      </form>
+      <div class="auth-footer">
+        <span>Protected with strict role validation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP DASHBOARD WRAPPER -->
+  <div id="appContainer" class="app-layout hidden">
+    <!-- SIDEBAR -->
+    <aside class="sidebar glass-panel">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        </div>
+        <div class="brand-text">
+          <h2>EquipTrack</h2>
+          <span class="badge-role">ADMIN PANEL</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="tab-overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Overview</span>
+        </button>
+        <button class="nav-item" data-tab="tab-backup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Telegram & Backups</span>
+        </button>
+        <button class="nav-item" data-tab="tab-users">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>User Management</span>
+        </button>
+        <button class="nav-item" data-tab="tab-audit">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Audit Logs</span>
+        </button>
+        <button class="nav-item" data-tab="tab-system">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          <span>System & Database</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar" id="sidebarAvatar">A</div>
+          <div class="user-meta">
+            <span class="user-email" id="sidebarUserEmail">admin@...</span>
+            <span class="user-status-pill"><span class="status-dot"></span> Active</span>
+          </div>
+        </div>
+        <button id="btnLogout" class="btn btn-logout" title="Sign out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span>Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      <!-- TOPBAR -->
+      <header class="topbar glass-panel">
+        <div class="topbar-left">
+          <h1 id="pageTitle" class="page-title">Overview</h1>
+          <span class="env-pill" id="envBadge">LOCAL</span>
+        </div>
+        <div class="topbar-right">
+          <div class="live-indicator">
+            <span class="pulse-dot"></span>
+            <span>API Online</span>
+          </div>
+          <button id="btnGlobalRefresh" class="btn btn-secondary btn-icon" title="Refresh data">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: OVERVIEW -->
+      <section id="tab-overview" class="tab-pane active">
+        <!-- QUICK METRICS ROW -->
+        <div class="grid-4 metrics-grid">
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">Total Users</span>
+              <div class="metric-icon icon-cyan">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+            </div>
+            <div class="metric-value" id="metricTotalUsers">—</div>
+            <div class="metric-footer">
+              <span class="text-muted" id="metricActiveUsers">0 active</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">Machines Tracked</span>
+              <div class="metric-icon icon-indigo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </div>
+            </div>
+            <div class="metric-value" id="metricTotalMachines">—</div>
+            <div class="metric-footer">
+              <span class="text-muted" id="metricTotalSections">0 components</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">Telegram Backups</span>
+              <div class="metric-icon icon-emerald">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </div>
+            </div>
+            <div class="metric-value" id="metricBackupStatus">ONLINE</div>
+            <div class="metric-footer">
+              <span class="text-muted" id="metricLastBackup">Last: never</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-header">
+              <span class="metric-label">DB Size & Pool</span>
+              <div class="metric-icon icon-amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              </div>
+            </div>
+            <div class="metric-value" id="metricDbSize">—</div>
+            <div class="metric-footer">
+              <span class="text-muted" id="metricDbPool">Pool: healthy</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUICK ACTION HERO & RECENT LOGS -->
+        <div class="grid-2 mt-4">
+          <div class="action-card glass-panel">
+            <h3 class="card-title">Quick Administration Actions</h3>
+            <p class="card-desc">Execute urgent administrative tasks with one click.</p>
+            <div class="button-group-vertical">
+              <button id="btnQuickBackup" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Trigger Instant Database Backup to Telegram</span>
+              </button>
+              <button id="btnQuickTgTest" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <span>Send Telegram Channel Test Ping</span>
+              </button>
+              <button id="btnQuickDbCheck" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Verify Database Connection & Pool</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="panel glass-panel">
+            <div class="panel-header">
+              <h3 class="card-title">Recent Audit Activity</h3>
+              <button class="btn btn-link" data-tab-target="tab-audit">View all →</button>
+            </div>
+            <div class="audit-mini-list" id="miniAuditList">
+              <div class="empty-state">Loading recent logs...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: TELEGRAM & BACKUPS -->
+      <section id="tab-backup" class="tab-pane">
+        <div class="grid-2">
+          <!-- MANUAL BACKUP TRIGGER -->
+          <div class="glass-panel panel">
+            <h3 class="card-title">On-Demand Database Backup</h3>
+            <p class="card-desc">Instantly dump all PostgreSQL tables and dispatch directly to Telegram.</p>
+
+            <form id="manualBackupForm" onsubmit="return false;" class="form-compact mt-3">
+              <div class="form-group">
+                <label for="backupFormatSelect">Export Format</label>
+                <select id="backupFormatSelect" class="form-select">
+                  <option value="sql" selected>SQL Dump (.sql.gz) — Recommended</option>
+                  <option value="json">JSON Dataset (.json.gz)</option>
+                  <option value="csv">CSV Tables (.csv.gz)</option>
+                  <option value="zip">Complete Multi-Format ZIP (.zip)</option>
+                </select>
+              </div>
+
+              <div class="form-group-checkbox">
+                <label class="custom-checkbox">
+                  <input type="checkbox" id="backupSendTgCheck" checked />
+                  <span class="checkmark"></span>
+                  <span>Send file to Telegram channel</span>
+                </label>
+              </div>
+
+              <button id="btnExecuteBackup" class="btn btn-primary mt-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Run Backup Now</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- BACKUP & TELEGRAM CONFIGURATION -->
+          <div class="glass-panel panel">
+            <div class="panel-header">
+              <h3 class="card-title">Telegram & Schedule Settings</h3>
+              <button id="btnTestTgConfig" class="btn btn-sm btn-secondary">
+                <span>Test Telegram Ping</span>
+              </button>
+            </div>
+
+            <form id="backupConfigForm" onsubmit="return false;" class="form-compact mt-2">
+              <div class="form-group">
+                <label>Telegram Channel Status</label>
+                <div class="status-box" id="tgChannelBox">
+                  <span class="status-indicator-dot online"></span>
+                  <span id="tgChannelName">Configured via environment</span>
+                </div>
+              </div>
+
+              <div class="grid-2-sm">
+                <div class="form-group">
+                  <label for="configCron">Cron Schedule</label>
+                  <input type="text" id="configCron" value="0 2 * * *" />
+                  <span class="field-hint">e.g. <code>0 2 * * *</code> (Daily 2:00 AM)</span>
+                </div>
+                <div class="form-group">
+                  <label for="configTz">Timezone</label>
+                  <input type="text" id="configTz" value="Asia/Kolkata" />
+                </div>
+              </div>
+
+              <div class="grid-2-sm">
+                <div class="form-group">
+                  <label for="configRetention">Retention (Days)</label>
+                  <input type="number" id="configRetention" min="1" max="365" value="30" />
+                </div>
+                <div class="form-group">
+                  <label for="configDefaultFormat">Default Format</label>
+                  <select id="configDefaultFormat" class="form-select">
+                    <option value="sql">SQL</option>
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                    <option value="zip">ZIP</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group-checkbox">
+                <label class="custom-checkbox">
+                  <input type="checkbox" id="configSchedulerEnabled" checked />
+                  <span class="checkmark"></span>
+                  <span>Enable Automated Cron Scheduler</span>
+                </label>
+              </div>
+
+              <button id="btnSaveBackupConfig" class="btn btn-secondary mt-2">
+                <span>Save Configuration</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- BACKUP HISTORY TABLE -->
+        <div class="glass-panel panel mt-4">
+          <div class="panel-header">
+            <h3 class="card-title">Backup Execution History</h3>
+            <button id="btnRefreshHistory" class="btn btn-sm btn-secondary">
+              <span>Refresh History</span>
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="backupHistoryTable">
+              <thead>
+                <tr>
+                  <th>Time (IST)</th>
+                  <th>Status</th>
+                  <th>Format</th>
+                  <th>Size</th>
+                  <th>Telegram</th>
+                  <th>Triggered By</th>
+                  <th>Checksum</th>
+                </tr>
+              </thead>
+              <tbody id="backupHistoryTbody">
+                <tr><td colspan="7" class="text-center">Loading backup history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: USER MANAGEMENT -->
+      <section id="tab-users" class="tab-pane">
+        <div class="glass-panel panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="card-title">User Accounts</h3>
+              <p class="card-desc">Control authentication roles, statuses, and review user usage data.</p>
+            </div>
+            <div class="filter-bar">
+              <input type="text" id="userSearchInput" class="input-search" placeholder="Search by email..." />
+              <select id="userRoleFilter" class="form-select form-select-sm">
+                <option value="">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+              </select>
+              <select id="userStatusFilter" class="form-select form-select-sm">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="data-table" id="usersTable">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Registered</th>
+                  <th>Activity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTbody">
+                <tr><td colspan="6" class="text-center">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination-bar" id="usersPagination">
+            <span class="text-muted" id="usersPageInfo">Page 1 of 1</span>
+            <div class="pagination-buttons">
+              <button id="btnUsersPrev" class="btn btn-sm btn-secondary" disabled>Previous</button>
+              <button id="btnUsersNext" class="btn btn-sm btn-secondary" disabled>Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: AUDIT LOGS -->
+      <section id="tab-audit" class="tab-pane">
+        <div class="glass-panel panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="card-title">Security & Audit Trail</h3>
+              <p class="card-desc">Immutable chronological log of all administrative actions.</p>
+            </div>
+            <div class="filter-bar">
+              <input type="text" id="auditSearchInput" class="input-search" placeholder="Filter action or email..." />
+              <button id="btnRefreshAudit" class="btn btn-sm btn-secondary">Refresh</button>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="data-table" id="auditTable">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Admin / User</th>
+                  <th>IP Address</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="auditTbody">
+                <tr><td colspan="5" class="text-center">Loading audit records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: SYSTEM & DATABASE -->
+      <section id="tab-system" class="tab-pane">
+        <div class="grid-2">
+          <!-- SYSTEM RUNTIME DIAGNOSTICS -->
+          <div class="glass-panel panel">
+            <h3 class="card-title">Node.js Runtime & Server</h3>
+            <div class="info-list mt-3">
+              <div class="info-item">
+                <span class="info-label">Application</span>
+                <span class="info-val font-mono" id="sysApp">EquipTrack Backend</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Node.js Version</span>
+                <span class="info-val font-mono" id="sysNode">v20+</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Process Uptime</span>
+                <span class="info-val font-mono" id="sysUptime">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Platform / Arch</span>
+                <span class="info-val font-mono" id="sysPlatform">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Memory (RSS / Heap)</span>
+                <span class="info-val font-mono" id="sysMemory">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- DATABASE METRICS -->
+          <div class="glass-panel panel">
+            <h3 class="card-title">PostgreSQL Database Engine</h3>
+            <div class="info-list mt-3">
+              <div class="info-item">
+                <span class="info-label">Database Name</span>
+                <span class="info-val font-mono" id="dbName">equiptrack</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Total DB Size</span>
+                <span class="info-val font-mono" id="dbSize">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Connection Pool</span>
+                <span class="info-val font-mono" id="dbPoolStatus">Total: 0 | Idle: 0</span>
+              </div>
+            </div>
+
+            <h4 class="mt-4 mb-2 text-sm font-semibold">Table Row Counts & Sizes</h4>
+            <div class="table-responsive">
+              <table class="data-table table-sm" id="dbTablesTable">
+                <thead>
+                  <tr>
+                    <th>Table</th>
+                    <th>Rows</th>
+                    <th>Size</th>
+                  </tr>
+                </thead>
+                <tbody id="dbTablesTbody">
+                  <tr><td colspan="3" class="text-center">Loading table stats...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- USER ACTIVITY MODAL -->
+  <div id="userModal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3 class="modal-title" id="userModalTitle">User Details & Activity</h3>
+        <button class="modal-close" id="btnCloseUserModal">&times;</button>
+      </div>
+      <div class="modal-body" id="userModalBody">
+        <div class="empty-state">Loading user activity data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
