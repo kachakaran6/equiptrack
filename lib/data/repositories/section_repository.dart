@@ -98,6 +98,11 @@ class ApiSectionRepository implements SectionRepository {
   Future<void> deleteSection(String id) async {
     try {
       await _apiClient.delete('/sections/$id');
+    } on DatabaseFailure catch (e) {
+      if (e.code == '404' || e.message.toLowerCase().contains('not found')) {
+        return; // Already deleted
+      }
+      rethrow;
     } catch (e, st) {
       AppLogger.error('Error deleting section $id via API', e, st);
       if (e is AppFailure) rethrow;

@@ -109,14 +109,7 @@ export const sectionRoutes: FastifyPluginAsync = async (fastify) => {
 
   // DELETE /api/sections/:id
   fastify.delete<{ Params: { id: string } }>('/sections/:id', async (request, reply) => {
-    const deleted = await SectionsService.deleteSection(request.user.id, request.params.id);
-    if (!deleted) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Section not found',
-      });
-    }
-
+    await SectionsService.deleteSection(request.user.id, request.params.id);
     return reply.status(200).send({
       success: true,
       message: 'Section deleted successfully',

@@ -132,6 +132,11 @@ class ApiUsageRecordRepository implements UsageRecordRepository {
   Future<void> deleteRecord(String id) async {
     try {
       await _apiClient.delete('/usage-records/$id');
+    } on DatabaseFailure catch (e) {
+      if (e.code == '404' || e.message.toLowerCase().contains('not found')) {
+        return; // Already deleted
+      }
+      rethrow;
     } catch (e, st) {
       AppLogger.error('Error deleting usage record $id via API', e, st);
       if (e is AppFailure) rethrow;

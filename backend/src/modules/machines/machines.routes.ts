@@ -112,14 +112,7 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
 
   // DELETE /api/machines/:id
   fastify.delete<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    const deleted = await MachinesService.deleteMachine(request.user.id, request.params.id);
-    if (!deleted) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Machine not found',
-      });
-    }
-
+    await MachinesService.deleteMachine(request.user.id, request.params.id);
     return reply.status(200).send({
       success: true,
       message: 'Machine deleted successfully',

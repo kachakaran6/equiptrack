@@ -113,14 +113,7 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
 
   // DELETE /api/usage-records/:id
   fastify.delete<{ Params: { id: string } }>('/usage-records/:id', async (request, reply) => {
-    const deleted = await UsageRecordsService.deleteRecord(request.user.id, request.params.id);
-    if (!deleted) {
-      return reply.status(404).send({
-        success: false,
-        message: 'Usage record not found',
-      });
-    }
-
+    await UsageRecordsService.deleteRecord(request.user.id, request.params.id);
     return reply.status(200).send({
       success: true,
       message: 'Usage record deleted successfully',
