@@ -106,11 +106,14 @@ class ApiClient {
 
   Future<void> clearToken() async => clearAuth();
 
-  Future<Map<String, String>> _headers({bool requiresAuth = true}) async {
+  Future<Map<String, String>> _headers({bool requiresAuth = true, bool hasBody = true}) async {
     final headers = <String, String>{
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+
+    if (hasBody) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (requiresAuth) {
       final token = await getToken();
@@ -125,7 +128,7 @@ class ApiClient {
   Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters, bool requiresAuth = true}) async {
     final uri = _buildUri(path, queryParameters);
     try {
-      final headers = await _headers(requiresAuth: requiresAuth);
+      final headers = await _headers(requiresAuth: requiresAuth, hasBody: false);
       final response = await _httpClient.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       return _handleResponse(response);
     } on SocketException catch (e) {
@@ -141,7 +144,7 @@ class ApiClient {
   Future<dynamic> post(String path, {Map<String, dynamic>? body, bool requiresAuth = true}) async {
     final uri = _buildUri(path);
     try {
-      final headers = await _headers(requiresAuth: requiresAuth);
+      final headers = await _headers(requiresAuth: requiresAuth, hasBody: body != null);
       final response = await _httpClient
           .post(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(const Duration(seconds: 15));
@@ -159,7 +162,7 @@ class ApiClient {
   Future<dynamic> patch(String path, {Map<String, dynamic>? body, bool requiresAuth = true}) async {
     final uri = _buildUri(path);
     try {
-      final headers = await _headers(requiresAuth: requiresAuth);
+      final headers = await _headers(requiresAuth: requiresAuth, hasBody: body != null);
       final response = await _httpClient
           .patch(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
           .timeout(const Duration(seconds: 15));
@@ -177,7 +180,7 @@ class ApiClient {
   Future<dynamic> delete(String path, {bool requiresAuth = true}) async {
     final uri = _buildUri(path);
     try {
-      final headers = await _headers(requiresAuth: requiresAuth);
+      final headers = await _headers(requiresAuth: requiresAuth, hasBody: false);
       final response = await _httpClient.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
       return _handleResponse(response);
     } on SocketException catch (e) {

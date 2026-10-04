@@ -32,6 +32,21 @@ export function buildApp(): FastifyInstance {
     credentials: true,
   });
 
+  // Handle empty bodies with Content-Type: application/json gracefully (e.g. DELETE requests)
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    if (!body || (typeof body === 'string' && body.trim() === '')) {
+      done(null, {});
+      return;
+    }
+    try {
+      const json = JSON.parse(body as string);
+      done(null, json);
+    } catch (err: any) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  });
+
   // 2. Rate Limiting (global: 100 req/min for normal users)
   app.register(rateLimit, {
     max: 100,
