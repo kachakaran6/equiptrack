@@ -657,8 +657,48 @@ export async function adminRoutes(fastify: FastifyInstance) {
   });
 
   // ──────────────────────────────────────────────────────────────────
-  // RAW DATABASE TABLES EXPLORER
+  // RAW DATABASE TABLES EXPLORER & METADATA
   // ──────────────────────────────────────────────────────────────────
+
+  // GET /api/admin/database/tables (List all safe tables with row counts and column metadata)
+  fastify.get('/database/tables', async (request, reply) => {
+    const allowedTables = ['users', 'machines', 'sections', 'usage_records', 'error_logs', 'audit_logs', 'backup_history', 'backup_config'];
+    
+    const tablesInfo = await Promise.all(
+      allowedTables.map(async (table) => {
+        const [countRes, sizeRes] = await Promise.all([
+          query<{ count: string }>(`SELECT COUNT(*) FROM ${table}`),
+          query<{ total_size: string }>(`SELECT pg_size_pretty(pg_total_relation_size($1)) AS total_size`, [table]).catch(() => ({ rows: [{ total_size: 'N/A' }] })),
+        ]);
+        return {
+          name: table,
+          rowCount: parseInt(countRes.rows[0]?.count ?? '0', 10),
+          size: sizeRes.rows[0]?.total_size ?? 'N/A',
+        };
+      })
+    );
+
+    return reply.send({ success: true, data: tablesInfo });
+  });
+
+  // GET /api/admin/database/tables/:table/schema
+  fastify.get<{ Params: { table: string } }>('/database/tables/:table/schema', async (request, reply) => {
+    const allowed = ['users', 'machines', 'sections', 'usage_records', 'error_logs', 'audit_logs', 'backup_history', 'backup_config'];
+    const tableName = request.params.table.toLowerCase();
+    if (!allowed.includes(tableName)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
+    }
+
+    const res = await query(
+      `SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
+       FROM information_schema.columns
+       WHERE table_name = $1 AND table_schema = 'public'
+       ORDER BY ordinal_position ASC`,
+      [tableName]
+    );
+
+    return reply.send({ success: true, data: res.rows });
+  });
 
   // GET /api/admin/tables/:table
   fastify.get<{ Params: { table: string } }>('/tables/:table', async (request, reply) => {
