@@ -9,6 +9,7 @@ abstract class MachineRepository {
   Future<Machine?> getMachineById(String id);
   Future<Machine> createMachine({required String name, String? description});
   Future<Machine> updateMachine({required String id, required String name, String? description});
+  Future<Machine> duplicateMachine({required String id, String? name, String? description});
   Future<void> deleteMachine(String id);
 }
 
@@ -98,6 +99,29 @@ class ApiMachineRepository implements MachineRepository {
   }
 
   @override
+  Future<Machine> duplicateMachine({
+    required String id,
+    String? name,
+    String? description,
+  }) async {
+    try {
+      final data = await _apiClient.post(
+        '/machines/$id/duplicate',
+        body: {
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+          if (description != null) 'description': description.trim().isEmpty ? null : description.trim(),
+        },
+      );
+
+      return Machine.fromJson(Map<String, dynamic>.from(data as Map));
+    } catch (e, st) {
+      AppLogger.error('Error duplicating machine $id via API', e, st);
+      if (e is AppFailure) rethrow;
+      throw DatabaseFailure('Failed to duplicate machine: $e');
+    }
+  }
+
+  @override
   Future<void> deleteMachine(String id) async {
     try {
       await _apiClient.delete('/machines/$id');
@@ -108,6 +132,7 @@ class ApiMachineRepository implements MachineRepository {
     }
   }
 }
+
 
 final machineRepositoryProvider = Provider<MachineRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);

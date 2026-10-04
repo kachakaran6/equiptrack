@@ -84,6 +84,30 @@ class MachinesController extends AsyncNotifier<void> {
     }
   }
 
+  Future<Machine?> duplicateMachine({
+    required String id,
+    String? name,
+    String? description,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = ref.read(machineRepositoryProvider);
+      final machine = await repo.duplicateMachine(
+        id: id,
+        name: name,
+        description: description,
+      );
+      ref.invalidate(machinesStreamProvider);
+      state = const AsyncValue.data(null);
+      return machine;
+    } catch (e, st) {
+      AppLogger.error('MachinesController: Failed to duplicate machine', e, st);
+      final failure = e is AppFailure ? e : DatabaseFailure('Failed to duplicate machine: $e');
+      state = AsyncValue.error(failure, st);
+      return null;
+    }
+  }
+
   Future<bool> deleteMachine(String id) async {
     state = const AsyncValue.loading();
     try {
@@ -100,6 +124,7 @@ class MachinesController extends AsyncNotifier<void> {
     }
   }
 }
+
 
 final machinesControllerProvider =
     AsyncNotifierProvider<MachinesController, void>(MachinesController.new);
