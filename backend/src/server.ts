@@ -2,6 +2,7 @@ import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { closePool } from './db/index.js';
 import { runMigrations } from './db/migrate.js';
+import { startBackupScheduler, stopBackupScheduler } from './modules/backup/backup.scheduler.js';
 
 async function start() {
   const app = buildApp();
@@ -24,12 +25,21 @@ async function start() {
     process.exit(1);
   }
 
+  // Start backup scheduler (after server is ready)
+  try {
+    await startBackupScheduler();
+  } catch (err) {
+    console.error('[Backup] Failed to start scheduler — backups disabled:', err);
+    // Non-fatal: server keeps running
+  }
+
   // Graceful Shutdown
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
   for (const signal of signals) {
     process.on(signal, async () => {
       console.log(`\nReceived ${signal}, shutting down gracefully...`);
       try {
+        await stopBackupScheduler();
         await app.close();
         await closePool();
         console.log('Server and database pool closed successfully.');

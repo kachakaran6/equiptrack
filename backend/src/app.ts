@@ -11,6 +11,7 @@ import { reportRoutes } from './modules/reports/reports.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { errorLogRoutes } from './modules/error-logs/error-logs.routes.js';
 import { ErrorLogsService } from './modules/error-logs/error-logs.service.js';
+import { query } from './db/index.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -25,10 +26,11 @@ export function buildApp(): FastifyInstance {
     credentials: true,
   });
 
-  // 2. Rate Limiting
+  // 2. Rate Limiting (global: 100 req/min for normal users)
   app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
+    keyGenerator: (req) => req.ip,
   });
 
   // 3. JWT Authentication
@@ -39,11 +41,11 @@ export function buildApp(): FastifyInstance {
     },
   });
 
-  // 4. Health Check Endpoint (for Coolify & Docker probes)
+  // 4. Health Check Endpoints (for Coolify & Docker probes)
   app.get('/health', async (request, reply) => {
     let dbStatus = 'connected';
     try {
-      await import('./db/index.js').then((m) => m.query('SELECT 1'));
+      await query('SELECT 1');
     } catch {
       dbStatus = 'disconnected';
     }
@@ -59,14 +61,41 @@ export function buildApp(): FastifyInstance {
     });
   });
 
+  // Readiness check — verifies DB connectivity before accepting traffic
+  app.get('/health/ready', async (request, reply) => {
+    try {
+      await query('SELECT 1');
+      reply.status(200).send({ status: 'ready', database: 'connected' });
+    } catch {
+      reply.status(503).send({ status: 'not_ready', database: 'disconnected' });
+    }
+  });
+
+  // Liveness check — just confirms the process is alive
+  app.get('/health/live', async (request, reply) => {
+    reply.status(200).send({ status: 'alive' });
+  });
+
   // 5. Register API Routes
   app.register(authRoutes, { prefix: '/api/auth' });
   app.register(machineRoutes, { prefix: '/api/machines' });
   app.register(sectionRoutes, { prefix: '/api' });
   app.register(usageRecordRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api/reports' });
-  app.register(adminRoutes, { prefix: '/api/admin' });
   app.register(errorLogRoutes, { prefix: '/api' });
+
+  // Admin routes with stricter rate limiting (30 req/min)
+  app.register(
+    async (adminApp) => {
+      adminApp.register(rateLimit, {
+        max: 30,
+        timeWindow: '1 minute',
+        keyGenerator: (req) => req.ip,
+      });
+      adminApp.register(adminRoutes, { prefix: '/' });
+    },
+    { prefix: '/api/admin' }
+  );
 
   // 6. Global Error Handler
   app.setErrorHandler(async (error: Error & { statusCode?: number }, request, reply) => {
@@ -97,10 +126,13 @@ export function buildApp(): FastifyInstance {
 
     reply.status(statusCode).send({
       success: false,
-      message:
-        env.NODE_ENV === 'production' && statusCode === 500
-          ? 'Internal server error'
-          : error.message || 'An unexpected error occurred',
+      error: {
+        code: statusCode === 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR',
+        message:
+          env.NODE_ENV === 'production' && statusCode === 500
+            ? 'Internal server error'
+            : error.message || 'An unexpected error occurred',
+      },
     });
   });
 

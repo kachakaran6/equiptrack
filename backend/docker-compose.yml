@@ -1,20 +1,14 @@
-# ==============================================================================
-# EquipTrack Production Docker Compose Configuration for Coolify & Local Hosting
-# ==============================================================================
-# Supports two deployment topologies:
-# 1. Combined Stack: Starts both Fastify API and PostgreSQL database containers.
-# 2. Coolify-Managed: If PostgreSQL is provisioned separately in Coolify, comment
-#    out the 'postgres' service and inject the Coolify PostgreSQL DATABASE_URL.
-# ==============================================================================
+version: '3.9'
 
 services:
-  # Fastify + TypeScript API Gateway
+  # ──────────────────────────────────────────
+  # EquipTrack API (Production)
+  # ──────────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: equiptrack-api:latest
-    container_name: equiptrack_api
+      target: runner
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
@@ -22,43 +16,50 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
-      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:password@postgres:5432/equiptrack}
+      - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-365d}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      # Telegram backup credentials
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # Backup configuration
+      - BACKUP_ENABLED=${BACKUP_ENABLED:-true}
+      - BACKUP_CRON=${BACKUP_CRON:-0 2 * * *}
+      - BACKUP_TIMEZONE=${BACKUP_TIMEZONE:-Asia/Kolkata}
+      - BACKUP_FORMAT=${BACKUP_FORMAT:-sql}
+      - BACKUP_COMPRESSION=${BACKUP_COMPRESSION:-gzip}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health/ready"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - equiptrack_net
 
-  # PostgreSQL Database Container
+  # ──────────────────────────────────────────
+  # PostgreSQL (Development/Staging only)
+  # Use Coolify-managed PostgreSQL in production
+  # ──────────────────────────────────────────
   postgres:
-    image: postgres:17-alpine
-    container_name: equiptrack_postgres
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: equiptrack
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-equiptrack}
     volumes:
-      - equiptrack_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-equiptrack}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d equiptrack"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
-    networks:
-      - equiptrack_net
-    # Port is internal to the Docker network. Uncomment below ONLY if external DB access is required:
-    # ports:
-    #   - "5432:5432"
-
-networks:
-  equiptrack_net:
-    driver: bridge
+    ports:
+      - "5432:5432"
 
 volumes:
-  equiptrack_pgdata:
-    driver: local
+  pgdata:
