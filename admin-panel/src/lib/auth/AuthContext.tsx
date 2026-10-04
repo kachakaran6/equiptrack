@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         isLoading,
-        isAuthenticated: !!user && user.role === 'ADMIN',
+        isAuthenticated: !!user && (user.role || '').toLowerCase() === 'admin',
         login,
         logout,
         refreshUser,

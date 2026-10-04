@@ -14,7 +14,8 @@ export const authApi = {
     })
 
     const payload = data.data
-    if (payload.user.role !== 'ADMIN') {
+    const userRole = (payload.user?.role || '').toLowerCase()
+    if (userRole !== 'admin') {
       throw new Error('Administrator access required.')
     }
 
@@ -26,7 +27,8 @@ export const authApi = {
   async getMe(): Promise<User> {
     const data = await apiRequest<{ success: boolean; data: User }>('/api/auth/me')
     const user = data.data
-    if (user.role !== 'ADMIN') {
+    const userRole = (user?.role || '').toLowerCase()
+    if (userRole !== 'admin') {
       removeAuthToken()
       throw new Error('Administrator access required.')
     }

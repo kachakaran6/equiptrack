@@ -169,10 +169,11 @@ export const UsersPage: React.FC = () => {
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.phone && u.phone.includes(searchTerm))
-    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter
+    const userRole = (u.role || '').toUpperCase()
+    const matchesRole = roleFilter === 'ALL' || userRole === roleFilter
     return matchesSearch && matchesRole
   })
 
@@ -311,16 +312,26 @@ export const UsersPage: React.FC = () => {
                   </TableCell>
 
                   <TableCell>
-                    <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}>
-                      {u.role === 'ADMIN' && <Shield className="mr-1 h-3 w-3 inline" />}
-                      {u.role}
-                    </Badge>
+                    {(() => {
+                      const isAdmin = (u.role || '').toUpperCase() === 'ADMIN'
+                      return (
+                        <Badge variant={isAdmin ? 'default' : 'secondary'}>
+                          {isAdmin && <Shield className="mr-1 h-3 w-3 inline" />}
+                          {isAdmin ? 'ADMIN' : 'USER'}
+                        </Badge>
+                      )
+                    })()}
                   </TableCell>
 
                   <TableCell>
-                    <Badge variant={u.status === 'ACTIVE' ? 'success' : 'destructive'}>
-                      {u.status || 'ACTIVE'}
-                    </Badge>
+                    {(() => {
+                      const isActive = (u.status || '').toUpperCase() === 'ACTIVE'
+                      return (
+                        <Badge variant={isActive ? 'success' : 'destructive'}>
+                          {isActive ? 'ACTIVE' : (u.status || 'SUSPENDED').toUpperCase()}
+                        </Badge>
+                      )
+                    })()}
                   </TableCell>
 
                   <TableCell className="font-mono text-[11px] text-zinc-400">
@@ -349,22 +360,24 @@ export const UsersPage: React.FC = () => {
 
                         <DropdownMenuItem
                           onClick={() => {
-                            const newRole: UserRole = u.role === 'ADMIN' ? 'USER' : 'ADMIN'
+                            const isAdmin = (u.role || '').toUpperCase() === 'ADMIN'
+                            const newRole: UserRole = isAdmin ? 'USER' : 'ADMIN'
                             setRoleChangeTarget({ user: u, newRole })
                           }}
                         >
                           <Shield className="mr-2 h-3.5 w-3.5" />
-                          Change to {u.role === 'ADMIN' ? 'User' : 'Admin'}
+                          Change to {(u.role || '').toUpperCase() === 'ADMIN' ? 'User' : 'Admin'}
                         </DropdownMenuItem>
 
                         <DropdownMenuItem
                           onClick={() => {
-                            const newStatus: UserStatus = u.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+                            const isActive = (u.status || '').toUpperCase() === 'ACTIVE'
+                            const newStatus: UserStatus = isActive ? 'SUSPENDED' : 'ACTIVE'
                             statusMutation.mutate({ id: u.id, status: newStatus })
                           }}
                         >
                           <PowerOff className="mr-2 h-3.5 w-3.5" />
-                          {u.status === 'ACTIVE' ? 'Suspend Account' : 'Activate Account'}
+                          {(u.status || '').toUpperCase() === 'ACTIVE' ? 'Suspend Account' : 'Activate Account'}
                         </DropdownMenuItem>
 
                         <DropdownMenuItem onClick={() => setPasswordTarget(u)}>

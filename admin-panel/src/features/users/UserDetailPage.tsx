@@ -114,11 +114,11 @@ export const UserDetailPage: React.FC = () => {
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
               <span>{user.name}</span>
-              <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
-                {user.role}
+              <Badge variant={(user.role || '').toUpperCase() === 'ADMIN' ? 'default' : 'secondary'}>
+                {(user.role || 'USER').toUpperCase()}
               </Badge>
-              <Badge variant={user.status === 'ACTIVE' ? 'success' : 'destructive'}>
-                {user.status || 'ACTIVE'}
+              <Badge variant={(user.status || '').toUpperCase() === 'ACTIVE' ? 'success' : 'destructive'}>
+                {(user.status || 'ACTIVE').toUpperCase()}
               </Badge>
             </h1>
             <p className="font-mono text-xs text-zinc-500">ID: {user.id}</p>
@@ -139,27 +139,29 @@ export const UserDetailPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => {
-              const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+              const isAdmin = (user.role || '').toUpperCase() === 'ADMIN'
+              const newRole: UserRole = isAdmin ? 'USER' : 'ADMIN'
               roleMutation.mutate(newRole)
             }}
             disabled={roleMutation.isPending}
             className="h-8 gap-1.5 text-xs border-zinc-800 bg-zinc-900/50"
           >
             <Shield className="h-3.5 w-3.5" />
-            Switch to {user.role === 'ADMIN' ? 'User' : 'Admin'}
+            Switch to {(user.role || '').toUpperCase() === 'ADMIN' ? 'User' : 'Admin'}
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+              const isActive = (user.status || '').toUpperCase() === 'ACTIVE'
+              const newStatus: UserStatus = isActive ? 'SUSPENDED' : 'ACTIVE'
               statusMutation.mutate(newStatus)
             }}
             disabled={statusMutation.isPending}
             className="h-8 text-xs border-zinc-800 bg-zinc-900/50"
           >
-            {user.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+            {(user.status || '').toUpperCase() === 'ACTIVE' ? 'Suspend' : 'Activate'}
           </Button>
         </div>
       </div>

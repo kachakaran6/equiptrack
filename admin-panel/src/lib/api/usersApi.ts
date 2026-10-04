@@ -23,7 +23,10 @@ export const usersApi = {
   async createUser(input: CreateUserInput): Promise<User> {
     const res = await apiRequest<{ success: boolean; data: User }>('/api/admin/users', {
       method: 'POST',
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        ...input,
+        role: input.role ? input.role.toLowerCase() : 'user',
+      }),
     })
     return res.data
   },
@@ -31,7 +34,7 @@ export const usersApi = {
   async updateUserRole(id: string, role: UserRole): Promise<User> {
     const res = await apiRequest<{ success: boolean; data: User }>(`/api/admin/users/${id}/role`, {
       method: 'PATCH',
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({ role: role.toLowerCase() }),
     })
     return res.data
   },
@@ -39,7 +42,7 @@ export const usersApi = {
   async updateUserStatus(id: string, status: UserStatus): Promise<User> {
     const res = await apiRequest<{ success: boolean; data: User }>(`/api/admin/users/${id}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: status.toLowerCase() }),
     })
     return res.data
   },
