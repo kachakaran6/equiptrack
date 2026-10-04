@@ -4,7 +4,7 @@ import 'app_colors.dart';
 import 'app_typography.dart';
 
 /// EquipTrack Application Theme Configuration
-/// Pure neutral charcoal dark theme with controlled blue accenting, and crisp slate light theme.
+/// Pure neutral charcoal dark theme with unified royal violet/purple accenting, and crisp slate light theme.
 class AppTheme {
   AppTheme._();
 

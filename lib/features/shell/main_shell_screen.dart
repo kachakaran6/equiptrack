@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+
 class MainShellScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -26,21 +28,22 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.primaryLight : AppColors.primary;
 
     return Scaffold(
       body: widget.navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
           border: Border(
             top: BorderSide(
-              color: isDark ? Colors.grey[850]! : const Color(0xFFE5E7EB),
+              color: isDark ? AppColors.borderDark : AppColors.borderLight,
               width: 1,
             ),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -52,22 +55,22 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
             onDestinationSelected: _onTap,
             backgroundColor: Colors.transparent,
             elevation: 0,
-            indicatorColor: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+            indicatorColor: primaryColor.withValues(alpha: isDark ? 0.22 : 0.15),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.precision_manufacturing_outlined),
+                icon: const Icon(Icons.precision_manufacturing_outlined),
                 selectedIcon: Icon(
                   Icons.precision_manufacturing_rounded,
-                  color: Color(0xFF7C3AED),
+                  color: primaryColor,
                 ),
                 label: 'Equipment Tracking',
               ),
               NavigationDestination(
-                icon: Icon(Icons.inventory_2_outlined),
+                icon: const Icon(Icons.inventory_2_outlined),
                 selectedIcon: Icon(
                   Icons.inventory_2_rounded,
-                  color: Color(0xFF7C3AED),
+                  color: primaryColor,
                 ),
                 label: 'Inventory Management',
               ),

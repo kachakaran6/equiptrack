@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
 
 /// Professional, neutral dark & crisp light color architecture for EquipTrack.
-/// Built with true neutral charcoal dark surfaces, with blue strictly as a controlled accent.
+/// Built with true neutral charcoal dark surfaces, with royal violet/purple as the unified accent theme.
 class AppColors {
   AppColors._();
 
   // ---------------------------------------------------------------------------
-  // ACCENT COLORS (Blue is an accent, not the environment)
+  // ACCENT COLORS (Unified, high-end purple theme)
   // ---------------------------------------------------------------------------
-  static const Color primary = Color(0xFF2563EB); // Royal Blue Accent (Light)
-  static const Color primaryLight = Color(0xFF3B82F6); // Crisp Sapphire Accent (Dark)
-  static const Color primaryDark = Color(0xFF1D4ED8);
-  static const Color primaryContainerLight = Color(0xFFEFF6FF);
-  static const Color onPrimaryContainerLight = Color(0xFF1E40AF);
-  static const Color primaryContainerDark = Color(0xFF162235); // Subtle accent container
-  static const Color onPrimaryContainerDark = Color(0xFF93C5FD);
+  static const Color primary = Color(0xFF7C3AED); // Vibrant Violet (Light)
+  static const Color primaryLight = Color(0xFF8B5CF6); // Crisp Violet Accent (Dark)
+  static const Color primaryDark = Color(0xFF6D28D9); // Deep Violet
+  static const Color primaryContainerLight = Color(0xFFF3E8FF); // Soft violet tint
+  static const Color onPrimaryContainerLight = Color(0xFF5B21B6);
+  static const Color primaryContainerDark = Color(0xFF23163B); // Subtle dark purple container
+  static const Color onPrimaryContainerDark = Color(0xFFDDD6FE); // Soft pastel violet
 
   // Backward compatibility alias
-  static const Color primaryContainer = Color(0xFFDBEAFE);
-  static const Color onPrimaryContainer = Color(0xFF1E3A8A);
+  static const Color primaryContainer = Color(0xFFF3E8FF);
+  static const Color onPrimaryContainer = Color(0xFF5B21B6);
 
-  // Secondary Accent - Steel / Cyan
-  static const Color secondary = Color(0xFF0EA5E9);
-  static const Color secondaryLight = Color(0xFF38BDF8);
-  static const Color secondaryDark = Color(0xFF0284C7);
-  static const Color secondaryContainerLight = Color(0xFFF0F9FF);
-  static const Color onSecondaryContainerLight = Color(0xFF0369A1);
-  static const Color secondaryContainerDark = Color(0xFF15222E);
-  static const Color onSecondaryContainerDark = Color(0xFF7DD3FC);
+  // Secondary Accent - Purple / Magenta
+  static const Color secondary = Color(0xFF9333EA);
+  static const Color secondaryLight = Color(0xFFA855F7);
+  static const Color secondaryDark = Color(0xFF7E22CE);
+  static const Color secondaryContainerLight = Color(0xFFFAF5FF);
+  static const Color onSecondaryContainerLight = Color(0xFF6B21A8);
+  static const Color secondaryContainerDark = Color(0xFF2A1542);
+  static const Color onSecondaryContainerDark = Color(0xFFE9D5FF);
 
   // Backward compatibility alias
-  static const Color secondaryContainer = Color(0xFFCCFBF1);
-  static const Color onSecondaryContainer = Color(0xFF115E59);
+  static const Color secondaryContainer = Color(0xFFFAF5FF);
+  static const Color onSecondaryContainer = Color(0xFF6B21A8);
 
   // ---------------------------------------------------------------------------
   // LIGHT SURFACES & BACKGROUNDS (Neutral Light Palette)
