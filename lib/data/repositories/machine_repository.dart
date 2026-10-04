@@ -125,9 +125,11 @@ class ApiMachineRepository implements MachineRepository {
   Future<void> deleteMachine(String id) async {
     try {
       await _apiClient.delete('/machines/$id');
-    } on DatabaseFailure catch (e) {
-      if (e.code == '404' || e.message.toLowerCase().contains('not found')) {
-        return; // Already deleted
+    } on AppFailure catch (e) {
+      if (e.code == '404' ||
+          e.message.toLowerCase().contains('not found') ||
+          e.message.toLowerCase().contains('does not exist')) {
+        return; // Already deleted on backend
       }
       rethrow;
     } catch (e, st) {
