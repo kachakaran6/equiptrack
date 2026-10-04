@@ -1,20 +1,22 @@
 /**
- * EQUIPTRACK ADMIN CONTROL PANEL — CLIENT APPLICATION LOGIC
+ * EQUIPTRACK ADMIN CONSOLE — CLIENT APPLICATION
+ * Minimalist Monochrome Shadcn/Vercel Design System
  */
 
 (function () {
   'use strict';
 
-  // ─── STATE MANAGEMENT ──────────────────────────────────────────────────────
+  // ─── APPLICATION STATE ───────────────────────────────────────────────────
   const state = {
     token: localStorage.getItem('equiptrack_admin_token') || '',
     user: JSON.parse(localStorage.getItem('equiptrack_admin_user') || 'null'),
     apiUrl: localStorage.getItem('equiptrack_api_url') || window.location.origin,
     activeTab: 'tab-overview',
     usersPage: 1,
-    usersLimit: 15,
-    usersTotal: 0,
+    usersLimit: 20,
     pollTimer: null,
+    machinesListCache: [],
+    sectionsListCache: [],
   };
 
   // ─── DOM SELECTORS ────────────────────────────────────────────────────────
@@ -35,21 +37,54 @@
     sidebarAvatar: document.getElementById('sidebarAvatar'),
     btnGlobalRefresh: document.getElementById('btnGlobalRefresh'),
 
-    // Overview metrics
+    // Overview
     metricTotalUsers: document.getElementById('metricTotalUsers'),
     metricActiveUsers: document.getElementById('metricActiveUsers'),
     metricTotalMachines: document.getElementById('metricTotalMachines'),
     metricTotalSections: document.getElementById('metricTotalSections'),
-    metricBackupStatus: document.getElementById('metricBackupStatus'),
-    metricLastBackup: document.getElementById('metricLastBackup'),
+    metricTotalRecords: document.getElementById('metricTotalRecords'),
     metricDbSize: document.getElementById('metricDbSize'),
     metricDbPool: document.getElementById('metricDbPool'),
     miniAuditList: document.getElementById('miniAuditList'),
     btnQuickBackup: document.getElementById('btnQuickBackup'),
     btnQuickTgTest: document.getElementById('btnQuickTgTest'),
+    btnQuickAddUser: document.getElementById('btnQuickAddUser'),
     btnQuickDbCheck: document.getElementById('btnQuickDbCheck'),
 
-    // Backups
+    // Users
+    usersTbody: document.getElementById('usersTbody'),
+    userSearchInput: document.getElementById('userSearchInput'),
+    userRoleFilter: document.getElementById('userRoleFilter'),
+    userStatusFilter: document.getElementById('userStatusFilter'),
+    usersPageInfo: document.getElementById('usersPageInfo'),
+    btnUsersPrev: document.getElementById('btnUsersPrev'),
+    btnUsersNext: document.getElementById('btnUsersNext'),
+    btnOpenAddUserModal: document.getElementById('btnOpenAddUserModal'),
+
+    // Machines
+    machinesTbody: document.getElementById('machinesTbody'),
+    machineSearchInput: document.getElementById('machineSearchInput'),
+    btnOpenAddMachineModal: document.getElementById('btnOpenAddMachineModal'),
+
+    // Sections
+    sectionsTbody: document.getElementById('sectionsTbody'),
+    btnOpenAddSectionModal: document.getElementById('btnOpenAddSectionModal'),
+
+    // Usage Records
+    usageRecordsTbody: document.getElementById('usageRecordsTbody'),
+    btnOpenAddRecordModal: document.getElementById('btnOpenAddRecordModal'),
+
+    // Error Logs
+    errorLogsTbody: document.getElementById('errorLogsTbody'),
+    btnClearAllErrors: document.getElementById('btnClearAllErrors'),
+    btnRefreshErrors: document.getElementById('btnRefreshErrors'),
+
+    // Raw Tables
+    rawTableSelect: document.getElementById('rawTableSelect'),
+    rawTableContainer: document.getElementById('rawTableContainer'),
+    btnRefreshRawTable: document.getElementById('btnRefreshRawTable'),
+
+    // Backup & Telegram
     manualBackupForm: document.getElementById('manualBackupForm'),
     backupFormatSelect: document.getElementById('backupFormatSelect'),
     backupSendTgCheck: document.getElementById('backupSendTgCheck'),
@@ -65,15 +100,6 @@
     tgChannelName: document.getElementById('tgChannelName'),
     btnRefreshHistory: document.getElementById('btnRefreshHistory'),
     backupHistoryTbody: document.getElementById('backupHistoryTbody'),
-
-    // Users
-    usersTbody: document.getElementById('usersTbody'),
-    userSearchInput: document.getElementById('userSearchInput'),
-    userRoleFilter: document.getElementById('userRoleFilter'),
-    userStatusFilter: document.getElementById('userStatusFilter'),
-    usersPageInfo: document.getElementById('usersPageInfo'),
-    btnUsersPrev: document.getElementById('btnUsersPrev'),
-    btnUsersNext: document.getElementById('btnUsersNext'),
 
     // Audit
     auditTbody: document.getElementById('auditTbody'),
@@ -91,11 +117,46 @@
     dbPoolStatus: document.getElementById('dbPoolStatus'),
     dbTablesTbody: document.getElementById('dbTablesTbody'),
 
-    // Modal
-    userModal: document.getElementById('userModal'),
-    userModalTitle: document.getElementById('userModalTitle'),
-    userModalBody: document.getElementById('userModalBody'),
-    btnCloseUserModal: document.getElementById('btnCloseUserModal'),
+    // Modals
+    modalAddUser: document.getElementById('modalAddUser'),
+    formAddUser: document.getElementById('formAddUser'),
+    newEmail: document.getElementById('newEmail'),
+    newPassword: document.getElementById('newPassword'),
+    newRole: document.getElementById('newRole'),
+
+    modalResetPassword: document.getElementById('modalResetPassword'),
+    formResetPassword: document.getElementById('formResetPassword'),
+    resetUserId: document.getElementById('resetUserId'),
+    resetUserEmail: document.getElementById('resetUserEmail'),
+    resetPasswordInput: document.getElementById('resetPasswordInput'),
+
+    modalMachine: document.getElementById('modalMachine'),
+    modalMachineTitle: document.getElementById('modalMachineTitle'),
+    formMachine: document.getElementById('formMachine'),
+    machineEditId: document.getElementById('machineEditId'),
+    machineNameInput: document.getElementById('machineNameInput'),
+    machineDescInput: document.getElementById('machineDescInput'),
+
+    modalSection: document.getElementById('modalSection'),
+    modalSectionTitle: document.getElementById('modalSectionTitle'),
+    formSection: document.getElementById('formSection'),
+    sectionEditId: document.getElementById('sectionEditId'),
+    sectionMachineSelect: document.getElementById('sectionMachineSelect'),
+    sectionMachineSelectGroup: document.getElementById('sectionMachineSelectGroup'),
+    sectionNameInput: document.getElementById('sectionNameInput'),
+
+    modalRecord: document.getElementById('modalRecord'),
+    modalRecordTitle: document.getElementById('modalRecordTitle'),
+    formRecord: document.getElementById('formRecord'),
+    recordEditId: document.getElementById('recordEditId'),
+    recordSectionSelect: document.getElementById('recordSectionSelect'),
+    recordSectionSelectGroup: document.getElementById('recordSectionSelectGroup'),
+    recordNameInput: document.getElementById('recordNameInput'),
+    recordDateInput: document.getElementById('recordDateInput'),
+
+    modalDetail: document.getElementById('modalDetail'),
+    modalDetailTitle: document.getElementById('modalDetailTitle'),
+    modalDetailBody: document.getElementById('modalDetailBody'),
   };
 
   // ─── API HELPER ───────────────────────────────────────────────────────────
@@ -115,18 +176,18 @@
       const data = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
-        showToast('Session expired or unauthorized. Please log in again.', 'error');
+        showToast('Session expired. Please sign in again.', 'error');
         logout();
         throw new Error('Unauthorized');
       }
 
       if (response.status === 403) {
-        showToast(data.error?.message || 'Admin privileges required', 'error');
+        showToast(data.error?.message || 'Administrator privileges required', 'error');
         throw new Error(data.error?.message || 'Forbidden');
       }
 
       if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}: Request failed`);
+        throw new Error(data.error?.message || data.message || `HTTP ${response.status}: Request failed`);
       }
 
       return data;
@@ -140,20 +201,15 @@
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    
-    let icon = 'ℹ️';
-    if (type === 'success') icon = '✓';
-    if (type === 'error') icon = '✕';
-
-    toast.innerHTML = `<span><strong>${icon}</strong> ${message}</span>`;
+    toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
     dom.toastContainer.appendChild(toast);
 
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 4000);
+      toast.style.transform = 'translateY(8px)';
+      toast.style.transition = 'all 0.2s ease';
+      setTimeout(() => toast.remove(), 200);
+    }, 3500);
   }
 
   // ─── AUTHENTICATION ───────────────────────────────────────────────────────
@@ -169,7 +225,7 @@
       });
 
       if (!res.data || !res.data.token) {
-        throw new Error('Invalid response from server');
+        throw new Error('Invalid response from authentication service');
       }
 
       if (res.data.user?.role !== 'admin') {
@@ -181,14 +237,14 @@
       localStorage.setItem('equiptrack_admin_token', state.token);
       localStorage.setItem('equiptrack_admin_user', JSON.stringify(state.user));
 
-      showToast(`Authenticated successfully as ${state.user.email}`, 'success');
+      showToast(`Authenticated as ${state.user.email}`, 'success');
       initDashboard();
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
       dom.btnLogin.disabled = false;
       dom.btnLogin.querySelector('.spinner').classList.add('hidden');
-      dom.btnLogin.querySelector('.btn-text').textContent = 'Authenticate as Admin';
+      dom.btnLogin.querySelector('.btn-text').textContent = 'Authenticate';
     }
   }
 
@@ -204,7 +260,7 @@
     dom.loginPassword.value = '';
   }
 
-  // ─── DASHBOARD INITIALIZATION ─────────────────────────────────────────────
+  // ─── DASHBOARD INIT ───────────────────────────────────────────────────────
   function initDashboard() {
     dom.authScreen.classList.add('hidden');
     dom.appContainer.classList.remove('hidden');
@@ -212,95 +268,653 @@
     dom.sidebarUserEmail.textContent = state.user?.email || 'admin@equiptrack.com';
     dom.sidebarAvatar.textContent = (state.user?.email || 'A')[0].toUpperCase();
 
-    // Environment badge
     const isLocal = state.apiUrl.includes('localhost') || state.apiUrl.includes('127.0.0.1');
     dom.envBadge.textContent = isLocal ? 'LOCAL' : 'PRODUCTION';
-    dom.envBadge.style.color = isLocal ? 'var(--accent-cyan)' : 'var(--accent-emerald)';
 
-    // Load initial data
-    refreshAllData();
+    refreshCurrentTab();
 
-    // Auto poll every 30 seconds
     if (state.pollTimer) clearInterval(state.pollTimer);
     state.pollTimer = setInterval(() => {
       if (!document.hidden && state.token) {
-        refreshAllData(true);
+        refreshCurrentTab(true);
       }
     }, 30000);
   }
 
-  async function refreshAllData(silent = false) {
-    try {
-      await Promise.allSettled([
-        loadOverviewMetrics(),
-        loadBackupConfigAndHistory(),
-        loadUsers(),
-        loadAuditLogs(),
-        loadSystemAndDbStats(),
-      ]);
-      if (!silent) showToast('Data refreshed successfully', 'info');
-    } catch (err) {
-      if (!silent) showToast('Failed to refresh some metrics', 'error');
-    }
+  function refreshCurrentTab(silent = false) {
+    loadOverviewMetrics();
+    if (state.activeTab === 'tab-overview') loadOverviewMetrics();
+    if (state.activeTab === 'tab-users') loadUsers();
+    if (state.activeTab === 'tab-machines') loadMachines();
+    if (state.activeTab === 'tab-sections') loadSections();
+    if (state.activeTab === 'tab-usage-records') loadUsageRecords();
+    if (state.activeTab === 'tab-error-logs') loadErrorLogs();
+    if (state.activeTab === 'tab-tables') loadRawTableData();
+    if (state.activeTab === 'tab-backup') loadBackupConfigAndHistory();
+    if (state.activeTab === 'tab-audit') loadAuditLogs();
+    if (state.activeTab === 'tab-system') loadSystemAndDbStats();
+
+    if (!silent) showToast('Data refreshed', 'info');
   }
 
-  // ─── TAB 1: OVERVIEW METRICS ──────────────────────────────────────────────
+  // ─── 1. OVERVIEW METRICS ──────────────────────────────────────────────────
   async function loadOverviewMetrics() {
     try {
-      const [sysRes, dbRes, backupRes] = await Promise.all([
-        api('/api/admin/system'),
+      const [dbRes, recRes] = await Promise.all([
         api('/api/admin/db'),
-        api('/api/admin/backup/status').catch(() => ({ data: {} })),
+        api('/api/admin/usage-records?limit=1').catch(() => ({ pagination: { total: 0 } })),
       ]);
 
-      // Database stats
       if (dbRes.data) {
-        const tableCounts = dbRes.data.tables || [];
-        const userRow = tableCounts.find(t => t.table_name === 'users');
-        const machineRow = tableCounts.find(t => t.table_name === 'machines');
-        const sectionRow = tableCounts.find(t => t.table_name === 'sections');
+        const tables = dbRes.data.tables || [];
+        const uRow = tables.find(t => t.table_name === 'users');
+        const mRow = tables.find(t => t.table_name === 'machines');
+        const sRow = tables.find(t => t.table_name === 'sections');
 
-        dom.metricTotalUsers.textContent = userRow ? userRow.row_count : '—';
-        dom.metricTotalMachines.textContent = machineRow ? machineRow.row_count : '—';
-        dom.metricTotalSections.textContent = `${sectionRow?.row_count || 0} components`;
+        dom.metricTotalUsers.textContent = uRow ? uRow.row_count : '—';
+        dom.metricTotalMachines.textContent = mRow ? mRow.row_count : '—';
+        dom.metricTotalSections.textContent = `${sRow?.row_count || 0} components`;
+        dom.metricTotalRecords.textContent = recRes.pagination?.total ?? '—';
         dom.metricDbSize.textContent = dbRes.data.databaseSize || '—';
-        dom.metricDbPool.textContent = `Pool: ${dbRes.data.connectionPool?.totalCount || 0} conns`;
+        dom.metricDbPool.textContent = `Pool: ${dbRes.data.connectionPool?.totalCount || 0} connections`;
       }
 
-      // Backup status
-      if (backupRes.data) {
-        const inProg = backupRes.data.backupInProgress;
-        dom.metricBackupStatus.textContent = inProg ? 'RUNNING' : 'ONLINE';
-        dom.metricBackupStatus.style.color = inProg ? 'var(--accent-amber)' : 'var(--accent-emerald)';
-
-        if (backupRes.data.latestBackup) {
-          const lb = backupRes.data.latestBackup;
-          dom.metricLastBackup.textContent = `Last: ${formatRelativeTime(lb.created_at)}`;
-        }
+      // Load mini audit list
+      const auditRes = await api('/api/admin/audit-logs?limit=5');
+      if (auditRes.data && dom.miniAuditList) {
+        dom.miniAuditList.innerHTML = auditRes.data.map(l => `
+          <div class="mini-item">
+            <div>
+              <span class="font-mono font-medium">${escapeHtml(l.action)}</span>
+              <span class="text-muted text-xs ml-2">${escapeHtml(l.user_email || 'system')}</span>
+            </div>
+            <span class="text-dim text-xs font-mono">${formatDate(l.created_at)}</span>
+          </div>
+        `).join('') || '<div class="empty-state">No audit logs recorded yet</div>';
       }
     } catch (err) {
-      console.warn('Overview metric load error:', err);
+      console.warn('Overview load error:', err);
     }
   }
 
-  // ─── TAB 2: BACKUPS & TELEGRAM ────────────────────────────────────────────
+  // ─── 2. USERS MANAGEMENT (CRUD) ───────────────────────────────────────────
+  async function loadUsers() {
+    const search = dom.userSearchInput.value.trim();
+    const role = dom.userRoleFilter.value;
+    const status = dom.userStatusFilter.value;
+
+    let url = `/api/admin/users?page=${state.usersPage}&limit=${state.usersLimit}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (role) url += `&role=${role}`;
+    if (status) url += `&status=${status}`;
+
+    try {
+      const res = await api(url);
+      renderUsers(res.data || []);
+      if (res.pagination) {
+        dom.usersPageInfo.textContent = `Page ${res.pagination.page} of ${Math.max(1, res.pagination.pages)} (${res.pagination.total} users)`;
+        dom.btnUsersPrev.disabled = res.pagination.page <= 1;
+        dom.btnUsersNext.disabled = res.pagination.page >= res.pagination.pages;
+      }
+    } catch (err) {
+      console.warn('User load error:', err);
+    }
+  }
+
+  function renderUsers(users) {
+    if (users.length === 0) {
+      dom.usersTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No users found</td></tr>';
+      return;
+    }
+
+    dom.usersTbody.innerHTML = users.map(u => `
+      <tr data-user-id="${u.id}">
+        <td class="font-medium">${escapeHtml(u.email)}</td>
+        <td><span class="tag ${u.role === 'admin' ? 'tag-warn' : ''}">${u.role}</span></td>
+        <td><span class="tag ${u.status === 'active' ? 'tag-success' : 'tag-danger'}">${u.status}</span></td>
+        <td class="text-sm text-muted font-mono">${formatDate(u.created_at)}</td>
+        <td><button class="btn btn-link btn-view-user" data-id="${u.id}">View Activity →</button></td>
+        <td class="text-right">
+          <div class="action-bar" style="justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm btn-user-pwd" data-id="${u.id}" data-email="${escapeHtml(u.email)}">Password</button>
+            <button class="btn btn-outline btn-sm btn-user-role" data-id="${u.id}" data-role="${u.role}">${u.role === 'admin' ? 'Demote' : 'Make Admin'}</button>
+            <button class="btn btn-outline btn-sm btn-user-status" data-id="${u.id}" data-status="${u.status}">${u.status === 'active' ? 'Suspend' : 'Activate'}</button>
+            <button class="btn btn-danger btn-sm btn-user-del" data-id="${u.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    dom.usersTbody.querySelectorAll('.btn-view-user').forEach(b => b.addEventListener('click', () => viewUserActivity(b.dataset.id)));
+    dom.usersTbody.querySelectorAll('.btn-user-pwd').forEach(b => b.addEventListener('click', () => openResetPasswordModal(b.dataset.id, b.dataset.email)));
+    dom.usersTbody.querySelectorAll('.btn-user-role').forEach(b => b.addEventListener('click', () => toggleUserRole(b.dataset.id, b.dataset.role)));
+    dom.usersTbody.querySelectorAll('.btn-user-status').forEach(b => b.addEventListener('click', () => toggleUserStatus(b.dataset.id, b.dataset.status)));
+    dom.usersTbody.querySelectorAll('.btn-user-del').forEach(b => b.addEventListener('click', () => deleteUser(b.dataset.id)));
+  }
+
+  async function createUser() {
+    const email = dom.newEmail.value.trim();
+    const password = dom.newPassword.value;
+    const role = dom.newRole.value;
+
+    try {
+      await api('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, role }),
+      });
+      showToast(`User account created: ${email}`, 'success');
+      closeAllModals();
+      loadUsers();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function openResetPasswordModal(userId, email) {
+    dom.resetUserId.value = userId;
+    dom.resetUserEmail.textContent = email;
+    dom.resetPasswordInput.value = '';
+    dom.modalResetPassword.classList.remove('hidden');
+  }
+
+  async function submitResetPassword() {
+    const userId = dom.resetUserId.value;
+    const password = dom.resetPasswordInput.value;
+
+    try {
+      await api(`/api/admin/users/${userId}/password`, {
+        method: 'PATCH',
+        body: JSON.stringify({ password }),
+      });
+      showToast('Password updated successfully', 'success');
+      closeAllModals();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function toggleUserRole(userId, currentRole) {
+    const targetRole = currentRole === 'admin' ? 'user' : 'admin';
+    if (!confirm(`Change role to ${targetRole.toUpperCase()}?`)) return;
+
+    try {
+      await api(`/api/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: targetRole }),
+      });
+      showToast(`Role updated to ${targetRole}`, 'success');
+      loadUsers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function toggleUserStatus(userId, currentStatus) {
+    const targetStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    if (!confirm(`Change account status to ${targetStatus.toUpperCase()}?`)) return;
+
+    try {
+      await api(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: targetStatus }),
+      });
+      showToast(`Status updated to ${targetStatus}`, 'success');
+      loadUsers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to permanently delete this user and their workspace entities?')) return;
+
+    try {
+      await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      showToast('User deleted successfully', 'success');
+      loadUsers();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function viewUserActivity(userId) {
+    try {
+      const res = await api(`/api/admin/users/${userId}/activity`);
+      const { user, activity } = res.data;
+      openDetailModal(`User Activity: ${user.email}`, {
+        user,
+        summary: {
+          machineCount: activity.machineCount,
+          sectionCount: activity.sectionCount,
+          usageRecordCount: activity.usageRecordCount,
+        },
+        recentAuditLogs: activity.recentAuditLogs,
+      });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ─── 3. MACHINES CRUD ─────────────────────────────────────────────────────
+  async function loadMachines() {
+    const search = dom.machineSearchInput.value.trim();
+    let url = '/api/admin/machines?limit=100';
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    try {
+      const res = await api(url);
+      state.machinesListCache = res.data || [];
+      renderMachines(state.machinesListCache);
+    } catch (err) {
+      console.warn('Machine load error:', err);
+    }
+  }
+
+  function renderMachines(machines) {
+    if (machines.length === 0) {
+      dom.machinesTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No machines found</td></tr>';
+      return;
+    }
+
+    dom.machinesTbody.innerHTML = machines.map(m => `
+      <tr>
+        <td class="font-medium">${escapeHtml(m.name)}</td>
+        <td class="text-muted text-sm">${escapeHtml(m.description || '—')}</td>
+        <td class="text-sm">${escapeHtml(m.owner_email || '—')}</td>
+        <td class="font-mono"><span class="tag">${m.section_count || 0}</span></td>
+        <td class="text-sm text-muted font-mono">${formatDate(m.created_at)}</td>
+        <td class="text-right">
+          <div class="action-bar" style="justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm btn-edit-machine" data-id="${m.id}" data-name="${escapeHtml(m.name)}" data-desc="${escapeHtml(m.description || '')}">Edit</button>
+            <button class="btn btn-danger btn-sm btn-del-machine" data-id="${m.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    dom.machinesTbody.querySelectorAll('.btn-edit-machine').forEach(b => {
+      b.addEventListener('click', () => openMachineModal(b.dataset.id, b.dataset.name, b.dataset.desc));
+    });
+    dom.machinesTbody.querySelectorAll('.btn-del-machine').forEach(b => {
+      b.addEventListener('click', () => deleteMachine(b.dataset.id));
+    });
+  }
+
+  function openMachineModal(id = '', name = '', desc = '') {
+    dom.machineEditId.value = id;
+    dom.machineNameInput.value = name;
+    dom.machineDescInput.value = desc;
+    dom.modalMachineTitle.textContent = id ? 'Edit Machine' : 'Add Machine';
+    dom.modalMachine.classList.remove('hidden');
+  }
+
+  async function saveMachine() {
+    const id = dom.machineEditId.value;
+    const name = dom.machineNameInput.value.trim();
+    const description = dom.machineDescInput.value.trim();
+
+    try {
+      if (id) {
+        await api(`/api/admin/machines/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name, description }),
+        });
+        showToast('Machine updated', 'success');
+      } else {
+        await api('/api/admin/machines', {
+          method: 'POST',
+          body: JSON.stringify({ name, description }),
+        });
+        showToast('Machine created', 'success');
+      }
+      closeAllModals();
+      loadMachines();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function deleteMachine(id) {
+    if (!confirm('Are you sure you want to delete this machine and all its components?')) return;
+    try {
+      await api(`/api/admin/machines/${id}`, { method: 'DELETE' });
+      showToast('Machine deleted', 'success');
+      loadMachines();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ─── 4. COMPONENTS / SECTIONS CRUD ────────────────────────────────────────
+  async function loadSections() {
+    try {
+      const res = await api('/api/admin/sections?limit=100');
+      state.sectionsListCache = res.data || [];
+      renderSections(state.sectionsListCache);
+    } catch (err) {
+      console.warn('Section load error:', err);
+    }
+  }
+
+  function renderSections(sections) {
+    if (sections.length === 0) {
+      dom.sectionsTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No components found</td></tr>';
+      return;
+    }
+
+    dom.sectionsTbody.innerHTML = sections.map(s => `
+      <tr>
+        <td class="font-medium">${escapeHtml(s.name)}</td>
+        <td class="text-sm font-mono">${escapeHtml(s.machine_name || '—')}</td>
+        <td class="font-mono"><span class="tag">${s.record_count || 0}</span></td>
+        <td class="text-sm text-muted font-mono">${formatDate(s.created_at)}</td>
+        <td class="text-right">
+          <div class="action-bar" style="justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm btn-edit-section" data-id="${s.id}" data-name="${escapeHtml(s.name)}">Edit</button>
+            <button class="btn btn-danger btn-sm btn-del-section" data-id="${s.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    dom.sectionsTbody.querySelectorAll('.btn-edit-section').forEach(b => {
+      b.addEventListener('click', () => openSectionModal(b.dataset.id, b.dataset.name));
+    });
+    dom.sectionsTbody.querySelectorAll('.btn-del-section').forEach(b => {
+      b.addEventListener('click', () => deleteSection(b.dataset.id));
+    });
+  }
+
+  async function openSectionModal(id = '', name = '') {
+    dom.sectionEditId.value = id;
+    dom.sectionNameInput.value = name;
+    dom.modalSectionTitle.textContent = id ? 'Edit Component' : 'Add Component';
+
+    if (!id) {
+      dom.sectionMachineSelectGroup.classList.remove('hidden');
+      if (state.machinesListCache.length === 0) await loadMachines();
+      dom.sectionMachineSelect.innerHTML = state.machinesListCache.map(m => `
+        <option value="${m.id}">${escapeHtml(m.name)}</option>
+      `).join('');
+    } else {
+      dom.sectionMachineSelectGroup.classList.add('hidden');
+    }
+
+    dom.modalSection.classList.remove('hidden');
+  }
+
+  async function saveSection() {
+    const id = dom.sectionEditId.value;
+    const name = dom.sectionNameInput.value.trim();
+
+    try {
+      if (id) {
+        await api(`/api/admin/sections/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name }),
+        });
+        showToast('Component updated', 'success');
+      } else {
+        const machineId = dom.sectionMachineSelect.value;
+        await api('/api/admin/sections', {
+          method: 'POST',
+          body: JSON.stringify({ machineId, name }),
+        });
+        showToast('Component created', 'success');
+      }
+      closeAllModals();
+      loadSections();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function deleteSection(id) {
+    if (!confirm('Are you sure you want to delete this component and its usage records?')) return;
+    try {
+      await api(`/api/admin/sections/${id}`, { method: 'DELETE' });
+      showToast('Component deleted', 'success');
+      loadSections();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ─── 5. USAGE RECORDS CRUD ────────────────────────────────────────────────
+  async function loadUsageRecords() {
+    try {
+      const res = await api('/api/admin/usage-records?limit=100');
+      renderUsageRecords(res.data || []);
+    } catch (err) {
+      console.warn('Usage records error:', err);
+    }
+  }
+
+  function renderUsageRecords(records) {
+    if (records.length === 0) {
+      dom.usageRecordsTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No usage records found</td></tr>';
+      return;
+    }
+
+    dom.usageRecordsTbody.innerHTML = records.map(r => `
+      <tr>
+        <td class="font-medium">${escapeHtml(r.name)}</td>
+        <td class="font-mono text-sm">${escapeHtml(r.usage_date)}</td>
+        <td class="text-sm">${escapeHtml(r.section_name || '—')}</td>
+        <td class="text-sm text-muted">${escapeHtml(r.machine_name || '—')}</td>
+        <td class="text-xs text-dim font-mono">${escapeHtml(r.creator_email || '—')}</td>
+        <td class="text-right">
+          <div class="action-bar" style="justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm btn-edit-record" data-id="${r.id}" data-name="${escapeHtml(r.name)}" data-date="${r.usage_date}">Edit</button>
+            <button class="btn btn-danger btn-sm btn-del-record" data-id="${r.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    dom.usageRecordsTbody.querySelectorAll('.btn-edit-record').forEach(b => {
+      b.addEventListener('click', () => openRecordModal(b.dataset.id, b.dataset.name, b.dataset.date));
+    });
+    dom.usageRecordsTbody.querySelectorAll('.btn-del-record').forEach(b => {
+      b.addEventListener('click', () => deleteRecord(b.dataset.id));
+    });
+  }
+
+  async function openRecordModal(id = '', name = '', date = '') {
+    dom.recordEditId.value = id;
+    dom.recordNameInput.value = name;
+    dom.recordDateInput.value = date || new Date().toISOString().split('T')[0];
+    dom.modalRecordTitle.textContent = id ? 'Edit Record' : 'Add Record';
+
+    if (!id) {
+      dom.recordSectionSelectGroup.classList.remove('hidden');
+      if (state.sectionsListCache.length === 0) await loadSections();
+      dom.recordSectionSelect.innerHTML = state.sectionsListCache.map(s => `
+        <option value="${s.id}">${escapeHtml(s.machine_name || '')} → ${escapeHtml(s.name)}</option>
+      `).join('');
+    } else {
+      dom.recordSectionSelectGroup.classList.add('hidden');
+    }
+
+    dom.modalRecord.classList.remove('hidden');
+  }
+
+  async function saveRecord() {
+    const id = dom.recordEditId.value;
+    const name = dom.recordNameInput.value.trim();
+    const usageDate = dom.recordDateInput.value;
+
+    try {
+      if (id) {
+        await api(`/api/admin/usage-records/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name, usageDate }),
+        });
+        showToast('Record updated', 'success');
+      } else {
+        const sectionId = dom.recordSectionSelect.value;
+        await api('/api/admin/usage-records', {
+          method: 'POST',
+          body: JSON.stringify({ sectionId, name, usageDate }),
+        });
+        showToast('Record created', 'success');
+      }
+      closeAllModals();
+      loadUsageRecords();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function deleteRecord(id) {
+    if (!confirm('Are you sure you want to delete this usage record?')) return;
+    try {
+      await api(`/api/admin/usage-records/${id}`, { method: 'DELETE' });
+      showToast('Record deleted', 'success');
+      loadUsageRecords();
+      loadOverviewMetrics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ─── 6. ERROR LOGS ────────────────────────────────────────────────────────
+  async function loadErrorLogs() {
+    try {
+      const res = await api('/api/admin/error-logs?limit=50');
+      renderErrorLogs(res.data || []);
+    } catch (err) {
+      console.warn('Error logs error:', err);
+    }
+  }
+
+  function renderErrorLogs(logs) {
+    if (logs.length === 0) {
+      dom.errorLogsTbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No error logs recorded</td></tr>';
+      return;
+    }
+
+    dom.errorLogsTbody.innerHTML = logs.map(l => `
+      <tr>
+        <td class="font-mono text-xs text-muted">${formatDate(l.created_at)}</td>
+        <td><span class="tag ${l.level === 'error' ? 'tag-danger' : 'tag-warn'}">${l.level}</span></td>
+        <td class="font-mono text-xs">${escapeHtml(l.source || 'server')}</td>
+        <td class="font-mono text-xs">${escapeHtml(l.endpoint || '—')}</td>
+        <td class="font-mono text-xs">${l.status_code || '—'}</td>
+        <td class="text-sm font-medium" style="max-width: 300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          ${escapeHtml(l.message)}
+        </td>
+        <td class="text-right">
+          <div class="action-bar" style="justify-content: flex-end;">
+            <button class="btn btn-outline btn-sm btn-error-stack" data-id="${l.id}">Details</button>
+            <button class="btn btn-danger btn-sm btn-del-error" data-id="${l.id}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    dom.errorLogsTbody.querySelectorAll('.btn-error-stack').forEach(b => {
+      b.addEventListener('click', () => {
+        const log = logs.find(item => item.id === b.dataset.id);
+        if (log) {
+          openDetailModal(`Error Log: ${log.endpoint || log.message}`, log);
+        }
+      });
+    });
+
+    dom.errorLogsTbody.querySelectorAll('.btn-del-error').forEach(b => {
+      b.addEventListener('click', async () => {
+        try {
+          await api(`/api/admin/error-logs/${b.dataset.id}`, { method: 'DELETE' });
+          showToast('Error log deleted', 'success');
+          loadErrorLogs();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+  }
+
+  async function clearAllErrors() {
+    if (!confirm('Clear all error logs permanently?')) return;
+    try {
+      await api('/api/admin/error-logs', { method: 'DELETE' });
+      showToast('All error logs cleared', 'success');
+      loadErrorLogs();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ─── 7. RAW TABLE DATA EXPLORER ───────────────────────────────────────────
+  async function loadRawTableData() {
+    const table = dom.rawTableSelect.value;
+    dom.rawTableContainer.innerHTML = '<div class="empty-state">Loading table data...</div>';
+
+    try {
+      const res = await api(`/api/admin/tables/${table}?limit=30`);
+      const rows = res.data || [];
+      if (rows.length === 0) {
+        dom.rawTableContainer.innerHTML = `<div class="empty-state">Table "${table}" is empty (0 rows).</div>`;
+        return;
+      }
+
+      const columns = Object.keys(rows[0]);
+      let html = `
+        <div class="p-2 text-xs text-muted font-mono mb-2">
+          Table: <strong>${table}</strong> | Showing ${rows.length} of ${res.pagination?.total || rows.length} records
+        </div>
+        <table class="table table-sm">
+          <thead>
+            <tr>${columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+      `;
+
+      for (const row of rows) {
+        html += '<tr>';
+        for (const col of columns) {
+          let val = row[col];
+          if (val === null || val === undefined) val = '<span class="text-dim">NULL</span>';
+          else if (typeof val === 'object') val = escapeHtml(JSON.stringify(val));
+          else val = escapeHtml(String(val));
+          html += `<td class="font-mono text-xs">${val}</td>`;
+        }
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      dom.rawTableContainer.innerHTML = html;
+    } catch (err) {
+      dom.rawTableContainer.innerHTML = `<div class="empty-state text-danger">Error: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // ─── 8. TELEGRAM & BACKUP HUB ─────────────────────────────────────────────
   async function loadBackupConfigAndHistory() {
     try {
       const [confRes, histRes] = await Promise.all([
         api('/api/admin/backup/config'),
-        api('/api/admin/backup/history?page=1&limit=15'),
+        api('/api/admin/backup/history?limit=25'),
       ]);
 
       if (confRes.data) {
         const c = confRes.data;
-        dom.configCron.value = c.cron_expression || '0 2 * * *';
+        dom.configCron.value = c.cron || '0 2 * * *';
         dom.configTz.value = c.timezone || 'Asia/Kolkata';
-        dom.configRetention.value = c.retention_days || 30;
+        dom.configRetention.value = c.retentionDays || 30;
         dom.configDefaultFormat.value = c.format || 'sql';
         dom.configSchedulerEnabled.checked = !!c.enabled;
 
-        if (c.telegram_chat_id) {
-          dom.tgChannelName.textContent = `Chat ID: ${c.telegram_chat_id} (Active)`;
+        if (c.telegramChatId) {
+          dom.tgChannelName.textContent = `Chat ID: ${c.telegramChatId} (Active)`;
         } else {
           dom.tgChannelName.textContent = 'Channel connected via bot credentials';
         }
@@ -310,7 +924,7 @@
         renderBackupHistory(histRes.data);
       }
     } catch (err) {
-      console.warn('Backup config/history error:', err);
+      console.warn('Backup load error:', err);
     }
   }
 
@@ -320,30 +934,17 @@
       return;
     }
 
-    dom.backupHistoryTbody.innerHTML = items.map(item => {
-      let statusBadge = `<span class="badge badge-success">${item.status}</span>`;
-      if (item.status === 'failed') statusBadge = `<span class="badge badge-danger">FAILED</span>`;
-      if (item.status === 'in_progress') statusBadge = `<span class="badge badge-warning">RUNNING</span>`;
-
-      const sizeStr = item.file_size_bytes ? formatBytes(item.file_size_bytes) : '—';
-      const tgStatus = item.telegram_status === 'sent' 
-        ? '<span class="badge badge-success">SENT</span>' 
-        : `<span class="badge badge-warning">${item.telegram_status || 'NONE'}</span>`;
-
-      const checksumStr = item.checksum ? `${item.checksum.substring(0, 10)}...` : '—';
-
-      return `
-        <tr>
-          <td class="font-mono text-sm">${formatDate(item.created_at)}</td>
-          <td>${statusBadge}</td>
-          <td><span class="font-mono uppercase">${item.format}</span></td>
-          <td class="font-mono">${sizeStr}</td>
-          <td>${tgStatus}</td>
-          <td class="text-muted text-sm">${item.triggered_by || 'manual'}</td>
-          <td class="font-mono text-sm text-dim" title="${item.checksum || ''}">${checksumStr}</td>
-        </tr>
-      `;
-    }).join('');
+    dom.backupHistoryTbody.innerHTML = items.map(item => `
+      <tr>
+        <td class="font-mono text-sm">${formatDate(item.created_at)}</td>
+        <td><span class="tag ${item.status === 'success' ? 'tag-success' : 'tag-danger'}">${item.status}</span></td>
+        <td class="font-mono text-xs uppercase">${item.format}</td>
+        <td class="font-mono text-sm">${item.file_size_bytes ? formatBytes(item.file_size_bytes) : '—'}</td>
+        <td><span class="tag ${item.telegram_status === 'sent' ? 'tag-success' : ''}">${item.telegram_status || 'NONE'}</span></td>
+        <td class="text-sm text-muted">${item.triggered_by || 'manual'}</td>
+        <td class="font-mono text-xs text-dim">${item.checksum ? item.checksum.substring(0, 16) + '...' : '—'}</td>
+      </tr>
+    `).join('');
   }
 
   async function executeBackup() {
@@ -351,7 +952,7 @@
     const sendToTelegram = dom.backupSendTgCheck.checked;
 
     dom.btnExecuteBackup.disabled = true;
-    showToast(`Starting database backup (${format.toUpperCase()})...`, 'info');
+    showToast(`Generating ${format.toUpperCase()} backup...`, 'info');
 
     try {
       const res = await api('/api/admin/backup/run', {
@@ -359,11 +960,10 @@
         body: JSON.stringify({ format, sendToTelegram }),
       });
 
-      showToast(`Backup completed successfully! Telegram: ${res.data.telegramStatus}`, 'success');
+      showToast(`Backup created! Telegram: ${res.data.telegram}`, 'success');
       loadBackupConfigAndHistory();
-      loadOverviewMetrics();
     } catch (err) {
-      showToast(`Backup failed: ${err.message}`, 'error');
+      showToast(`Backup error: ${err.message}`, 'error');
     } finally {
       dom.btnExecuteBackup.disabled = false;
     }
@@ -382,9 +982,9 @@
           enabled: dom.configSchedulerEnabled.checked,
         }),
       });
-      showToast('Backup scheduler configuration updated', 'success');
+      showToast('Scheduler configuration saved', 'success');
     } catch (err) {
-      showToast(`Failed to update config: ${err.message}`, 'error');
+      showToast(err.message, 'error');
     } finally {
       dom.btnSaveBackupConfig.disabled = false;
     }
@@ -393,198 +993,19 @@
   async function testTelegramPing() {
     showToast('Sending test message to Telegram...', 'info');
     try {
-      const res = await api('/api/admin/telegram/test', { method: 'POST' });
-      showToast(`Telegram Test Succeeded: ${res.data.channelTitle || 'Message delivered'}`, 'success');
+      const res = await api('/api/admin/backup/telegram/test', { method: 'POST' });
+      showToast(`Telegram Ping Succeeded: ${res.message}`, 'success');
     } catch (err) {
-      showToast(`Telegram Test Failed: ${err.message}`, 'error');
+      showToast(`Telegram Ping Failed: ${err.message}`, 'error');
     }
   }
 
-  // ─── TAB 3: USER MANAGEMENT ───────────────────────────────────────────────
-  async function loadUsers() {
-    const search = dom.userSearchInput.value.trim();
-    const role = dom.userRoleFilter.value;
-    const status = dom.userStatusFilter.value;
-
-    let url = `/api/admin/users?page=${state.usersPage}&limit=${state.usersLimit}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    if (role) url += `&role=${role}`;
-    if (status) url += `&status=${status}`;
-
-    try {
-      const res = await api(url);
-      renderUsers(res.data || []);
-      if (res.pagination) {
-        state.usersTotal = res.pagination.total;
-        dom.usersPageInfo.textContent = `Page ${res.pagination.page} of ${Math.max(1, res.pagination.pages)} (${res.pagination.total} users)`;
-        dom.btnUsersPrev.disabled = res.pagination.page <= 1;
-        dom.btnUsersNext.disabled = res.pagination.page >= res.pagination.pages;
-      }
-    } catch (err) {
-      console.warn('User load error:', err);
-    }
-  }
-
-  function renderUsers(users) {
-    if (users.length === 0) {
-      dom.usersTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No users matched the criteria</td></tr>';
-      return;
-    }
-
-    dom.usersTbody.innerHTML = users.map(u => {
-      const roleBadge = u.role === 'admin' 
-        ? '<span class="badge badge-info">ADMIN</span>' 
-        : '<span class="badge text-muted">USER</span>';
-
-      const statusBadge = u.status === 'active'
-        ? '<span class="badge badge-success">ACTIVE</span>'
-        : '<span class="badge badge-danger">SUSPENDED</span>';
-
-      return `
-        <tr data-user-id="${u.id}">
-          <td class="font-medium">${escapeHtml(u.email)}</td>
-          <td>${roleBadge}</td>
-          <td>${statusBadge}</td>
-          <td class="text-sm text-muted">${formatDate(u.created_at)}</td>
-          <td>
-            <button class="btn btn-sm btn-link btn-view-user" data-id="${u.id}">Activity Details →</button>
-          </td>
-          <td>
-            <div class="flex gap-2">
-              <button class="btn btn-sm btn-secondary btn-toggle-role" data-id="${u.id}" data-current="${u.role}">
-                ${u.role === 'admin' ? 'Demote to User' : 'Make Admin'}
-              </button>
-              <button class="btn btn-sm ${u.status === 'active' ? 'btn-danger' : 'btn-secondary'} btn-toggle-status" data-id="${u.id}" data-current="${u.status}">
-                ${u.status === 'active' ? 'Suspend' : 'Activate'}
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    // Attach row listeners
-    dom.usersTbody.querySelectorAll('.btn-view-user').forEach(b => {
-      b.addEventListener('click', () => viewUserActivity(b.dataset.id));
-    });
-
-    dom.usersTbody.querySelectorAll('.btn-toggle-role').forEach(b => {
-      b.addEventListener('click', () => toggleUserRole(b.dataset.id, b.dataset.current));
-    });
-
-    dom.usersTbody.querySelectorAll('.btn-toggle-status').forEach(b => {
-      b.addEventListener('click', () => toggleUserStatus(b.dataset.id, b.dataset.current));
-    });
-  }
-
-  async function toggleUserRole(userId, currentRole) {
-    const targetRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!confirm(`Are you sure you want to change this user's role to "${targetRole.toUpperCase()}"?`)) return;
-
-    try {
-      await api(`/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role: targetRole }),
-      });
-      showToast(`User role updated to ${targetRole}`, 'success');
-      loadUsers();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  }
-
-  async function toggleUserStatus(userId, currentStatus) {
-    const targetStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    if (!confirm(`Are you sure you want to change this user's status to "${targetStatus.toUpperCase()}"?`)) return;
-
-    try {
-      await api(`/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: targetStatus }),
-      });
-      showToast(`User status updated to ${targetStatus}`, 'success');
-      loadUsers();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  }
-
-  async function viewUserActivity(userId) {
-    dom.userModal.classList.remove('hidden');
-    dom.userModalBody.innerHTML = '<div class="text-center p-4">Loading user metrics...</div>';
-
-    try {
-      const res = await api(`/api/admin/users/${userId}/activity`);
-      const { user, activity } = res.data;
-
-      dom.userModalTitle.textContent = `User: ${user.email}`;
-      dom.userModalBody.innerHTML = `
-        <div class="grid-2-sm mb-3">
-          <div class="info-item">
-            <span class="info-label">Role</span>
-            <span class="font-mono uppercase">${user.role}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Status</span>
-            <span class="font-mono uppercase">${user.status}</span>
-          </div>
-        </div>
-
-        <h4 class="text-sm font-semibold mb-2">Company Workspace Data</h4>
-        <div class="grid-3 metrics-grid mb-3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem;">
-          <div class="info-item flex-col text-center">
-            <span class="text-xl font-bold font-mono text-cyan">${activity.machineCount}</span>
-            <span class="text-xs text-muted">Machines</span>
-          </div>
-          <div class="info-item flex-col text-center">
-            <span class="text-xl font-bold font-mono text-indigo">${activity.sectionCount}</span>
-            <span class="text-xs text-muted">Components</span>
-          </div>
-          <div class="info-item flex-col text-center">
-            <span class="text-xl font-bold font-mono text-emerald">${activity.usageRecordCount}</span>
-            <span class="text-xs text-muted">Usage Records</span>
-          </div>
-        </div>
-
-        <h4 class="text-sm font-semibold mb-2">Recent Security Activity</h4>
-        <div class="table-responsive">
-          <table class="data-table table-sm">
-            <thead><tr><th>Action</th><th>Date</th></tr></thead>
-            <tbody>
-              ${(activity.recentAuditLogs || []).map(l => `
-                <tr>
-                  <td class="font-mono text-xs">${l.action}</td>
-                  <td class="text-xs text-muted">${formatDate(l.created_at)}</td>
-                </tr>
-              `).join('') || '<tr><td colspan="2" class="text-center text-muted">No recent logs</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-      `;
-    } catch (err) {
-      dom.userModalBody.innerHTML = `<div class="text-center text-rose p-4">Error: ${err.message}</div>`;
-    }
-  }
-
-  // ─── TAB 4: AUDIT LOGS ────────────────────────────────────────────────────
+  // ─── 9. AUDIT TRAIL ───────────────────────────────────────────────────────
   async function loadAuditLogs() {
     try {
-      const res = await api('/api/admin/audit-logs?limit=40');
+      const res = await api('/api/admin/audit-logs?limit=50');
       const logs = res.data || [];
       renderAuditLogs(logs);
-
-      // Mini audit on overview
-      if (dom.miniAuditList) {
-        dom.miniAuditList.innerHTML = logs.slice(0, 5).map(l => `
-          <div class="mini-log-item">
-            <div>
-              <span class="font-mono font-medium">${escapeHtml(l.action)}</span>
-              <span class="text-muted ml-2 text-xs">${escapeHtml(l.user_email || 'system')}</span>
-            </div>
-            <span class="text-dim text-xs font-mono">${formatRelativeTime(l.created_at)}</span>
-          </div>
-        `).join('') || '<div class="empty-state">No audit logs recorded yet</div>';
-      }
     } catch (err) {
       console.warn('Audit logs error:', err);
     }
@@ -592,27 +1013,27 @@
 
   function renderAuditLogs(logs) {
     const search = dom.auditSearchInput.value.toLowerCase().trim();
-    const filtered = search 
+    const filtered = search
       ? logs.filter(l => l.action.toLowerCase().includes(search) || (l.user_email || '').toLowerCase().includes(search))
       : logs;
 
     if (filtered.length === 0) {
-      dom.auditTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No audit records found</td></tr>';
+      dom.auditTbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No audit logs found</td></tr>';
       return;
     }
 
     dom.auditTbody.innerHTML = filtered.map(l => `
       <tr>
         <td class="font-mono text-xs text-muted">${formatDate(l.created_at)}</td>
-        <td><span class="badge badge-info">${escapeHtml(l.action)}</span></td>
-        <td class="text-sm">${escapeHtml(l.user_email || 'System')}</td>
+        <td><span class="tag font-mono">${escapeHtml(l.action)}</span></td>
+        <td class="text-sm font-medium">${escapeHtml(l.user_email || 'System')}</td>
         <td class="font-mono text-xs text-dim">${escapeHtml(l.ip_address || '—')}</td>
-        <td class="text-xs text-dim font-mono">${escapeHtml(JSON.stringify(l.details || {}))}</td>
+        <td class="font-mono text-xs text-dim">${escapeHtml(JSON.stringify(l.metadata || l.details || {}))}</td>
       </tr>
     `).join('');
   }
 
-  // ─── TAB 5: SYSTEM & DATABASE STATS ───────────────────────────────────────
+  // ─── 10. SYSTEM & DB STATS ────────────────────────────────────────────────
   async function loadSystemAndDbStats() {
     try {
       const [sysRes, dbRes] = await Promise.all([
@@ -622,8 +1043,8 @@
 
       if (sysRes.data) {
         const s = sysRes.data;
-        dom.sysApp.textContent = s.application || 'EquipTrack Fastify Backend';
-        dom.sysNode.textContent = s.nodeVersion || 'v20+';
+        dom.sysApp.textContent = s.application || 'EquipTrack Backend';
+        dom.sysNode.textContent = s.nodeVersion || '—';
         dom.sysUptime.textContent = formatUptime(s.uptimeSeconds || 0);
         dom.sysPlatform.textContent = `${s.os?.platform || ''} ${s.os?.arch || ''}`;
         dom.sysMemory.textContent = `RSS: ${s.memory?.rss || ''} | Heap: ${s.memory?.heapUsed || ''} / ${s.memory?.heapTotal || ''}`;
@@ -642,14 +1063,25 @@
             <td class="font-mono">${t.row_count}</td>
             <td class="font-mono text-dim">${t.total_size || '—'}</td>
           </tr>
-        `).join('') || '<tr><td colspan="3" class="text-center text-muted">No tables found</td></tr>';
+        `).join('');
       }
     } catch (err) {
       console.warn('System/DB load error:', err);
     }
   }
 
-  // ─── UTILS & HELPERS ──────────────────────────────────────────────────────
+  // ─── MODAL CONTROLS ───────────────────────────────────────────────────────
+  function openDetailModal(title, data) {
+    dom.modalDetailTitle.textContent = title;
+    dom.modalDetailBody.innerHTML = `<pre class="code-block">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+    dom.modalDetail.classList.remove('hidden');
+  }
+
+  function closeAllModals() {
+    document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.add('hidden'));
+  }
+
+  // ─── FORMATTERS ───────────────────────────────────────────────────────────
   function formatDate(d) {
     if (!d) return '—';
     try {
@@ -657,17 +1089,6 @@
     } catch {
       return d;
     }
-  }
-
-  function formatRelativeTime(d) {
-    if (!d) return 'never';
-    const diffMs = Date.now() - new Date(d).getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
   }
 
   function formatBytes(bytes) {
@@ -698,12 +1119,21 @@
     }[tag] || tag));
   }
 
+  function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
   // ─── EVENT LISTENERS ──────────────────────────────────────────────────────
   function initEventListeners() {
-    // Toggle password
+    // Toggle password view
     dom.togglePwdBtn.addEventListener('click', () => {
       const type = dom.loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
       dom.loginPassword.setAttribute('type', type);
+      dom.togglePwdBtn.textContent = type === 'password' ? 'Show' : 'Hide';
     });
 
     // Login submit
@@ -712,14 +1142,16 @@
       const apiUrl = dom.apiUrlInput.value.trim() || window.location.origin;
       state.apiUrl = apiUrl;
       localStorage.setItem('equiptrack_api_url', state.apiUrl);
-
       login(dom.loginEmail.value.trim(), dom.loginPassword.value);
     });
 
     // Logout
     dom.btnLogout.addEventListener('click', logout);
 
-    // Sidebar navigation tabs
+    // Global refresh
+    dom.btnGlobalRefresh.addEventListener('click', () => refreshCurrentTab(false));
+
+    // Nav tabs
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const target = btn.dataset.tab;
@@ -731,11 +1163,12 @@
         if (pane) pane.classList.add('active');
 
         state.activeTab = target;
-        dom.pageTitle.textContent = btn.querySelector('span').textContent;
+        dom.pageTitle.textContent = btn.querySelector('span:last-child').textContent;
+        refreshCurrentTab(true);
       });
     });
 
-    // Link targets in panels
+    // Quick links
     document.querySelectorAll('[data-tab-target]').forEach(link => {
       link.addEventListener('click', () => {
         const targetTab = link.dataset.tabTarget;
@@ -744,18 +1177,12 @@
       });
     });
 
-    // Global refresh
-    dom.btnGlobalRefresh.addEventListener('click', () => refreshAllData(false));
-
-    // Backup actions
-    dom.btnExecuteBackup.addEventListener('click', executeBackup);
-    dom.btnSaveBackupConfig.addEventListener('click', saveBackupConfig);
-    dom.btnTestTgConfig.addEventListener('click', testTelegramPing);
-    dom.btnRefreshHistory.addEventListener('click', loadBackupConfigAndHistory);
-
-    // Quick actions on Overview
+    // Overview Quick actions
     dom.btnQuickBackup.addEventListener('click', executeBackup);
     dom.btnQuickTgTest.addEventListener('click', testTelegramPing);
+    dom.btnQuickAddUser.addEventListener('click', () => {
+      dom.modalAddUser.classList.remove('hidden');
+    });
     dom.btnQuickDbCheck.addEventListener('click', async () => {
       try {
         const res = await api('/api/admin/db');
@@ -765,33 +1192,64 @@
       }
     });
 
-    // Users filters & pagination
+    // User buttons & search
+    dom.btnOpenAddUserModal.addEventListener('click', () => {
+      dom.newEmail.value = '';
+      dom.newPassword.value = '';
+      dom.modalAddUser.classList.remove('hidden');
+    });
+    dom.formAddUser.addEventListener('submit', createUser);
+    dom.formResetPassword.addEventListener('submit', submitResetPassword);
+
     dom.userSearchInput.addEventListener('input', debounce(loadUsers, 300));
     dom.userRoleFilter.addEventListener('change', () => { state.usersPage = 1; loadUsers(); });
     dom.userStatusFilter.addEventListener('change', () => { state.usersPage = 1; loadUsers(); });
     dom.btnUsersPrev.addEventListener('click', () => { if (state.usersPage > 1) { state.usersPage--; loadUsers(); } });
     dom.btnUsersNext.addEventListener('click', () => { state.usersPage++; loadUsers(); });
 
-    // Audit search & refresh
+    // Machines
+    dom.btnOpenAddMachineModal.addEventListener('click', () => openMachineModal());
+    dom.formMachine.addEventListener('submit', saveMachine);
+    dom.machineSearchInput.addEventListener('input', debounce(loadMachines, 300));
+
+    // Sections
+    dom.btnOpenAddSectionModal.addEventListener('click', () => openSectionModal());
+    dom.formSection.addEventListener('submit', saveSection);
+
+    // Records
+    dom.btnOpenAddRecordModal.addEventListener('click', () => openRecordModal());
+    dom.formRecord.addEventListener('submit', saveRecord);
+
+    // Errors
+    dom.btnClearAllErrors.addEventListener('click', clearAllErrors);
+    dom.btnRefreshErrors.addEventListener('click', loadErrorLogs);
+
+    // Raw Tables
+    dom.rawTableSelect.addEventListener('change', loadRawTableData);
+    dom.btnRefreshRawTable.addEventListener('click', loadRawTableData);
+
+    // Backups & Telegram
+    dom.btnExecuteBackup.addEventListener('click', executeBackup);
+    dom.btnSaveBackupConfig.addEventListener('click', saveBackupConfig);
+    dom.btnTestTgConfig.addEventListener('click', testTelegramPing);
+    dom.btnRefreshHistory.addEventListener('click', loadBackupConfigAndHistory);
+
+    // Audit
     dom.auditSearchInput.addEventListener('input', debounce(loadAuditLogs, 300));
     dom.btnRefreshAudit.addEventListener('click', loadAuditLogs);
 
-    // Modal close
-    dom.btnCloseUserModal.addEventListener('click', () => dom.userModal.classList.add('hidden'));
-    dom.userModal.addEventListener('click', (e) => {
-      if (e.target === dom.userModal) dom.userModal.classList.add('hidden');
+    // Close modals
+    document.querySelectorAll('[data-close-modal]').forEach(b => {
+      b.addEventListener('click', closeAllModals);
+    });
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+      m.addEventListener('click', (e) => {
+        if (e.target === m) closeAllModals();
+      });
     });
   }
 
-  function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-  }
-
-  // ─── STARTUP BOOTSTRAP ────────────────────────────────────────────────────
+  // ─── STARTUP ──────────────────────────────────────────────────────────────
   function start() {
     dom.apiUrlInput.value = state.apiUrl;
     initEventListeners();
