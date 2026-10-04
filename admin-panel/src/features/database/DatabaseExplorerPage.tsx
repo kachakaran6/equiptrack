@@ -127,11 +127,11 @@ export const DatabaseExplorerPage: React.FC = () => {
                     <span className="flex items-center gap-1.5 text-zinc-500">
                       <Columns className="h-3.5 w-3.5" /> Columns:
                     </span>
-                    <span className="text-zinc-300">{tbl.columns.length} columns</span>
+                    <span className="text-zinc-300">{(tbl.columns || []).length} columns</span>
                   </div>
 
                   <div className="flex flex-wrap gap-1 pt-1">
-                    {tbl.columns.slice(0, 4).map((col) => (
+                    {(tbl.columns || []).slice(0, 4).map((col) => (
                       <span
                         key={col.column_name}
                         className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400 border border-zinc-800/60"
@@ -139,9 +139,9 @@ export const DatabaseExplorerPage: React.FC = () => {
                         {col.column_name}
                       </span>
                     ))}
-                    {tbl.columns.length > 4 && (
+                    {(tbl.columns || []).length > 4 && (
                       <span className="font-mono text-[9px] text-zinc-600 px-1 py-0.5">
-                        +{tbl.columns.length - 4} more
+                        +{(tbl.columns || []).length - 4} more
                       </span>
                     )}
                   </div>
