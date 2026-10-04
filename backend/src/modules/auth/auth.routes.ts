@@ -1,17 +1,12 @@
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
 import { registerSchema, loginSchema } from './auth.schemas.js';
 import { AuthService } from './auth.service.js';
 
-export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+export async function authRoutes(fastify: FastifyInstance) {
   // POST /api/auth/register
   fastify.post('/register', {
-    config: {
-      rateLimit: {
-        max: 10,
-        timeWindow: '1 minute',
-      },
-    },
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
     handler: async (request, reply) => {
       const parsed = registerSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -24,14 +19,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
       try {
         const user = await AuthService.register(parsed.data);
-        const token = fastify.jwt.sign({ id: user.id, email: user.email });
+        // Include role in JWT payload
+        const token = fastify.jwt.sign({ id: user.id, email: user.email, role: user.role });
 
         return reply.status(201).send({
           success: true,
-          data: {
-            user,
-            token,
-          },
+          data: { user, token },
         });
       } catch (err: any) {
         return reply.status(400).send({
@@ -44,12 +37,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
   // POST /api/auth/login
   fastify.post('/login', {
-    config: {
-      rateLimit: {
-        max: 15,
-        timeWindow: '1 minute',
-      },
-    },
+    config: { rateLimit: { max: 15, timeWindow: '1 minute' } },
     handler: async (request, reply) => {
       const parsed = loginSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -62,14 +50,12 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
       try {
         const user = await AuthService.login(parsed.data);
-        const token = fastify.jwt.sign({ id: user.id, email: user.email });
+        // Include role in JWT payload — role is set server-side, never trusted from client
+        const token = fastify.jwt.sign({ id: user.id, email: user.email, role: user.role });
 
         return reply.status(200).send({
           success: true,
-          data: {
-            user,
-            token,
-          },
+          data: { user, token },
         });
       } catch (err: any) {
         return reply.status(401).send({
@@ -94,9 +80,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
 
       return reply.status(200).send({
         success: true,
-        data: {
-          user,
-        },
+        data: { user },
       });
     },
   });
@@ -111,4 +95,4 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       });
     },
   });
-};
+}
