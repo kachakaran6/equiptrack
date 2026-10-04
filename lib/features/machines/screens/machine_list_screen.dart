@@ -320,13 +320,6 @@ class _MachineRowCard extends ConsumerWidget {
               }
             },
           ),
-          const SizedBox(width: 4),
-          // Navigation Chevron
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: colorScheme.onSurfaceVariant.withAlpha(120),
-          ),
         ],
       ),
     );
