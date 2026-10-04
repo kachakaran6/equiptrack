@@ -16,20 +16,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => getStoredUser<User>())
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const token = getAuthToken()
+    const stored = getStoredUser<User>()
+    // If we have token and stored user, we're not blocking initial render
+    return !(token && stored)
+  })
 
   const refreshUser = async () => {
+    const token = getAuthToken()
+    if (!token) {
+      setUser(null)
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const token = getAuthToken()
-      if (!token) {
-        setUser(null)
-        setIsLoading(false)
-        return
-      }
       const currentUser = await authApi.getMe()
       setUser(currentUser)
-    } catch {
-      setUser(null)
+    } catch (err) {
+      console.warn('Session check note:', err)
+      // Only nullify user if the token was removed
+      if (!getAuthToken()) {
+        setUser(null)
+      }
     } finally {
       setIsLoading(false)
     }

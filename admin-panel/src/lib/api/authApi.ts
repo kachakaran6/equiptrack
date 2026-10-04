@@ -25,9 +25,14 @@ export const authApi = {
   },
 
   async getMe(): Promise<User> {
-    const data = await apiRequest<{ success: boolean; data: User }>('/api/auth/me')
-    const user = data.data
-    const userRole = (user?.role || '').toLowerCase()
+    const data = await apiRequest<{ success: boolean; data: any }>('/api/auth/me')
+    const rawData = data?.data
+    const user: User = (rawData?.user ? rawData.user : rawData) as User
+    if (!user || typeof user !== 'object') {
+      removeAuthToken()
+      throw new Error('Invalid user response from server.')
+    }
+    const userRole = (user.role || '').toLowerCase()
     if (userRole !== 'admin') {
       removeAuthToken()
       throw new Error('Administrator access required.')
