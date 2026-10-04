@@ -22,7 +22,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 
 export const AppRouter: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         {/* Public / Auth routes */}
         <Route element={<AuthLayout />}>

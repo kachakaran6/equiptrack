@@ -93,6 +93,16 @@ export function buildApp(): FastifyInstance {
     return reply.redirect('/admin/');
   });
 
+  app.setNotFoundHandler((request, reply) => {
+    if (request.url.startsWith('/admin') && !request.url.startsWith('/api')) {
+      return reply.sendFile('index.html');
+    }
+    return reply.status(404).send({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Route not found' },
+    });
+  });
+
   // 5. Register API Routes
   app.register(authRoutes, { prefix: '/api/auth' });
   app.register(machineRoutes, { prefix: '/api/machines' });
