@@ -67,22 +67,22 @@ void main() {
         ),
       );
 
-      // Verify Column headers on desktop
-      expect(find.text('Record Name'), findsOneWidget);
-      expect(find.text('Usage Date'), findsOneWidget);
-      expect(find.text('Duration'), findsOneWidget);
+      // Verify Column headers
+      expect(find.text('Name'), findsOneWidget);
+      expect(find.text('Date'), findsOneWidget);
+      expect(find.text('Usage Days'), findsOneWidget);
 
       // Verify row values
       expect(find.text('Seal Replacement'), findsOneWidget);
       expect(find.text('02/10/2026'), findsOneWidget);
-      expect(find.text('10 days'), findsOneWidget);
+      expect(find.text('10'), findsOneWidget);
 
       expect(find.text('Belt Tensioning'), findsOneWidget);
       expect(find.text('12/10/2026'), findsOneWidget);
       expect(find.text(AppConstants.runningText), findsOneWidget);
     });
 
-    testWidgets('Renders mobile card list on small screen', (tester) async {
+    testWidgets('Renders table rows on mobile screen', (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -105,7 +105,7 @@ void main() {
 
       expect(find.text('Seal Replacement'), findsOneWidget);
       expect(find.text('02/10/2026'), findsOneWidget);
-      expect(find.text('10 days'), findsOneWidget);
+      expect(find.text('10'), findsOneWidget);
 
       expect(find.text('Belt Tensioning'), findsOneWidget);
       expect(find.text('12/10/2026'), findsOneWidget);
@@ -113,3 +113,4 @@ void main() {
     });
   });
 }
+

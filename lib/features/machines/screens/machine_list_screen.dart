@@ -11,10 +11,10 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
-import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_popup_menu.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_shimmer.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/theme_toggle_button.dart';
@@ -27,6 +27,7 @@ import '../../../core/widgets/exit_confirm_dialog.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/machines_controller.dart';
 import '../widgets/add_edit_machine_dialog.dart';
+import '../widgets/duplicate_machine_dialog.dart';
 
 class MachineListScreen extends ConsumerWidget {
   const MachineListScreen({super.key});
@@ -110,7 +111,7 @@ class MachineListScreen extends ConsumerWidget {
             // Machines List or States
             Expanded(
               child: machinesAsync.when(
-                loading: () => const AppLoading(message: 'Loading machines...'),
+                loading: () => const MachineListSkeleton(),
                 error: (err, _) => AppErrorState(
                   message: err.toString(),
                   onRetry: () => ref.invalidate(machinesStreamProvider),
@@ -227,9 +228,9 @@ class _MachineRowCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 3),
                 sectionsAsync.when(
-                  loading: () => Text(
-                    'Loading components...',
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.only(top: 2, bottom: 2),
+                    child: AppSkeletonLine(width: 90, height: 9),
                   ),
                   error: (_, _) => machine.description != null && machine.description!.isNotEmpty
                       ? Text(
@@ -278,6 +279,11 @@ class _MachineRowCard extends ConsumerWidget {
                 icon: Icons.edit_outlined,
               ),
               AppPopupMenuItem(
+                value: 'duplicate',
+                label: 'Duplicate',
+                icon: Icons.copy_rounded,
+              ),
+              AppPopupMenuItem(
                 value: 'delete',
                 label: 'Delete',
                 icon: Icons.delete_outline_rounded,
@@ -287,6 +293,8 @@ class _MachineRowCard extends ConsumerWidget {
             onSelected: (action) async {
               if (action == 'edit') {
                 AddEditMachineDialog.show(context, machine: machine);
+              } else if (action == 'duplicate') {
+                DuplicateMachineDialog.show(context, machine: machine);
               } else if (action == 'delete') {
                 final confirm = await AppConfirmDialog.show(
                   context: context,

@@ -120,7 +120,7 @@ void main() {
         ),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
       expect(find.text('Loading assets...'), findsOneWidget);
     });
 

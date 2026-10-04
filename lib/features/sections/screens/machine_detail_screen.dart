@@ -10,10 +10,10 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
-import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_popup_menu.dart';
 import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_shimmer.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/repositories/section_repository.dart';
@@ -21,6 +21,7 @@ import '../../../data/repositories/usage_record_repository.dart';
 import '../../../models/section.dart';
 import '../../machines/controllers/machines_controller.dart';
 import '../../machines/widgets/add_edit_machine_dialog.dart';
+import '../../machines/widgets/duplicate_machine_dialog.dart';
 import '../controllers/sections_controller.dart';
 import '../widgets/add_edit_section_dialog.dart';
 
@@ -54,19 +55,38 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
         actions: [
           machineAsync.maybeWhen(
             data: (machine) => machine != null
-                ? IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    tooltip: 'Edit Machine',
-                    splashRadius: 20,
-                    onPressed: () async {
-                      final updated = await AddEditMachineDialog.show(
-                        context,
-                        machine: machine,
-                      );
-                      if (updated != null) {
-                        ref.invalidate(singleMachineProvider(widget.machineId));
-                      }
-                    },
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 19),
+                        tooltip: 'Duplicate Machine',
+                        splashRadius: 20,
+                        onPressed: () async {
+                          final duplicated = await DuplicateMachineDialog.show(
+                            context,
+                            machine: machine,
+                          );
+                          if (duplicated != null && context.mounted) {
+                            context.go('/machines/${duplicated.id}');
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Edit Machine',
+                        splashRadius: 20,
+                        onPressed: () async {
+                          final updated = await AddEditMachineDialog.show(
+                            context,
+                            machine: machine,
+                          );
+                          if (updated != null) {
+                            ref.invalidate(singleMachineProvider(widget.machineId));
+                          }
+                        },
+                      ),
+                    ],
                   )
                 : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
@@ -84,7 +104,14 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
         ),
       ),
       body: machineAsync.when(
-        loading: () => const AppLoading(message: 'Loading machine info...'),
+        loading: () => ListView(
+          padding: AppSpacing.screenPadding,
+          children: const [
+            MachineHeaderSkeleton(),
+            SizedBox(height: 24),
+            SectionListSkeleton(itemCount: 4),
+          ],
+        ),
         error: (err, _) => AppErrorState(
           message: err.toString(),
           onRetry: () => ref.invalidate(singleMachineProvider(widget.machineId)),
@@ -175,7 +202,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
 
                 // Sections Header & List
                 sectionsAsync.when(
-                  loading: () => const AppLoading(message: 'Loading components...'),
+                  loading: () => const SectionListSkeleton(),
                   error: (err, _) => AppErrorState(
                     message: err.toString(),
                     onRetry: () => ref.invalidate(sectionsStreamFamily(widget.machineId)),
@@ -318,9 +345,9 @@ class _ComponentRowCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 3),
                 recordsAsync.when(
-                  loading: () => Text(
-                    'Loading records...',
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+                  loading: () => const Padding(
+                    padding: EdgeInsets.only(top: 2, bottom: 2),
+                    child: AppSkeletonLine(width: 80, height: 9),
                   ),
                   error: (_, _) => const SizedBox.shrink(),
                   data: (records) {

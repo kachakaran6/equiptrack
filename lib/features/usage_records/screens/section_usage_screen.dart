@@ -6,8 +6,8 @@ import '../../../core/widgets/app_app_bar.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_state.dart';
-import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_shimmer.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/repositories/usage_record_repository.dart';
@@ -82,14 +82,24 @@ class SectionUsageScreen extends ConsumerWidget {
         ),
       ),
       body: rawRecordsAsync.when(
-        loading: () => const AppLoading(message: 'Loading usage history...'),
+        loading: () => ListView(
+          padding: AppSpacing.screenPadding,
+          children: const [
+            UsageTableSkeleton(),
+          ],
+        ),
         error: (err, _) => AppErrorState(
           message: err.toString(),
           onRetry: () => ref.invalidate(usageRecordsStreamFamily(sectionId)),
         ),
         data: (rawRecords) {
           return calculatedRowsAsync.when(
-            loading: () => const AppLoading(message: 'Calculating durations...'),
+            loading: () => ListView(
+              padding: AppSpacing.screenPadding,
+              children: const [
+                UsageTableSkeleton(),
+              ],
+            ),
             error: (err, _) => AppErrorState(message: err.toString()),
             data: (rows) {
               return RefreshIndicator(
