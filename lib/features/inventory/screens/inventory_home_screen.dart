@@ -34,7 +34,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
     });
   }
 
-  Future<void> _confirmDeleteProduct(BuildContext context, InventoryProduct product) async {
+  Future<void> _confirmDeleteProduct(InventoryProduct product) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -60,17 +60,15 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
     if (confirmed == true && mounted) {
       try {
         await ref.read(inventoryProductsProvider.notifier).deleteProduct(product.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Product "${product.name}" deleted successfully')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Product "${product.name}" deleted successfully')),
+        );
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete product: $e'), backgroundColor: Colors.red),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete product: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -321,7 +319,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -412,7 +410,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 itemCount: product.subProducts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, subIndex) {
                   final sub = product.subProducts[subIndex];
                   return _buildSubProductRow(
@@ -469,7 +467,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                       padding: EdgeInsets.zero,
                       icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
                       tooltip: 'Delete Product Category',
-                      onPressed: () => _confirmDeleteProduct(context, product),
+                      onPressed: () => _confirmDeleteProduct(product),
                     ),
                   ),
                 ],

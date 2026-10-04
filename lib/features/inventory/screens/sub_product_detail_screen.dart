@@ -206,7 +206,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
               },
             ),
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (error, stack) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -438,7 +438,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                   transactionsAsync.when(
                     data: (txs) => Text('${txs.length} entries', style: TextStyle(fontSize: 12, color: theme.hintColor)),
                     loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (error, stack) => const SizedBox.shrink(),
                   ),
                 ],
               ),
@@ -475,7 +475,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: txs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                     itemBuilder: (ctx, idx) {
                       final tx = txs[idx];
                       final isIn = tx.isIn;

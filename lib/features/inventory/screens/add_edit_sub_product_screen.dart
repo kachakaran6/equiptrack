@@ -113,9 +113,9 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: primaryPurple.withOpacity(0.1),
+                  color: primaryPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: primaryPurple.withOpacity(0.3)),
+                  border: Border.all(color: primaryPurple.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -143,9 +143,9 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.15),
+                    color: Colors.red.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.withOpacity(0.4)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     children: [

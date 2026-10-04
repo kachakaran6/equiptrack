@@ -35,7 +35,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
     ref.read(reportFilterProvider.notifier).updateFilter((state) => state.copyWith(type: type));
   }
 
-  Future<void> _confirmDeleteTransaction(BuildContext context, InventoryTransaction tx) async {
+  Future<void> _confirmDeleteTransaction(InventoryTransaction tx) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -60,17 +60,15 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
         await ref.read(inventoryRepositoryProvider).deleteTransaction(tx.id);
         ref.invalidate(stockReportsProvider);
         ref.invalidate(inventoryProductsProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Transaction deleted successfully')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction deleted successfully')),
+        );
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete transaction: $e'), backgroundColor: Colors.red),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete transaction: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -274,7 +272,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: transactions.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final tx = transactions[index];
                       return _buildTransactionCard(context, tx: tx, isDark: isDark);
@@ -476,7 +474,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                     elevation: 0,
                   ),
-                  onPressed: () => _confirmDeleteTransaction(context, tx),
+                  onPressed: () => _confirmDeleteTransaction(tx),
                   child: const Text('Delete', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ),
