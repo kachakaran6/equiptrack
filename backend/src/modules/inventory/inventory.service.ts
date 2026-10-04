@@ -531,12 +531,17 @@ export class InventoryService {
     try {
       await client.query('BEGIN');
 
-      // Check current stock with lock to prevent race conditions
+      // Lock the sub_product row for concurrency safety without aggregate FOR UPDATE
+      await client.query(
+        'SELECT id FROM inventory_sub_products WHERE id = $1 FOR UPDATE',
+        [subProductId]
+      );
+
+      // Check current stock
       const stockRes = await client.query<{ current_stock: string }>(
         `SELECT COALESCE(SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END), 0) AS current_stock
          FROM inventory_transactions
-         WHERE sub_product_id = $1
-         FOR UPDATE`,
+         WHERE sub_product_id = $1`,
         [subProductId]
       );
       const currentStock = parseInt(stockRes.rows[0]?.current_stock ?? '0', 10);
