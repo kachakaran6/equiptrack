@@ -190,17 +190,17 @@ export const MachinesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Machines Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-hidden">
+      {/* Machines Table with Sticky Header & Scrollable Body */}
+      <div className="rounded-md border border-zinc-800/80 bg-zinc-950/70 overflow-hidden max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-auto relative">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Machine Name</TableHead>
-              <TableHead>Code / Tag</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Registered</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
+            <TableRow className="border-b border-zinc-800 bg-zinc-900 hover:bg-zinc-900">
+              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Machine Name</TableHead>
+              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Code / Tag</TableHead>
+              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Location</TableHead>
+              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Description</TableHead>
+              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Registered</TableHead>
+              <TableHead className="text-right text-zinc-300 bg-zinc-900 font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

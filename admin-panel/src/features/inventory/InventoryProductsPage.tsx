@@ -268,9 +268,9 @@ export const InventoryProductsPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => navigate('/inventory/reports')}
-            className="h-9 gap-1.5 text-xs border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+            className="h-8 gap-1.5 text-xs border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800"
           >
-            <FileSpreadsheet className="h-4 w-4 text-purple-400" />
+            <FileSpreadsheet className="h-3.5 w-3.5" />
             Stock Reports
           </Button>
           <Button
@@ -280,38 +280,23 @@ export const InventoryProductsPage: React.FC = () => {
               setCustomFields([])
               setIsAddProductOpen(true)
             }}
-            className="h-9 gap-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
+            className="h-8 gap-1.5 text-xs font-medium bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             Add New Product
           </Button>
         </div>
       </div>
 
-      {/* Prominent Purple "Add New Product" Banner Button (Matching Image 1 & 4) */}
-      <div className="w-full">
-        <button
-          onClick={() => {
-            setNewProductName('')
-            setCustomFields([])
-            setIsAddProductOpen(true)
-          }}
-          className="w-full py-3 px-4 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-semibold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          Add New Product
-        </button>
-      </div>
-
-      {/* Find Stock Detail Search Bar (Ref: Image 1) */}
+      {/* Find Stock Detail Search Bar */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
         <Input
           type="text"
-          placeholder="Find Stock Detail"
+          placeholder="Find Stock Detail..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-10 bg-zinc-900/90 border-zinc-800 text-zinc-200 text-sm placeholder:text-zinc-500 focus-visible:ring-purple-500"
+          className="pl-9 h-8 bg-zinc-900/90 border-zinc-800 text-zinc-200 text-xs placeholder:text-zinc-500"
         />
         {search && (
           <button
@@ -370,7 +355,7 @@ export const InventoryProductsPage: React.FC = () => {
                     <span className="font-bold text-sm text-zinc-100 tracking-wide uppercase">
                       {product.name}
                     </span>
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/60 text-purple-300">
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">
                       Total: {product.total_stock}
                     </span>
                   </div>

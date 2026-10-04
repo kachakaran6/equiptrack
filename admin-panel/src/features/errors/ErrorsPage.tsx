@@ -46,6 +46,8 @@ import {
   Clock,
   Globe,
   User,
+  Copy,
+  Check,
 } from 'lucide-react'
 
 export const ErrorsPage: React.FC = () => {
@@ -54,6 +56,7 @@ export const ErrorsPage: React.FC = () => {
   const [severityFilter, setSeverityFilter] = useState<string>('ALL')
   const [selectedError, setSelectedError] = useState<ErrorLog | null>(null)
   const [isClearOpen, setIsClearOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const { data: errorLogs = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['adminErrors', severityFilter],
@@ -156,9 +159,9 @@ export const ErrorsPage: React.FC = () => {
       </div>
 
       {/* Errors Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-hidden">
+      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-280px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
             <TableRow>
               <TableHead>Timestamp</TableHead>
               <TableHead>Severity</TableHead>
@@ -240,17 +243,35 @@ export const ErrorsPage: React.FC = () => {
       <Sheet open={!!selectedError} onOpenChange={() => setSelectedError(null)}>
         <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-zinc-950 border-l border-zinc-800">
           <SheetHeader className="border-b border-zinc-800 pb-4">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={
-                  selectedError?.severity === 'FATAL' || selectedError?.severity === 'ERROR'
-                    ? 'destructive'
-                    : 'secondary'
-                }
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    selectedError?.severity === 'FATAL' || selectedError?.severity === 'ERROR'
+                      ? 'destructive'
+                      : 'secondary'
+                  }
+                >
+                  {selectedError?.severity}
+                </Badge>
+                <span className="font-mono text-xs text-zinc-500">{selectedError?.error_code}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (selectedError) {
+                    const text = `Error: ${selectedError.error_code}\nMessage: ${selectedError.message}\nEndpoint: ${selectedError.method} ${selectedError.endpoint}\nStatus: ${selectedError.status_code}\nTimestamp: ${selectedError.created_at}\n\nStack Trace:\n${selectedError.stack_trace || 'None'}\n\nMetadata:\n${JSON.stringify(selectedError.metadata || {}, null, 2)}`
+                    navigator.clipboard.writeText(text)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }
+                }}
+                className="h-7 px-2 text-[11px] gap-1 border-zinc-800 bg-zinc-900/60"
               >
-                {selectedError?.severity}
-              </Badge>
-              <span className="font-mono text-xs text-zinc-500">{selectedError?.error_code}</span>
+                {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                {copied ? 'Copied' : 'Copy Info'}
+              </Button>
             </div>
             <SheetTitle className="text-sm font-semibold text-zinc-100 break-words mt-2">
               {selectedError?.message}

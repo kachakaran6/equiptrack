@@ -52,7 +52,8 @@ export async function apiRequest<T>(
   const token = getAuthToken()
   const headers = new Headers(options.headers || {})
 
-  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+  // Only attach Content-Type: application/json if there is an actual request body
+  if (options.body && !headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json")
   }
 
@@ -90,14 +91,20 @@ export async function apiRequest<T>(
     const data = isJson ? await response.json() : await response.text()
 
     if (!response.ok) {
-      const message =
-        typeof data === "object" && data !== null && "message" in data
-          ? String((data as { message: unknown }).message)
-          : response.statusText || "An unexpected error occurred"
-      const code =
-        typeof data === "object" && data !== null && "code" in data
-          ? String((data as { code: unknown }).code)
-          : undefined
+      let message = response.statusText || "An unexpected error occurred"
+      let code: string | undefined = undefined
+
+      if (typeof data === "object" && data !== null) {
+        if ("error" in data && typeof (data as any).error === "object" && (data as any).error !== null) {
+          message = (data as any).error.message || message
+          code = (data as any).error.code || code
+        } else if ("message" in data) {
+          message = String((data as any).message)
+        }
+        if ("code" in data && typeof (data as any).code === "string") {
+          code = (data as any).code
+        }
+      }
 
       throw new ApiError(message, response.status, code, data)
     }

@@ -89,10 +89,10 @@ export const InventoryReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Back to Products link (Ref: Image 5) */}
+      {/* Back to Products link */}
       <button
         onClick={() => navigate('/inventory/products')}
-        className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to Products
@@ -111,15 +111,15 @@ export const InventoryReportsPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleExportCsv}
-            className="h-9 gap-1.5 text-xs border-zinc-700 bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+            className="h-8 gap-1.5 text-xs border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800"
           >
-            <Download className="h-3.5 w-3.5 text-purple-400" />
+            <Download className="h-3.5 w-3.5" />
             Export CSV
           </Button>
         </div>
       </div>
 
-      {/* Top Filter Controls (Ref: Image 5) */}
+      {/* Top Filter Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Search input: "Filter Report..." */}
         <div className="relative md:col-span-2">
@@ -129,7 +129,7 @@ export const InventoryReportsPage: React.FC = () => {
             placeholder="Filter Report..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 bg-zinc-900/90 border-zinc-800 text-zinc-200 text-sm placeholder:text-zinc-500 focus-visible:ring-purple-500"
+            className="pl-9 h-8 bg-zinc-900/90 border-zinc-800 text-zinc-200 text-xs placeholder:text-zinc-500"
           />
           {searchQuery && (
             <button
@@ -150,7 +150,7 @@ export const InventoryReportsPage: React.FC = () => {
               setSearchParams(val === 'ALL' ? {} : { product_id: val })
             }}
           >
-            <SelectTrigger className="h-10 bg-zinc-900 border-zinc-800 text-zinc-200 text-xs">
+            <SelectTrigger className="h-8 bg-zinc-900 border-zinc-800 text-zinc-200 text-xs">
               <SelectValue placeholder="All Product Categories" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-200">
@@ -165,7 +165,7 @@ export const InventoryReportsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Segmented Filter Tabs: [ All ] [ In ] [ Out ] (Exact Match to Ref: Image 5) */}
+      {/* Segmented Filter Tabs: [ All ] [ In ] [ Out ] */}
       <div className="flex rounded-lg border border-zinc-800 bg-zinc-950/80 p-1">
         {(['ALL', 'IN', 'OUT'] as const).map((tab) => {
           const isActive = activeTypeTab === tab
@@ -173,9 +173,9 @@ export const InventoryReportsPage: React.FC = () => {
             <button
               key={tab}
               onClick={() => setActiveTypeTab(tab)}
-              className={`flex-1 py-2.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer text-center ${
                 isActive
-                  ? 'bg-purple-950/80 text-purple-300 border border-purple-800 shadow-sm'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
@@ -196,22 +196,21 @@ export const InventoryReportsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Transactions Table (Matching Image 5) */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-900/90 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Name ↓</th>
-                <th className="py-3 px-4">Make ↓</th>
-                <th className="py-3 px-4">Number ↓</th>
-                <th className="py-3 px-4 text-center">Quantity ↓</th>
-                <th className="py-3 px-4 text-center">Type ↓</th>
-                <th className="py-3 px-4">Date ↓</th>
-                <th className="py-3 px-4">Remarks ↓</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
+      {/* Transactions Table */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-auto max-h-[calc(100vh-280px)] shadow-sm">
+        <table className="w-full text-left border-collapse text-xs">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-zinc-800 bg-zinc-900 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
+              <th className="py-2.5 px-4">Name ↓</th>
+              <th className="py-2.5 px-4">Make ↓</th>
+              <th className="py-2.5 px-4">Number ↓</th>
+              <th className="py-2.5 px-4 text-center">Quantity ↓</th>
+              <th className="py-2.5 px-4 text-center">Type ↓</th>
+              <th className="py-2.5 px-4">Date ↓</th>
+              <th className="py-2.5 px-4">Remarks ↓</th>
+              <th className="py-2.5 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
             <tbody className="divide-y divide-zinc-800/60">
               {loading ? (
                 <tr>
@@ -292,7 +291,6 @@ export const InventoryReportsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
     </div>
   )
 }

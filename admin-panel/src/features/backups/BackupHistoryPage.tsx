@@ -108,9 +108,9 @@ export const BackupHistoryPage: React.FC = () => {
       </div>
 
       {/* History Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-hidden">
+      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-280px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
             <TableRow>
               <TableHead>Started Time</TableHead>
               <TableHead>Completed</TableHead>

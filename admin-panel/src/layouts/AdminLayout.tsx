@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { apiRequest } from '@/lib/api/apiClient'
 import {
   LayoutDashboard,
   Database,
@@ -108,6 +110,16 @@ export const AdminLayout: React.FC = () => {
   const [commandOpen, setCommandOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Real backend / database health poll
+  const { data: healthData } = useQuery({
+    queryKey: ['nodeHealth'],
+    queryFn: async () => {
+      return apiRequest<{ status: string; database: string }>('/health')
+    },
+    refetchInterval: 15000,
+    retry: 1,
+  })
 
   // Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -285,10 +297,24 @@ export const AdminLayout: React.FC = () => {
               </kbd>
             </Button>
 
-            {/* Node Status indicator */}
-            <div className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-mono text-zinc-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="hidden md:inline">NODE ACTIVE</span>
+            {/* Real Node / Database Status indicator */}
+            <div className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/70 px-2.5 py-1 text-[11px] font-mono text-zinc-300">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  healthData?.status === 'ok' && healthData.database === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : healthData?.status === 'degraded'
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-red-500'
+                }`}
+              />
+              <span className="hidden md:inline font-medium">
+                {healthData?.status === 'ok' && healthData.database === 'connected'
+                  ? 'API & DB ONLINE'
+                  : healthData?.database === 'disconnected'
+                  ? 'DATABASE OFFLINE'
+                  : 'CONNECTING...'}
+              </span>
             </div>
           </div>
         </header>

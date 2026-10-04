@@ -337,9 +337,9 @@ export const TableViewerPage: React.FC = () => {
 
         {/* DATA TAB */}
         <TabsContent value="data" className="space-y-3">
-          <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-hidden">
+          <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-320px)]">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
                 <TableRow>
                   {activeColumns.map((col) => (
                     <TableHead key={col.column_name} className="whitespace-nowrap">
@@ -462,9 +462,9 @@ export const TableViewerPage: React.FC = () => {
 
         {/* SCHEMA TAB */}
         <TabsContent value="schema">
-          <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-hidden">
+          <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-320px)]">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
                 <TableRow>
                   <TableHead>Column Name</TableHead>
                   <TableHead>Data Type</TableHead>

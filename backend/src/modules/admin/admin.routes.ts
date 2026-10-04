@@ -65,6 +65,88 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // SYSTEM
   // ──────────────────────────────────────────────────────────────────
 
+  // GET /api/admin/overview (Consolidated Dashboard Overview Metrics)
+  fastify.get('/overview', async (request, reply) => {
+    const dbInfo = await AdminSystemService.getDatabaseInfo();
+
+    const [
+      usersCount,
+      machinesCount,
+      sectionsCount,
+      usageCount,
+      errorsCount,
+      recentAudit,
+    ] = await Promise.all([
+      query<{ count: string }>('SELECT COUNT(*) FROM users').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM machines').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM sections').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM usage_records').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM error_logs WHERE created_at > NOW() - INTERVAL \'24 hours\'').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query('SELECT id, user_id as admin_id, user_email as admin_email, action, resource_type as resource, resource_id, ip_address, \'SUCCESS\' as result, metadata as details, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 6').then(r => r.rows).catch(() => []),
+    ]);
+
+    const latestBackup = dbInfo.latestBackup;
+
+    return reply.send({
+      success: true,
+      data: {
+        users_count: usersCount,
+        machines_count: machinesCount,
+        sections_count: sectionsCount,
+        usage_records_count: usageCount,
+        recent_errors_count: errorsCount,
+        api_status: 'healthy',
+        db_status: dbInfo.connected ? 'connected' : 'disconnected',
+        last_backup: latestBackup ? {
+          time: latestBackup.completedAt || new Date().toISOString(),
+          status: latestBackup.status.toUpperCase(),
+        } : null,
+        recent_activities: recentAudit,
+      },
+    });
+  });
+
+  // GET /api/admin/system/health
+  fastify.get('/system/health', async (request, reply) => {
+    const mem = process.memoryUsage();
+    return reply.send({
+      success: true,
+      data: {
+        status: 'ok',
+        uptime_seconds: Math.floor(process.uptime()),
+        node_version: process.version,
+        memory_usage: {
+          rss_mb: parseFloat((mem.rss / (1024 * 1024)).toFixed(2)),
+          heap_total_mb: parseFloat((mem.heapTotal / (1024 * 1024)).toFixed(2)),
+          heap_used_mb: parseFloat((mem.heapUsed / (1024 * 1024)).toFixed(2)),
+          external_mb: parseFloat((mem.external / (1024 * 1024)).toFixed(2)),
+        },
+        environment: env.NODE_ENV || 'production',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  });
+
+  // GET /api/admin/database/health
+  fastify.get('/database/health', async (request, reply) => {
+    const dbInfo = await AdminSystemService.getDatabaseInfo();
+    const tableCount = Object.keys(dbInfo.tableCounts || {}).length;
+    const totalRecords = Object.values(dbInfo.tableCounts || {}).reduce((a, b) => a + b, 0);
+
+    return reply.send({
+      success: true,
+      data: {
+        status: dbInfo.connected ? 'connected' : 'disconnected',
+        latency_ms: dbInfo.latencyMs ?? 0,
+        pg_version: dbInfo.version || 'PostgreSQL 17',
+        database_name: env.DB_NAME || 'equiptrack',
+        database_size: `${dbInfo.databaseSizeMb || 0} MB`,
+        tables_count: tableCount,
+        total_records_approx: totalRecords,
+      },
+    });
+  });
+
   // GET /api/admin/system
   fastify.get('/system', async (request, reply) => {
     const info = AdminSystemService.getSystemInfo();
@@ -72,6 +154,72 @@ export async function adminRoutes(fastify: FastifyInstance) {
     return reply.send({
       success: true,
       data: { ...info, database: dbInfo },
+    });
+  });
+
+  // GET /api/admin/metrics (Comprehensive Real-Time System & Application Metrics)
+  fastify.get('/metrics', async (request, reply) => {
+    const start = Date.now();
+    const sysInfo = AdminSystemService.getSystemInfo();
+    const dbInfo = await AdminSystemService.getDatabaseInfo();
+    const apiLatency = Date.now() - start;
+
+    const [
+      usersCount,
+      machinesCount,
+      sectionsCount,
+      usageCount,
+      errorsCount,
+      auditCount,
+      inventoryProdCount,
+      recentErrors,
+      recentAudit,
+    ] = await Promise.all([
+      query<{ count: string }>('SELECT COUNT(*) FROM users').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM machines').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM sections').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM usage_records').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM error_logs').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM audit_logs').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query<{ count: string }>('SELECT COUNT(*) FROM inventory_products').then(r => parseInt(r.rows[0]?.count ?? '0', 10)).catch(() => 0),
+      query('SELECT id, level, endpoint, method, status_code, message, created_at FROM error_logs ORDER BY created_at DESC LIMIT 5').then(r => r.rows).catch(() => []),
+      query('SELECT id, user_email, action, resource_type, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 5').then(r => r.rows).catch(() => []),
+    ]);
+
+    const isHealthy = dbInfo.connected;
+
+    return reply.send({
+      success: true,
+      data: {
+        status: isHealthy ? 'healthy' : 'degraded',
+        api: {
+          status: 'healthy',
+          latencyMs: apiLatency,
+          uptimeSeconds: sysInfo.uptimeSeconds,
+          nodeVersion: sysInfo.nodeVersion,
+          memory: sysInfo.memory,
+          environment: sysInfo.environment,
+        },
+        database: {
+          status: dbInfo.connected ? 'healthy' : 'disconnected',
+          latencyMs: dbInfo.latencyMs ?? 0,
+          version: dbInfo.version,
+          sizeMb: dbInfo.databaseSizeMb ?? 0,
+          tableCounts: dbInfo.tableCounts ?? {},
+          latestBackup: dbInfo.latestBackup ?? null,
+        },
+        counts: {
+          users: usersCount,
+          machines: machinesCount,
+          sections: sectionsCount,
+          usageRecords: usageCount,
+          errorLogs: errorsCount,
+          auditLogs: auditCount,
+          inventoryProducts: inventoryProdCount,
+        },
+        recentErrors,
+        recentAudit,
+      },
     });
   });
 
