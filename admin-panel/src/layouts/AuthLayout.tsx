@@ -8,7 +8,7 @@ export const AuthLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black p-4">
+      <div className="flex h-full w-full items-center justify-center bg-black p-4">
         <div className="w-full max-w-sm space-y-4">
           <Skeleton className="h-8 w-32 mx-auto" />
           <Skeleton className="h-48 w-full" />
@@ -22,7 +22,7 @@ export const AuthLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4 py-12 select-none">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-black px-4 py-8 select-none overflow-y-auto">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
           <div className="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 font-mono text-sm font-bold text-zinc-100">

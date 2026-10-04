@@ -173,11 +173,11 @@ export const AdminLayout: React.FC = () => {
   )
 
   return (
-    <div className="flex min-h-screen bg-black text-zinc-100 font-sans antialiased">
-      {/* Desktop Sidebar */}
-      <aside className="hidden w-56 flex-col border-r border-zinc-800/80 bg-zinc-950/90 md:flex">
+    <div className="flex h-screen w-screen overflow-hidden bg-black text-zinc-100 font-sans antialiased">
+      {/* Desktop Sidebar (Fixed Full Height) */}
+      <aside className="hidden md:flex w-56 shrink-0 flex-col h-full border-r border-zinc-800/80 bg-zinc-950 select-none z-20">
         {/* Brand */}
-        <div className="flex h-12 items-center justify-between border-b border-zinc-800/80 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800/80 px-4">
           <NavLink to="/" className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded border border-zinc-700 bg-zinc-900 font-mono text-xs font-bold text-zinc-100">
               ET
@@ -188,13 +188,13 @@ export const AdminLayout: React.FC = () => {
           </NavLink>
         </div>
 
-        {/* Navigation list */}
-        <div className="flex-1 overflow-y-auto px-2 py-4">
+        {/* Navigation list (Independently Scrollable if needed) */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-2 py-4">
           {renderNavLinks()}
         </div>
 
-        {/* User Footer */}
-        <div className="border-t border-zinc-800/80 p-2">
+        {/* User Footer (Pinned to bottom of sidebar) */}
+        <div className="shrink-0 border-t border-zinc-800/80 p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-xs transition-colors hover:bg-zinc-900 cursor-pointer">
@@ -226,15 +226,15 @@ export const AdminLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top Navbar */}
-        <header className="flex h-12 items-center justify-between border-b border-zinc-800/80 bg-zinc-950/60 px-4">
-          <div className="flex items-center gap-2">
+      {/* Main Column */}
+      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+        {/* Top Navbar (Fixed at Top of Main Area) */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800/80 bg-zinc-950/80 px-4 md:px-6 z-10">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Mobile Sheet Trigger */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+                <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 text-zinc-400 hover:text-zinc-100">
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -252,41 +252,41 @@ export const AdminLayout: React.FC = () => {
             </Sheet>
 
             {/* Quick Breadcrumb/Location */}
-            <div className="font-mono text-xs text-zinc-400 hidden sm:flex items-center gap-1.5">
-              <span>console</span>
-              <span>/</span>
-              <span className="text-zinc-200 font-medium">
-                {location.pathname.replace('/', '') || 'overview'}
+            <div className="font-mono text-xs text-zinc-400 hidden sm:flex items-center gap-1.5 truncate">
+              <span className="text-zinc-500">console</span>
+              <span className="text-zinc-600">/</span>
+              <span className="text-zinc-200 font-medium truncate">
+                {location.pathname === '/' ? 'overview' : location.pathname.replace(/^\//, '')}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             {/* Quick Command button */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCommandOpen(true)}
-              className="h-7 gap-2 px-2 text-[11px] text-zinc-400 hover:text-zinc-200 border-zinc-800 bg-zinc-900/50"
+              className="h-8 gap-2 px-2.5 text-[11px] text-zinc-400 hover:text-zinc-200 border-zinc-800 bg-zinc-900/50"
             >
-              <Search className="h-3 w-3" />
+              <Search className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Search console...</span>
-              <kbd className="pointer-events-none hidden h-4 select-none items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-1 font-mono text-[9px] font-medium text-zinc-400 sm:flex">
+              <kbd className="pointer-events-none hidden h-4.5 select-none items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-1 font-mono text-[9px] font-medium text-zinc-400 sm:flex">
                 ⌘K
               </kbd>
             </Button>
 
             {/* Node Status indicator */}
-            <div className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px] font-mono text-zinc-400">
+            <div className="flex items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-mono text-zinc-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="hidden md:inline">NODE ACTIVE</span>
             </div>
           </div>
         </header>
 
-        {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-y-auto bg-black p-4 md:p-6">
-          <div className="mx-auto max-w-7xl">
+        {/* ONLY THIS AREA SCROLLS */}
+        <main className="flex-1 min-w-0 min-h-0 overflow-y-auto bg-black p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl w-full min-w-0 space-y-6">
             <Outlet />
           </div>
         </main>
