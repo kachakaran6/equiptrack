@@ -218,7 +218,11 @@ class ApiClient {
 
     final message = (decoded is Map && decoded['message'] != null)
         ? decoded['message'].toString()
-        : 'Request failed with status ${response.statusCode}';
+        : (decoded is Map && decoded['error'] is Map && decoded['error']['message'] != null)
+            ? decoded['error']['message'].toString()
+            : (decoded is Map && decoded['error'] is String)
+                ? decoded['error'].toString()
+                : 'Request failed with status ${response.statusCode}';
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (decoded is Map && decoded.containsKey('data')) {

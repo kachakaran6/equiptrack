@@ -29,6 +29,9 @@ class ApiCategoryRepository implements CategoryRepository {
       return [];
     } catch (e, st) {
       AppLogger.error('Error fetching categories for machine $machineId via API', e, st);
+      if (e is DatabaseFailure && e.code == '404') {
+        return [];
+      }
       if (e is AppFailure) rethrow;
       throw DatabaseFailure('Unable to load categories: $e');
     }
