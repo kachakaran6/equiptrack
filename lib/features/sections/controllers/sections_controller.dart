@@ -17,6 +17,7 @@ class SectionsController extends AsyncNotifier<void> {
   Future<Section?> createSection({
     required String machineId,
     required String name,
+    String? categoryId,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -24,6 +25,7 @@ class SectionsController extends AsyncNotifier<void> {
       final section = await repo.createSection(
         machineId: machineId,
         name: name,
+        categoryId: categoryId,
       );
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
@@ -39,7 +41,9 @@ class SectionsController extends AsyncNotifier<void> {
   Future<Section?> updateSection({
     required String id,
     required String machineId,
-    required String name,
+    String? name,
+    String? categoryId,
+    bool clearCategory = false,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -47,6 +51,8 @@ class SectionsController extends AsyncNotifier<void> {
       final section = await repo.updateSection(
         id: id,
         name: name,
+        categoryId: categoryId,
+        clearCategory: clearCategory,
       );
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);

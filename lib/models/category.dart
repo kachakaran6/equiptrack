@@ -1,35 +1,26 @@
-/// Section model representing a component, side, or sub-assembly of a machine.
-class Section {
+/// Component category model representing a grouping of components within a machine.
+class Category {
   final String id;
   final String machineId;
   final String name;
-  final String? categoryId;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String? createdBy;
-  final String? updatedBy;
 
-  const Section({
+  const Category({
     required this.id,
     required this.machineId,
     required this.name,
-    this.categoryId,
     required this.createdAt,
     required this.updatedAt,
-    this.createdBy,
-    this.updatedBy,
   });
 
-  factory Section.fromJson(Map<String, dynamic> json) {
-    return Section(
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
       id: json['id'] as String,
       machineId: json['machine_id'] as String,
       name: json['name'] as String,
-      categoryId: json['category_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      createdBy: json['created_by'] as String?,
-      updatedBy: json['updated_by'] as String?,
     );
   }
 
@@ -38,48 +29,36 @@ class Section {
       'id': id,
       'machine_id': machineId,
       'name': name,
-      'category_id': categoryId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
-      'created_by': createdBy,
-      'updated_by': updatedBy,
     };
   }
 
-  Section copyWith({
+  Category copyWith({
     String? id,
     String? machineId,
     String? name,
-    String? categoryId,
-    bool clearCategoryId = false,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? createdBy,
-    String? updatedBy,
   }) {
-    return Section(
+    return Category(
       id: id ?? this.id,
       machineId: machineId ?? this.machineId,
       name: name ?? this.name,
-      categoryId: clearCategoryId ? null : (categoryId ?? this.categoryId),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      createdBy: createdBy ?? this.createdBy,
-      updatedBy: updatedBy ?? this.updatedBy,
     );
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Section &&
+      other is Category &&
           runtimeType == other.runtimeType &&
           id == other.id &&
           machineId == other.machineId &&
-          name == other.name &&
-          categoryId == other.categoryId;
+          name == other.name;
 
   @override
-  int get hashCode =>
-      id.hashCode ^ machineId.hashCode ^ name.hashCode ^ categoryId.hashCode;
+  int get hashCode => id.hashCode ^ machineId.hashCode ^ name.hashCode;
 }

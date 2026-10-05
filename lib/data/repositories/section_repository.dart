@@ -7,8 +7,17 @@ import '../../models/section.dart';
 abstract class SectionRepository {
   Future<List<Section>> getSections(String machineId);
   Future<Section?> getSectionById(String id);
-  Future<Section> createSection({required String machineId, required String name});
-  Future<Section> updateSection({required String id, required String name});
+  Future<Section> createSection({
+    required String machineId,
+    required String name,
+    String? categoryId,
+  });
+  Future<Section> updateSection({
+    required String id,
+    String? name,
+    String? categoryId,
+    bool clearCategory = false,
+  });
   Future<void> deleteSection(String id);
 }
 
@@ -56,13 +65,19 @@ class ApiSectionRepository implements SectionRepository {
   Future<Section> createSection({
     required String machineId,
     required String name,
+    String? categoryId,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'name': name.trim(),
+      };
+      if (categoryId != null && categoryId.isNotEmpty) {
+        body['category_id'] = categoryId;
+      }
+
       final data = await _apiClient.post(
         '/machines/$machineId/sections',
-        body: {
-          'name': name.trim(),
-        },
+        body: body,
       );
 
       return Section.fromJson(Map<String, dynamic>.from(data as Map));
@@ -76,14 +91,24 @@ class ApiSectionRepository implements SectionRepository {
   @override
   Future<Section> updateSection({
     required String id,
-    required String name,
+    String? name,
+    String? categoryId,
+    bool clearCategory = false,
   }) async {
     try {
+      final body = <String, dynamic>{};
+      if (name != null) {
+        body['name'] = name.trim();
+      }
+      if (clearCategory) {
+        body['category_id'] = null;
+      } else if (categoryId != null) {
+        body['category_id'] = categoryId;
+      }
+
       final data = await _apiClient.patch(
         '/sections/$id',
-        body: {
-          'name': name.trim(),
-        },
+        body: body,
       );
 
       return Section.fromJson(Map<String, dynamic>.from(data as Map));
