@@ -71,4 +71,7 @@ flutter_*.png
 /flutter_*.png
 check_*.dart
 process_icon.dart
+.kotlin/
+android/.kotlin/
+
 
