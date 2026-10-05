@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../data/repositories/section_repository.dart';
@@ -29,6 +31,15 @@ class SectionsController extends AsyncNotifier<void> {
       );
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.sectionCreated,
+        {
+          'machine_id': machineId,
+          'section_id': section.id,
+          'has_category': categoryId != null,
+        },
+      );
       return section;
     } catch (e, st) {
       AppLogger.error('SectionsController: Failed to create section', e, st);
@@ -56,6 +67,14 @@ class SectionsController extends AsyncNotifier<void> {
       );
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.sectionUpdated,
+        {
+          'machine_id': machineId,
+          'section_id': section.id,
+        },
+      );
       return section;
     } catch (e, st) {
       AppLogger.error('SectionsController: Failed to update section', e, st);
@@ -72,6 +91,14 @@ class SectionsController extends AsyncNotifier<void> {
       await repo.deleteSection(id);
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.sectionDeleted,
+        {
+          'machine_id': machineId,
+          'section_id': id,
+        },
+      );
       return true;
     } catch (e, st) {
       AppLogger.error('SectionsController: Failed to delete section', e, st);

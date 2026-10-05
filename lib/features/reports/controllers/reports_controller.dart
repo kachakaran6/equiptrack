@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/services/pdf_service.dart';
 import '../../../core/services/report_service.dart';
 import '../../../models/machine.dart';
@@ -21,6 +23,17 @@ class ReportsController extends AsyncNotifier<void> {
     String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
+    await AnalyticsService.instance.track(
+      AnalyticsEvent.reportExportStarted,
+      {
+        'format': 'pdf',
+        'export_type': 'single_section',
+        'machine_id': machine.id,
+        'section_id': section.id,
+        'records_count': records.length,
+      },
+    );
+
     try {
       final service = ref.read(reportServiceProvider);
       await service.sharePdf(
@@ -31,7 +44,26 @@ class ReportsController extends AsyncNotifier<void> {
         dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportCompleted,
+        {
+          'format': 'pdf',
+          'export_type': 'single_section',
+          'machine_id': machine.id,
+          'section_id': section.id,
+          'records_count': records.length,
+        },
+      );
     } catch (e, st) {
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportFailed,
+        {
+          'format': 'pdf',
+          'export_type': 'single_section',
+          'machine_id': machine.id,
+        },
+      );
       state = AsyncValue.error(e, st);
       rethrow;
     }
@@ -43,6 +75,16 @@ class ReportsController extends AsyncNotifier<void> {
     String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
+    await AnalyticsService.instance.track(
+      AnalyticsEvent.reportExportStarted,
+      {
+        'format': 'pdf',
+        'export_type': 'multi_component',
+        'machine_id': machine.id,
+        'components_count': components.length,
+      },
+    );
+
     try {
       final service = ref.read(reportServiceProvider);
       await service.shareMultiComponentPdf(
@@ -51,7 +93,25 @@ class ReportsController extends AsyncNotifier<void> {
         dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportCompleted,
+        {
+          'format': 'pdf',
+          'export_type': 'multi_component',
+          'machine_id': machine.id,
+          'components_count': components.length,
+        },
+      );
     } catch (e, st) {
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportFailed,
+        {
+          'format': 'pdf',
+          'export_type': 'multi_component',
+          'machine_id': machine.id,
+        },
+      );
       state = AsyncValue.error(e, st);
       rethrow;
     }
@@ -63,6 +123,16 @@ class ReportsController extends AsyncNotifier<void> {
     required List<UsageRecord> records,
   }) async {
     state = const AsyncValue.loading();
+    await AnalyticsService.instance.track(
+      AnalyticsEvent.reportExportStarted,
+      {
+        'format': 'excel',
+        'machine_id': machine.id,
+        'section_id': section.id,
+        'records_count': records.length,
+      },
+    );
+
     try {
       final service = ref.read(reportServiceProvider);
       await service.shareExcel(
@@ -71,7 +141,24 @@ class ReportsController extends AsyncNotifier<void> {
         records: records,
       );
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportCompleted,
+        {
+          'format': 'excel',
+          'machine_id': machine.id,
+          'section_id': section.id,
+          'records_count': records.length,
+        },
+      );
     } catch (e, st) {
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.reportExportFailed,
+        {
+          'format': 'excel',
+          'machine_id': machine.id,
+        },
+      );
       state = AsyncValue.error(e, st);
       rethrow;
     }

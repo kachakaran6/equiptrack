@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -19,7 +21,7 @@ import '../controllers/usage_records_controller.dart';
 import '../widgets/add_edit_record_sheet.dart';
 import '../widgets/usage_table_view.dart';
 
-class SectionUsageScreen extends ConsumerWidget {
+class SectionUsageScreen extends ConsumerStatefulWidget {
   final String machineId;
   final String sectionId;
 
@@ -30,11 +32,28 @@ class SectionUsageScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final machineAsync = ref.watch(singleMachineProvider(machineId));
-    final sectionAsync = ref.watch(singleSectionProvider(sectionId));
-    final rawRecordsAsync = ref.watch(usageRecordsStreamFamily(sectionId));
-    final calculatedRowsAsync = ref.watch(calculatedUsageRowsFamily(sectionId));
+  ConsumerState<SectionUsageScreen> createState() => _SectionUsageScreenState();
+}
+
+class _SectionUsageScreenState extends ConsumerState<SectionUsageScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.instance.track(
+      AnalyticsEvent.sectionViewed,
+      {
+        'machine_id': widget.machineId,
+        'section_id': widget.sectionId,
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final machineAsync = ref.watch(singleMachineProvider(widget.machineId));
+    final sectionAsync = ref.watch(singleSectionProvider(widget.sectionId));
+    final rawRecordsAsync = ref.watch(usageRecordsStreamFamily(widget.sectionId));
+    final calculatedRowsAsync = ref.watch(calculatedUsageRowsFamily(widget.sectionId));
 
     final machineName = machineAsync.maybeWhen(
       data: (m) => m?.name ?? 'Machine',
@@ -80,7 +99,7 @@ class SectionUsageScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key(AppKeys.addRecordButton),
-        onPressed: () => AddEditRecordSheet.show(context, sectionId: sectionId),
+        onPressed: () => AddEditRecordSheet.show(context, sectionId: widget.sectionId),
         icon: const Icon(Icons.add_rounded, size: 20),
         label: const Text(
           'Add Record',
@@ -96,7 +115,7 @@ class SectionUsageScreen extends ConsumerWidget {
         ),
         error: (err, _) => AppErrorState(
           message: err.toString(),
-          onRetry: () => ref.invalidate(usageRecordsStreamFamily(sectionId)),
+          onRetry: () => ref.invalidate(usageRecordsStreamFamily(widget.sectionId)),
         ),
         data: (rawRecords) {
           return calculatedRowsAsync.when(
@@ -110,7 +129,7 @@ class SectionUsageScreen extends ConsumerWidget {
             data: (rows) {
               return RefreshIndicator(
                 onRefresh: () async {
-                  ref.invalidate(usageRecordsStreamFamily(sectionId));
+                  ref.invalidate(usageRecordsStreamFamily(widget.sectionId));
                 },
                 child: ListView(
                   padding: AppSpacing.screenPadding,
@@ -156,11 +175,11 @@ class SectionUsageScreen extends ConsumerWidget {
                         icon: Icons.history_toggle_off_rounded,
                         actionLabel: 'Add Record',
                         onAction: () =>
-                            AddEditRecordSheet.show(context, sectionId: sectionId),
+                            AddEditRecordSheet.show(context, sectionId: widget.sectionId),
                       )
                     else
                       UsageTableView(
-                        sectionId: sectionId,
+                        sectionId: widget.sectionId,
                         rows: rows,
                         rawRecords: rawRecords,
                       ),

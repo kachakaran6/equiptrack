@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/services/usage_calculation_service.dart';
 import '../../../core/utils/app_logger.dart';
@@ -48,6 +50,14 @@ class UsageRecordsController extends AsyncNotifier<void> {
       );
       ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.usageRecordCreated,
+        {
+          'section_id': sectionId,
+          'record_id': record.id,
+        },
+      );
       return record;
     } catch (e, st) {
       AppLogger.error('UsageRecordsController: Failed to create record', e, st);
@@ -73,6 +83,14 @@ class UsageRecordsController extends AsyncNotifier<void> {
       );
       ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.usageRecordUpdated,
+        {
+          'section_id': sectionId,
+          'record_id': record.id,
+        },
+      );
       return record;
     } catch (e, st) {
       AppLogger.error('UsageRecordsController: Failed to update record', e, st);
@@ -86,13 +104,22 @@ class UsageRecordsController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(usageRecordRepositoryProvider);
-      await repo.createRecord(
+      final newRecord = await repo.createRecord(
         sectionId: record.sectionId,
         name: '${record.name} (Copy)',
         usageDate: record.usageDate,
       );
       ref.invalidate(usageRecordsStreamFamily(record.sectionId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.usageRecordCreated,
+        {
+          'section_id': record.sectionId,
+          'record_id': newRecord.id,
+          'is_duplicate': true,
+        },
+      );
       return true;
     } catch (e, st) {
       AppLogger.error('UsageRecordsController: Failed to duplicate record', e, st);
@@ -109,6 +136,14 @@ class UsageRecordsController extends AsyncNotifier<void> {
       await repo.deleteRecord(id);
       ref.invalidate(usageRecordsStreamFamily(sectionId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.usageRecordDeleted,
+        {
+          'section_id': sectionId,
+          'record_id': id,
+        },
+      );
       return true;
     } catch (e, st) {
       AppLogger.error('UsageRecordsController: Failed to delete record', e, st);

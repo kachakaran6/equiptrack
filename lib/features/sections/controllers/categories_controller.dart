@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../data/repositories/category_repository.dart';
@@ -28,6 +30,14 @@ class CategoriesController extends AsyncNotifier<void> {
       );
       ref.invalidate(categoriesStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.categoryCreated,
+        {
+          'machine_id': machineId,
+          'category_id': category.id,
+        },
+      );
       return category;
     } catch (e, st) {
       AppLogger.error('CategoriesController: Failed to create category', e, st);
@@ -51,6 +61,14 @@ class CategoriesController extends AsyncNotifier<void> {
       );
       ref.invalidate(categoriesStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.categoryUpdated,
+        {
+          'machine_id': machineId,
+          'category_id': category.id,
+        },
+      );
       return category;
     } catch (e, st) {
       AppLogger.error('CategoriesController: Failed to update category', e, st);
@@ -72,6 +90,14 @@ class CategoriesController extends AsyncNotifier<void> {
       ref.invalidate(categoriesStreamFamily(machineId));
       ref.invalidate(sectionsStreamFamily(machineId));
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.categoryDeleted,
+        {
+          'machine_id': machineId,
+          'category_id': id,
+        },
+      );
       return true;
     } catch (e, st) {
       AppLogger.error('CategoriesController: Failed to delete category', e, st);

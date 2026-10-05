@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../data/repositories/machine_repository.dart';
@@ -51,6 +53,11 @@ class MachinesController extends AsyncNotifier<void> {
       );
       ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.machineCreated,
+        {'machine_id': machine.id},
+      );
       return machine;
     } catch (e, st) {
       AppLogger.error('MachinesController: Failed to create machine', e, st);
@@ -75,6 +82,11 @@ class MachinesController extends AsyncNotifier<void> {
       );
       ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.machineUpdated,
+        {'machine_id': machine.id},
+      );
       return machine;
     } catch (e, st) {
       AppLogger.error('MachinesController: Failed to update machine', e, st);
@@ -99,6 +111,14 @@ class MachinesController extends AsyncNotifier<void> {
       );
       ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.machineCreated,
+        {
+          'machine_id': machine.id,
+          'is_duplicate': true,
+        },
+      );
       return machine;
     } catch (e, st) {
       AppLogger.error('MachinesController: Failed to duplicate machine', e, st);
@@ -115,6 +135,11 @@ class MachinesController extends AsyncNotifier<void> {
       await repo.deleteMachine(id);
       ref.invalidate(machinesStreamProvider);
       state = const AsyncValue.data(null);
+
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.machineDeleted,
+        {'machine_id': id},
+      );
       return true;
     } catch (e, st) {
       AppLogger.error('MachinesController: Failed to delete machine', e, st);
