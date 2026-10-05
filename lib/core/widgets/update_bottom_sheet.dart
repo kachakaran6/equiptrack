@@ -42,6 +42,7 @@ class UpdateBottomSheet extends StatelessWidget {
       context: context,
       isDismissible: !isImmediate,
       enableDrag: !isImmediate,
+      showDragHandle: false,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,

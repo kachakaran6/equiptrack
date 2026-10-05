@@ -123,7 +123,7 @@ class AppTheme {
         backgroundColor: AppColors.surfaceLight,
         surfaceTintColor: Colors.transparent,
         elevation: 4,
-        showDragHandle: true,
+        showDragHandle: false,
         dragHandleColor: AppColors.textMutedLight,
         shape: const RoundedRectangleBorder(
           borderRadius: AppSpacing.sheetRadius,
@@ -275,7 +275,7 @@ class AppTheme {
         backgroundColor: AppColors.sheetDark,
         surfaceTintColor: Colors.transparent,
         elevation: 4,
-        showDragHandle: true,
+        showDragHandle: false,
         dragHandleColor: AppColors.sheetHandleDark,
         shape: const RoundedRectangleBorder(
           borderRadius: AppSpacing.sheetRadius,

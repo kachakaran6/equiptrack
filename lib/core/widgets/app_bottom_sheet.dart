@@ -30,6 +30,7 @@ class AppBottomSheet extends StatelessWidget {
       context: context,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
+      showDragHandle: false,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
