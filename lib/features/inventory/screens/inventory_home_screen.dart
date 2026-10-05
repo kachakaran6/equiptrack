@@ -17,6 +17,8 @@ class InventoryHomeScreen extends ConsumerStatefulWidget {
 class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _expandedProductIds = {};
+  final Set<String> _collapsedDuringSearchProductIds = {};
+  bool _initialExpansionDone = false;
 
   @override
   void dispose() {
@@ -24,12 +26,27 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
     super.dispose();
   }
 
+  void _initializeExpansionIfNeeded(List<InventoryProduct> products) {
+    if (!_initialExpansionDone && products.isNotEmpty) {
+      _expandedProductIds.add(products.first.id);
+      _initialExpansionDone = true;
+    }
+  }
+
   void _toggleExpanded(String productId) {
     setState(() {
-      if (_expandedProductIds.contains(productId)) {
-        _expandedProductIds.remove(productId);
+      if (_searchController.text.trim().isNotEmpty) {
+        if (_collapsedDuringSearchProductIds.contains(productId)) {
+          _collapsedDuringSearchProductIds.remove(productId);
+        } else {
+          _collapsedDuringSearchProductIds.add(productId);
+        }
       } else {
-        _expandedProductIds.add(productId);
+        if (_expandedProductIds.contains(productId)) {
+          _expandedProductIds.remove(productId);
+        } else {
+          _expandedProductIds.add(productId);
+        }
       }
     });
   }
@@ -166,7 +183,9 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                                 icon: const Icon(Icons.clear, size: 18),
                                 onPressed: () {
                                   _searchController.clear();
+                                  _collapsedDuringSearchProductIds.clear();
                                   ref.read(inventorySearchQueryProvider.notifier).setQuery('');
+                                  setState(() {});
                                 },
                               )
                             : null,
@@ -194,7 +213,12 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                         ),
                       ),
                       onChanged: (val) {
-                        ref.read(inventorySearchQueryProvider.notifier).setQuery(val.trim());
+                        final query = val.trim();
+                        if (query.isEmpty) {
+                          _collapsedDuringSearchProductIds.clear();
+                        }
+                        ref.read(inventorySearchQueryProvider.notifier).setQuery(query);
+                        setState(() {});
                       },
                     ),
                   ],
@@ -244,16 +268,17 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                   );
                 }
 
+                _initializeExpansionIfNeeded(products);
+
                 return SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final product = products[index];
-                        // Auto-expand if search active or in set
-                        final isExpanded = _searchController.text.isNotEmpty ||
-                            _expandedProductIds.contains(product.id) ||
-                            index == 0;
+                        final isExpanded = _searchController.text.trim().isNotEmpty
+                            ? !_collapsedDuringSearchProductIds.contains(product.id)
+                            : _expandedProductIds.contains(product.id);
 
                         return _buildProductAccordion(
                           context,
