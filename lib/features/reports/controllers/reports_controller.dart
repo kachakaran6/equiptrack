@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/pdf_service.dart';
 import '../../../core/services/report_service.dart';
 import '../../../models/machine.dart';
 import '../../../models/section.dart';
@@ -16,6 +17,7 @@ class ReportsController extends AsyncNotifier<void> {
     required Machine machine,
     required Section section,
     required List<UsageRecord> records,
+    String? categoryName,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -24,10 +26,30 @@ class ReportsController extends AsyncNotifier<void> {
         machine: machine,
         section: section,
         records: records,
+        categoryName: categoryName,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> shareMultiComponentPdf({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final service = ref.read(reportServiceProvider);
+      await service.shareMultiComponentPdf(
+        machine: machine,
+        components: components,
+      );
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -47,6 +69,7 @@ class ReportsController extends AsyncNotifier<void> {
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -54,6 +77,7 @@ class ReportsController extends AsyncNotifier<void> {
     required Machine machine,
     required Section section,
     required List<UsageRecord> records,
+    String? categoryName,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -62,10 +86,30 @@ class ReportsController extends AsyncNotifier<void> {
         machine: machine,
         section: section,
         records: records,
+        categoryName: categoryName,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> printOrPreviewMultiComponentPdf({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final service = ref.read(reportServiceProvider);
+      await service.printOrPreviewMultiComponentPdf(
+        machine: machine,
+        components: components,
+      );
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 }

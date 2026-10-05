@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../../models/machine.dart';
@@ -22,11 +23,12 @@ class ReportService {
     this.excelService = const ExcelService(),
   });
 
-  /// Calculate rows and generate PDF bytes
+  /// Calculate rows and generate PDF bytes for a single section
   Future<Uint8List> generatePdf({
     required Machine machine,
     required Section section,
     required List<UsageRecord> records,
+    String? categoryName,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -34,10 +36,75 @@ class ReportService {
         machine: machine,
         section: section,
         rows: rows,
+        categoryName: categoryName,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to generate PDF', e, st);
       throw ExportFailure('Failed to generate PDF report: $e');
+    }
+  }
+
+  /// Calculate rows and generate combined PDF bytes for multiple components
+  Future<Uint8List> generateMultiComponentPdf({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    try {
+      return await pdfService.generateMultiComponentReportPdf(
+        machine: machine,
+        components: components,
+      );
+    } catch (e, st) {
+      AppLogger.error('ReportService: Failed to generate multi-component PDF', e, st);
+      throw ExportFailure('Failed to generate combined PDF report: $e');
+    }
+  }
+
+  /// Save multi-component PDF to temporary storage
+  Future<File> saveMultiComponentPdfFile({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    try {
+      return await pdfService.saveMultiComponentPdfFile(
+        machine: machine,
+        components: components,
+      );
+    } catch (e, st) {
+      AppLogger.error('ReportService: Failed to save multi-component PDF', e, st);
+      throw ExportFailure('Failed to save combined PDF report: $e');
+    }
+  }
+
+  /// Share multi-component PDF
+  Future<void> shareMultiComponentPdf({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    try {
+      await pdfService.shareMultiComponentPdf(
+        machine: machine,
+        components: components,
+      );
+    } catch (e, st) {
+      AppLogger.error('ReportService: Failed to share multi-component PDF', e, st);
+      throw ExportFailure('Failed to share combined PDF report: $e');
+    }
+  }
+
+  /// Preview or print multi-component PDF
+  Future<void> printOrPreviewMultiComponentPdf({
+    required Machine machine,
+    required List<ComponentReportData> components,
+  }) async {
+    try {
+      await pdfService.printOrPreviewMultiComponentPdf(
+        machine: machine,
+        components: components,
+      );
+    } catch (e, st) {
+      AppLogger.error('ReportService: Failed to preview multi-component PDF', e, st);
+      throw ExportFailure('Failed to preview combined PDF report: $e');
     }
   }
 
@@ -65,6 +132,7 @@ class ReportService {
     required Machine machine,
     required Section section,
     required List<UsageRecord> records,
+    String? categoryName,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -72,6 +140,7 @@ class ReportService {
         machine: machine,
         section: section,
         rows: rows,
+        categoryName: categoryName,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to share PDF', e, st);
@@ -103,6 +172,7 @@ class ReportService {
     required Machine machine,
     required Section section,
     required List<UsageRecord> records,
+    String? categoryName,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -110,6 +180,7 @@ class ReportService {
         machine: machine,
         section: section,
         rows: rows,
+        categoryName: categoryName,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to preview PDF', e, st);

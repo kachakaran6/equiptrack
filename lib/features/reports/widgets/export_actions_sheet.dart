@@ -6,6 +6,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../data/repositories/category_repository.dart';
 import '../../../models/machine.dart';
 import '../../../models/section.dart';
 import '../../../models/usage_record.dart';
@@ -85,12 +86,21 @@ class ExportActionsSheet extends ConsumerWidget {
         AppCard(
           onTap: () async {
             Navigator.of(context).pop();
+            String? categoryName;
+            if (section.categoryId != null) {
+              final cats = ref.read(categoriesStreamFamily(machine.id)).value;
+              categoryName = cats
+                  ?.where((c) => c.id == section.categoryId)
+                  .firstOrNull
+                  ?.name;
+            }
             await ref
                 .read(reportsControllerProvider.notifier)
                 .printOrPreviewPdf(
                   machine: machine,
                   section: section,
                   records: records,
+                  categoryName: categoryName,
                 );
           },
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -148,10 +158,19 @@ class ExportActionsSheet extends ConsumerWidget {
           onTap: () async {
             Navigator.of(context).pop();
             try {
+              String? categoryName;
+              if (section.categoryId != null) {
+                final cats = ref.read(categoriesStreamFamily(machine.id)).value;
+                categoryName = cats
+                    ?.where((c) => c.id == section.categoryId)
+                    .firstOrNull
+                    ?.name;
+              }
               await ref.read(reportsControllerProvider.notifier).sharePdf(
                     machine: machine,
                     section: section,
                     records: records,
+                    categoryName: categoryName,
                   );
             } catch (e) {
               if (context.mounted) {
