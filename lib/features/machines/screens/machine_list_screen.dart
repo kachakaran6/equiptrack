@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -110,6 +111,10 @@ class MachineListScreen extends ConsumerWidget {
                 keyString: AppKeys.machineSearchField,
                 hintText: 'Search machines...',
                 onChanged: (val) {
+                  final prev = ref.read(searchQueryProvider);
+                  if (prev.isEmpty && val.trim().isNotEmpty) {
+                    AnalyticsService.instance.searchStarted(searchContext: 'machines');
+                  }
                   ref.read(searchQueryProvider.notifier).setQuery(val);
                 },
               ),
@@ -123,6 +128,17 @@ class MachineListScreen extends ConsumerWidget {
                   onRetry: () => ref.invalidate(machinesStreamProvider),
                 ),
                 data: (machines) {
+                  if (query.isNotEmpty) {
+                    if (machines.isEmpty) {
+                      AnalyticsService.instance.searchNoResults(searchContext: 'machines');
+                    } else {
+                      AnalyticsService.instance.searchUsed(
+                        searchContext: 'machines',
+                        resultCount: machines.length,
+                      );
+                    }
+                  }
+
                   if (machines.isEmpty) {
                     if (query.isNotEmpty) {
                       return AppEmptyState(

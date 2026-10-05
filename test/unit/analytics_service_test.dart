@@ -145,5 +145,39 @@ void main() {
       await service.setConsent(AnalyticsConsent.granted);
       expect(service.consent, equals(AnalyticsConsent.granted));
     });
+
+    test('Deduplicates rapid viewMachine and viewSection calls', () async {
+      final service = AnalyticsService.instance;
+
+      await expectLater(service.viewMachine('m-1'), completes);
+      // Rapid repeat does not throw
+      await expectLater(service.viewMachine('m-1'), completes);
+
+      await expectLater(service.viewSection('m-1', 's-1'), completes);
+      // Rapid repeat does not throw
+      await expectLater(service.viewSection('m-1', 's-1'), completes);
+    });
+
+    test('Search and backup telemetry executes cleanly', () async {
+      final service = AnalyticsService.instance;
+
+      await expectLater(service.searchStarted(searchContext: 'machines'), completes);
+      await expectLater(service.searchUsed(searchContext: 'machines', resultCount: 5), completes);
+      await expectLater(service.searchNoResults(searchContext: 'machines'), completes);
+
+      await expectLater(service.backupStarted(backupType: 'manual_json'), completes);
+      await expectLater(service.backupCompleted(backupType: 'manual_json', durationMs: 120), completes);
+      await expectLater(service.backupFailed(backupType: 'manual_json', durationMs: 50, error: 'timeout'), completes);
+      await expectLater(service.telegramBackupTested(success: true, durationMs: 200), completes);
+    });
+
+    test('Global context attaches version and platform metadata', () {
+      final props = AnalyticsProperties.withGlobalContext({'key': 'val'});
+      expect(props['app_version'], equals('1.0.0'));
+      expect(props['build_number'], equals(10));
+      expect(props.containsKey('platform'), isTrue);
+      expect(props.containsKey('environment'), isTrue);
+      expect(props['key'], equals('val'));
+    });
   });
 }

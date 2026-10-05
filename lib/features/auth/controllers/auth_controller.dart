@@ -27,6 +27,7 @@ class AuthController extends Notifier<AuthStateData> {
 
   Future<bool> signIn(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
+    final stopwatch = Stopwatch()..start();
     await AnalyticsService.instance.track(AnalyticsEvent.loginStarted);
 
     try {
@@ -40,7 +41,10 @@ class AuthController extends Notifier<AuthStateData> {
         );
       }
 
-      await AnalyticsService.instance.track(AnalyticsEvent.loginCompleted);
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.loginCompleted,
+        {'duration_ms': stopwatch.elapsedMilliseconds},
+      );
       state = state.copyWith(isLoading: false, errorMessage: null);
       return true;
     } on AppFailure catch (e) {
@@ -49,6 +53,7 @@ class AuthController extends Notifier<AuthStateData> {
         {
           'reason': 'app_failure',
           'error_code': e.code,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
       state = state.copyWith(isLoading: false, errorMessage: e.message);
@@ -58,6 +63,7 @@ class AuthController extends Notifier<AuthStateData> {
         AnalyticsEvent.loginFailed,
         {
           'reason': 'unexpected_error',
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
       state = state.copyWith(

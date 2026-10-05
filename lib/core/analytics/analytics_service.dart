@@ -18,6 +18,22 @@ class AnalyticsService {
   AnalyticsConsent _consent = AnalyticsConsent.granted;
   String? _identifiedUserId;
 
+  // Deduplication state
+  String? _lastScreenName;
+  DateTime? _lastScreenTime;
+
+  String? _lastViewedMachineId;
+  DateTime? _lastMachineViewedTime;
+
+  String? _lastViewedSectionKey;
+  DateTime? _lastSectionViewedTime;
+
+  String? _lastTrackSignature;
+  DateTime? _lastTrackTime;
+
+  // Error throttling cache (signature -> timestamp)
+  final Map<String, DateTime> _recentErrors = {};
+
   bool get isInitialized => _isInitialized;
   bool get isConfigured => _isConfigured;
   AnalyticsConsent get consent => _consent;
@@ -92,7 +108,8 @@ class AnalyticsService {
 
     try {
       _identifiedUserId = userId;
-      final sanitized = AnalyticsProperties.sanitize(properties);
+      final enriched = AnalyticsProperties.withGlobalContext(properties);
+      final sanitized = AnalyticsProperties.sanitize(enriched);
       await Posthog().identify(
         userId: userId,
         userProperties: sanitized,
@@ -106,6 +123,14 @@ class AnalyticsService {
   /// Clears the current user identity on logout to prevent session crossover.
   Future<void> reset() async {
     _identifiedUserId = null;
+    _lastScreenName = null;
+    _lastScreenTime = null;
+    _lastViewedMachineId = null;
+    _lastMachineViewedTime = null;
+    _lastViewedSectionKey = null;
+    _lastSectionViewedTime = null;
+    _recentErrors.clear();
+
     if (!_isInitialized || !_isConfigured) return;
 
     try {
@@ -116,11 +141,24 @@ class AnalyticsService {
     }
   }
 
-  /// Tracks a strongly typed business event with sanitized properties.
+  /// Tracks a strongly typed business event with sanitized properties and rapid deduplication.
   Future<void> track(
     AnalyticsEvent event, [
     Map<String, dynamic>? properties,
   ]) async {
+    final now = DateTime.now();
+
+    // Rapid deduplication: prevent double-clicks or accidental identical triggers within 500ms
+    final idVal = properties?['id'] ?? properties?['machine_id'] ?? properties?['section_id'] ?? '';
+    final signature = '${event.eventName}:$idVal';
+    if (_lastTrackSignature == signature &&
+        _lastTrackTime != null &&
+        now.difference(_lastTrackTime!).inMilliseconds < 500) {
+      return;
+    }
+    _lastTrackSignature = signature;
+    _lastTrackTime = now;
+
     if (!_isInitialized || !_isConfigured || _consent != AnalyticsConsent.granted) {
       if (kDebugMode) {
         AppLogger.debug('Analytics [No-Op/Disabled]: ${event.eventName} -> $properties');
@@ -129,7 +167,8 @@ class AnalyticsService {
     }
 
     try {
-      final sanitized = AnalyticsProperties.sanitize(properties);
+      final enriched = AnalyticsProperties.withGlobalContext(properties);
+      final sanitized = AnalyticsProperties.sanitize(enriched);
       await Posthog().capture(
         eventName: event.eventName,
         properties: sanitized,
@@ -142,11 +181,21 @@ class AnalyticsService {
     }
   }
 
-  /// Tracks a screen transition with standardized stable screen names.
+  /// Authoritative screen transition with strict duplicate prevention.
+  /// Deduplicates identical screen transitions occurring within 1.5 seconds.
   Future<void> screen(
     String screenName, [
     Map<String, dynamic>? properties,
   ]) async {
+    final now = DateTime.now();
+    if (_lastScreenName == screenName &&
+        _lastScreenTime != null &&
+        now.difference(_lastScreenTime!).inMilliseconds < 1500) {
+      return;
+    }
+    _lastScreenName = screenName;
+    _lastScreenTime = now;
+
     if (!_isInitialized || !_isConfigured || _consent != AnalyticsConsent.granted) {
       if (kDebugMode) {
         AppLogger.debug('Analytics Screen [No-Op/Disabled]: $screenName');
@@ -155,11 +204,24 @@ class AnalyticsService {
     }
 
     try {
-      final sanitized = AnalyticsProperties.sanitize(properties);
+      final enriched = AnalyticsProperties.withGlobalContext({
+        'screen_name': screenName,
+        ...?properties,
+      });
+      final sanitized = AnalyticsProperties.sanitize(enriched);
+
+      // 1. PostHog native Screen event
       await Posthog().screen(
         screenName: screenName,
         properties: sanitized,
       );
+
+      // 2. Standardized screen_viewed event in taxonomy
+      await Posthog().capture(
+        eventName: AnalyticsEvent.screenViewed.eventName,
+        properties: sanitized,
+      );
+
       if (kDebugMode) {
         AppLogger.debug('Analytics Screen [Viewed]: $screenName');
       }
@@ -168,7 +230,58 @@ class AnalyticsService {
     }
   }
 
-  /// Captures an application error with privacy sanitization.
+  /// Deduplicated machine view tracker.
+  /// Prevents widget rebuilds or rapid back-navigation from spamming `machine_viewed`.
+  Future<void> viewMachine(
+    String machineId, [
+    Map<String, dynamic>? properties,
+  ]) async {
+    final now = DateTime.now();
+    if (_lastViewedMachineId == machineId &&
+        _lastMachineViewedTime != null &&
+        now.difference(_lastMachineViewedTime!).inSeconds < 10) {
+      return;
+    }
+    _lastViewedMachineId = machineId;
+    _lastMachineViewedTime = now;
+
+    await track(
+      AnalyticsEvent.machineViewed,
+      {
+        'machine_id': machineId,
+        ...?properties,
+      },
+    );
+  }
+
+  /// Deduplicated section view tracker.
+  /// Prevents widget rebuilds or table re-renders from spamming `section_viewed`.
+  Future<void> viewSection(
+    String machineId,
+    String sectionId, [
+    Map<String, dynamic>? properties,
+  ]) async {
+    final key = '$machineId/$sectionId';
+    final now = DateTime.now();
+    if (_lastViewedSectionKey == key &&
+        _lastSectionViewedTime != null &&
+        now.difference(_lastSectionViewedTime!).inSeconds < 10) {
+      return;
+    }
+    _lastViewedSectionKey = key;
+    _lastSectionViewedTime = now;
+
+    await track(
+      AnalyticsEvent.sectionViewed,
+      {
+        'machine_id': machineId,
+        'section_id': sectionId,
+        ...?properties,
+      },
+    );
+  }
+
+  /// Captures an application error with privacy sanitization and throttling.
   Future<void> captureError(
     dynamic error, {
     StackTrace? stackTrace,
@@ -176,14 +289,26 @@ class AnalyticsService {
     String? operation,
     Map<String, dynamic>? properties,
   }) async {
+    final errorType = error.runtimeType.toString();
+    final errorMessage = error.toString().split('\n').first;
+    final signature = '$errorType:$errorMessage';
+
+    final now = DateTime.now();
+    final lastTime = _recentErrors[signature];
+    if (lastTime != null && now.difference(lastTime).inSeconds < 10) {
+      // Throttle identical error spam within 10s
+      return;
+    }
+    _recentErrors[signature] = now;
+    if (_recentErrors.length > 50) {
+      _recentErrors.remove(_recentErrors.keys.first);
+    }
+
     if (!_isInitialized || !_isConfigured || _consent != AnalyticsConsent.granted) {
       return;
     }
 
     try {
-      final errorType = error.runtimeType.toString();
-      final errorMessage = error.toString().split('\n').first;
-
       final errorProps = <String, dynamic>{
         'error_type': errorType,
         'error_message': errorMessage,
@@ -196,6 +321,94 @@ class AnalyticsService {
     } catch (e) {
       AppLogger.warning('PostHog captureError failed: $e');
     }
+  }
+
+  /// Captures a sanitized API error with throttling.
+  Future<void> trackApiError({
+    required String endpoint,
+    required String operation,
+    required int statusCode,
+    required String errorType,
+  }) async {
+    final signature = '$operation:$endpoint:$statusCode';
+    final now = DateTime.now();
+    final lastTime = _recentErrors[signature];
+    if (lastTime != null && now.difference(lastTime).inSeconds < 10) {
+      return;
+    }
+    _recentErrors[signature] = now;
+    if (_recentErrors.length > 50) {
+      _recentErrors.remove(_recentErrors.keys.first);
+    }
+
+    await track(AnalyticsEvent.apiError, {
+      'endpoint_name': endpoint,
+      'operation': operation,
+      'status_code': statusCode,
+      'error_type': errorType,
+    });
+  }
+
+  /// Tracks search lifecycle safely without leaking sensitive search strings.
+  Future<void> searchStarted({required String searchContext}) async {
+    await track(AnalyticsEvent.searchStarted, {
+      'search_context': searchContext,
+    });
+  }
+
+  Future<void> searchUsed({
+    required String searchContext,
+    required int resultCount,
+  }) async {
+    await track(AnalyticsEvent.searchUsed, {
+      'search_context': searchContext,
+      'result_count': resultCount,
+    });
+  }
+
+  Future<void> searchNoResults({required String searchContext}) async {
+    await track(AnalyticsEvent.searchNoResults, {
+      'search_context': searchContext,
+    });
+  }
+
+  /// Tracks backup lifecycle with duration and status without sensitive data.
+  Future<void> backupStarted({required String backupType}) async {
+    await track(AnalyticsEvent.backupStarted, {
+      'backup_type': backupType,
+    });
+  }
+
+  Future<void> backupCompleted({
+    required String backupType,
+    required int durationMs,
+  }) async {
+    await track(AnalyticsEvent.backupCompleted, {
+      'backup_type': backupType,
+      'duration_ms': durationMs,
+    });
+  }
+
+  Future<void> backupFailed({
+    required String backupType,
+    required int durationMs,
+    required String error,
+  }) async {
+    await track(AnalyticsEvent.backupFailed, {
+      'backup_type': backupType,
+      'duration_ms': durationMs,
+      'error': error,
+    });
+  }
+
+  Future<void> telegramBackupTested({
+    required bool success,
+    required int durationMs,
+  }) async {
+    await track(AnalyticsEvent.telegramBackupTested, {
+      'result': success ? 'success' : 'failed',
+      'duration_ms': durationMs,
+    });
   }
 
   /// Evaluates a feature flag with safe offline/fallback handling.

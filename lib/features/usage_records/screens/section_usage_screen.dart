@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/analytics/analytics_event.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -39,13 +38,7 @@ class _SectionUsageScreenState extends ConsumerState<SectionUsageScreen> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.instance.track(
-      AnalyticsEvent.sectionViewed,
-      {
-        'machine_id': widget.machineId,
-        'section_id': widget.sectionId,
-      },
-    );
+    AnalyticsService.instance.viewSection(widget.machineId, widget.sectionId);
   }
 
   @override

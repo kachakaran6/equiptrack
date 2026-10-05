@@ -57,7 +57,15 @@ enum AnalyticsEvent {
 
   // Errors & Diagnostics
   appError('app_error'),
-  apiError('api_error');
+  apiError('api_error'),
+
+  // Search
+  searchStarted('search_started'),
+  searchUsed('search_used'),
+  searchNoResults('search_no_results'),
+
+  // Navigation
+  screenViewed('screen_viewed');
 
   final String eventName;
   const AnalyticsEvent(this.eventName);

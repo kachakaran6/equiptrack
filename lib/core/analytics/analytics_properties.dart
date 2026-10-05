@@ -6,6 +6,7 @@ class AnalyticsProperties {
 
   static const List<String> _blacklistedKeySubstrings = [
     'password',
+    'passcode',
     'token',
     'jwt',
     'auth',
@@ -20,6 +21,11 @@ class AnalyticsProperties {
     'connection_string',
     'dsn',
     'cookie',
+    'pin',
+    'otp',
+    'bot_token',
+    'chat_id',
+    'api_key',
   ];
 
   /// Recursively sanitizes a map of properties to ensure no sensitive or oversized
@@ -77,6 +83,17 @@ class AnalyticsProperties {
     } else {
       return value.toString();
     }
+  }
+
+  /// Injects standardized global properties into the given event map
+  static Map<String, dynamic> withGlobalContext(Map<String, dynamic>? properties) {
+    return {
+      'app_version': '1.0.0',
+      'build_number': 10,
+      'platform': defaultTargetPlatform.name,
+      'environment': kReleaseMode ? 'production' : 'development',
+      ...?properties,
+    };
   }
 
   /// Ambient properties attached to events for diagnostic context

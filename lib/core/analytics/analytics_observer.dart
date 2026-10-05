@@ -22,7 +22,8 @@ class AnalyticsNavigationObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
-    if (previousRoute != null) {
+    // Only re-record screen view if returning from a full PageRoute, not dialogs/popups
+    if (route is PageRoute && previousRoute != null && previousRoute is PageRoute) {
       _recordScreenView(previousRoute);
     }
   }
@@ -59,6 +60,8 @@ class AnalyticsNavigationObserver extends NavigatorObserver {
         return AnalyticsScreen.inventorySubProductDetail;
       case 'inventoryReports':
         return AnalyticsScreen.inventoryReports;
+      case 'settings':
+        return AnalyticsScreen.settings;
       default:
         return routeName;
     }

@@ -23,6 +23,7 @@ class ReportsController extends AsyncNotifier<void> {
     String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
+    final stopwatch = Stopwatch()..start();
     await AnalyticsService.instance.track(
       AnalyticsEvent.reportExportStarted,
       {
@@ -53,6 +54,7 @@ class ReportsController extends AsyncNotifier<void> {
           'machine_id': machine.id,
           'section_id': section.id,
           'records_count': records.length,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
     } catch (e, st) {
@@ -62,6 +64,7 @@ class ReportsController extends AsyncNotifier<void> {
           'format': 'pdf',
           'export_type': 'single_section',
           'machine_id': machine.id,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
       state = AsyncValue.error(e, st);
@@ -75,6 +78,7 @@ class ReportsController extends AsyncNotifier<void> {
     String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
+    final stopwatch = Stopwatch()..start();
     await AnalyticsService.instance.track(
       AnalyticsEvent.reportExportStarted,
       {
@@ -101,6 +105,7 @@ class ReportsController extends AsyncNotifier<void> {
           'export_type': 'multi_component',
           'machine_id': machine.id,
           'components_count': components.length,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
     } catch (e, st) {
@@ -110,6 +115,7 @@ class ReportsController extends AsyncNotifier<void> {
           'format': 'pdf',
           'export_type': 'multi_component',
           'machine_id': machine.id,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
       state = AsyncValue.error(e, st);
@@ -123,6 +129,7 @@ class ReportsController extends AsyncNotifier<void> {
     required List<UsageRecord> records,
   }) async {
     state = const AsyncValue.loading();
+    final stopwatch = Stopwatch()..start();
     await AnalyticsService.instance.track(
       AnalyticsEvent.reportExportStarted,
       {
@@ -149,6 +156,7 @@ class ReportsController extends AsyncNotifier<void> {
           'machine_id': machine.id,
           'section_id': section.id,
           'records_count': records.length,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
     } catch (e, st) {
@@ -157,6 +165,7 @@ class ReportsController extends AsyncNotifier<void> {
         {
           'format': 'excel',
           'machine_id': machine.id,
+          'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
       state = AsyncValue.error(e, st);

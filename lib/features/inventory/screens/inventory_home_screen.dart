@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/inventory_models.dart';
@@ -221,6 +222,10 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                       ),
                       onChanged: (val) {
                         final query = val.trim();
+                        final prevQuery = ref.read(inventorySearchQueryProvider);
+                        if (prevQuery.isEmpty && query.isNotEmpty) {
+                          AnalyticsService.instance.searchStarted(searchContext: 'inventory');
+                        }
                         if (query.isEmpty) {
                           _collapsedDuringSearchProductIds.clear();
                         }
@@ -236,6 +241,17 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
             // Product List & Accordions
             productsAsync.when(
               data: (products) {
+                if (_searchController.text.trim().isNotEmpty) {
+                  if (products.isEmpty) {
+                    AnalyticsService.instance.searchNoResults(searchContext: 'inventory');
+                  } else {
+                    AnalyticsService.instance.searchUsed(
+                      searchContext: 'inventory',
+                      resultCount: products.length,
+                    );
+                  }
+                }
+
                 if (products.isEmpty) {
                   return SliverFillRemaining(
                     hasScrollBody: false,

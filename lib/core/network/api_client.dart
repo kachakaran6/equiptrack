@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../analytics/analytics_service.dart';
 import '../errors/app_failure.dart';
 import '../utils/app_logger.dart';
 import '../../models/app_user.dart';
@@ -230,6 +231,26 @@ class ApiClient {
       }
       return decoded;
     }
+
+    // Report API error telemetry safely (throttled & sanitized)
+    final path = response.request?.url.path ?? 'api';
+    final method = response.request?.method ?? 'UNKNOWN';
+    final errType = response.statusCode == 401
+        ? 'Unauthorized'
+        : (response.statusCode == 404
+            ? 'NotFound'
+            : (response.statusCode == 409
+                ? 'Conflict'
+                : (response.statusCode == 400 || response.statusCode == 422
+                    ? 'ValidationError'
+                    : 'ServerError')));
+
+    unawaited(AnalyticsService.instance.trackApiError(
+      endpoint: path,
+      operation: method,
+      statusCode: response.statusCode,
+      errorType: errType,
+    ));
 
     if (response.statusCode == 401) {
       throw AuthenticationFailure(message, response.statusCode.toString());

@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/analytics/analytics_event.dart';
 import '../core/analytics/analytics_service.dart';
+import '../core/analytics/app_lifecycle_observer.dart';
 import '../core/utils/app_logger.dart';
 import '../data/repositories/auth_repository.dart';
 
@@ -34,6 +35,7 @@ class AppBootstrap {
     try {
       await AnalyticsService.instance.initialize();
       await AnalyticsService.instance.track(AnalyticsEvent.appOpened);
+      WidgetsBinding.instance.addObserver(AppLifecycleObserver());
     } catch (e) {
       AppLogger.warning('Analytics initialization error in bootstrap: $e');
     }

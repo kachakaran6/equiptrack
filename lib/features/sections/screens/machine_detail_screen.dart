@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/analytics/analytics_event.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -51,10 +50,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.instance.track(
-      AnalyticsEvent.machineViewed,
-      {'machine_id': widget.machineId},
-    );
+    AnalyticsService.instance.viewMachine(widget.machineId);
   }
 
   bool _isCategoryExpanded(String categoryKey) {

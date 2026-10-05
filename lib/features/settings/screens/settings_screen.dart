@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/analytics/analytics_event.dart';
-import '../../../core/analytics/analytics_screen.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -47,7 +46,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.instance.screen(AnalyticsScreen.settings);
     AnalyticsService.instance.track(AnalyticsEvent.settingsOpened);
   }
 

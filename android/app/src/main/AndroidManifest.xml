@@ -44,6 +44,9 @@
             android:name="com.posthog.posthog.TRACK_APPLICATION_LIFECYCLE_EVENTS"
             android:value="false" />
         <meta-data
+            android:name="com.posthog.posthog.CAPTURE_SCREEN_VIEWS"
+            android:value="false" />
+        <meta-data
             android:name="com.posthog.posthog.SESSION_REPLAY"
             android:value="true" />
         <meta-data
