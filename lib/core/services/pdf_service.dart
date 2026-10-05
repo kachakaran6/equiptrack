@@ -10,6 +10,7 @@ import '../../models/calculated_usage_row.dart';
 import '../../models/machine.dart';
 import '../../models/section.dart';
 import '../constants/app_constants.dart';
+import '../errors/app_failure.dart';
 import '../extensions/date_extensions.dart';
 import '../utils/app_logger.dart';
 
@@ -41,8 +42,14 @@ class PdfService {
   Future<Uint8List> generateMultiComponentReportPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
     DateTime? generatedAt,
   }) async {
+    final totalRows = components.fold<int>(0, (sum, c) => sum + c.rows.length);
+    if (components.isEmpty || totalRows == 0) {
+      throw const ValidationFailure('Cannot generate PDF: No usage records found in the selected components.');
+    }
+
     final timestamp = generatedAt ?? DateTime.now();
     final title = components.length == 1
         ? 'Machine Usage Report - ${machine.name} - ${components.first.section.name}'
@@ -175,6 +182,29 @@ class PdfService {
                                   ),
                                 ],
                               ),
+                              if (dateRangeText != null && dateRangeText.isNotEmpty) ...[
+                                pw.SizedBox(height: 4),
+                                pw.Row(
+                                  children: [
+                                    pw.Text(
+                                      'DATE FILTER: ',
+                                      style: pw.TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: textMutedColor,
+                                      ),
+                                    ),
+                                    pw.Text(
+                                      dateRangeText,
+                                      style: pw.TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: textDarkColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -284,6 +314,7 @@ class PdfService {
     required Section section,
     required List<CalculatedUsageRow> rows,
     String? categoryName,
+    String? dateRangeText,
     DateTime? generatedAt,
   }) async {
     return generateMultiComponentReportPdf(
@@ -295,6 +326,7 @@ class PdfService {
           rows: rows,
         ),
       ],
+      dateRangeText: dateRangeText,
       generatedAt: generatedAt,
     );
   }
@@ -303,10 +335,12 @@ class PdfService {
   Future<File> saveMultiComponentPdfFile({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     final pdfBytes = await generateMultiComponentReportPdf(
       machine: machine,
       components: components,
+      dateRangeText: dateRangeText,
     );
     final tempDir = await getTemporaryDirectory();
     final sanitizedMachine = machine.name.replaceAll(RegExp(r'[^\w\s]+'), '_').trim();
@@ -320,11 +354,13 @@ class PdfService {
   Future<void> shareMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     try {
       final file = await saveMultiComponentPdfFile(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
 
       final count = components.length;
@@ -345,10 +381,12 @@ class PdfService {
   Future<void> printOrPreviewMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     final pdfBytes = await generateMultiComponentReportPdf(
       machine: machine,
       components: components,
+      dateRangeText: dateRangeText,
     );
 
     await Printing.layoutPdf(
@@ -363,6 +401,7 @@ class PdfService {
     required Section section,
     required List<CalculatedUsageRow> rows,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     try {
       final pdfBytes = await generateUsageReportPdf(
@@ -370,6 +409,7 @@ class PdfService {
         section: section,
         rows: rows,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
 
       final tempDir = await getTemporaryDirectory();
@@ -398,12 +438,14 @@ class PdfService {
     required Section section,
     required List<CalculatedUsageRow> rows,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     final pdfBytes = await generateUsageReportPdf(
       machine: machine,
       section: section,
       rows: rows,
       categoryName: categoryName,
+      dateRangeText: dateRangeText,
     );
 
     await Printing.layoutPdf(

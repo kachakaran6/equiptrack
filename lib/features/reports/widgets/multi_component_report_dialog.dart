@@ -15,6 +15,8 @@ import '../../../core/widgets/app_dialog.dart';
 import '../../../data/repositories/usage_record_repository.dart';
 import '../../../models/machine.dart';
 import '../../../models/section.dart';
+import '../models/report_filter_options.dart';
+import 'report_date_filter_selector.dart';
 
 class MultiComponentReportDialog extends ConsumerStatefulWidget {
   final Machine machine;
@@ -50,11 +52,15 @@ class MultiComponentReportDialog extends ConsumerStatefulWidget {
       _MultiComponentReportDialogState();
 }
 
-enum _ReportStatus { generating, completed, error }
+enum _ReportStatus { configuring, generating, completed, empty, error }
 
 class _MultiComponentReportDialogState
     extends ConsumerState<MultiComponentReportDialog> {
-  _ReportStatus _status = _ReportStatus.generating;
+  _ReportStatus _status = _ReportStatus.configuring;
+  ReportDatePreset _datePreset = ReportDatePreset.allTime;
+  DateTimeRange? _dateRange;
+  bool _excludeEmptyComponents = true;
+
   String _currentStepText = 'Preparing report data...';
   double _progress = 0.0;
   String? _errorMessage;
@@ -62,19 +68,14 @@ class _MultiComponentReportDialogState
   File? _savedFile;
   final List<ComponentReportData> _compiledComponents = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _startGeneration();
-  }
-
   Future<void> _startGeneration() async {
     setState(() {
       _status = _ReportStatus.generating;
       _errorMessage = null;
       _progress = 0.0;
       _compiledComponents.clear();
-      _currentStepText = 'Fetching usage records (0/${widget.selectedSections.length})...';
+      _currentStepText =
+          'Fetching usage records (0/${widget.selectedSections.length})...';
     });
 
     try {
@@ -92,19 +93,28 @@ class _MultiComponentReportDialogState
         });
 
         final records = await usageRepo.getRecords(section.id);
-        final rows = calcService.calculate(records);
+        final allRows = calcService.calculate(records);
 
-        final catName = section.categoryId != null
-            ? widget.categoryNames[section.categoryId]
-            : null;
+        // Filter rows based on date range
+        final filteredRows = _dateRange != null
+            ? allRows
+                .where((r) => ReportFilterHelper.isDateInRange(r.date, _dateRange))
+                .toList()
+            : allRows;
 
-        _compiledComponents.add(
-          ComponentReportData(
-            section: section,
-            categoryName: catName,
-            rows: rows,
-          ),
-        );
+        if (!_excludeEmptyComponents || filteredRows.isNotEmpty) {
+          final catName = section.categoryId != null
+              ? widget.categoryNames[section.categoryId]
+              : null;
+
+          _compiledComponents.add(
+            ComponentReportData(
+              section: section,
+              categoryName: catName,
+              rows: filteredRows,
+            ),
+          );
+        }
 
         if (!mounted) return;
         setState(() {
@@ -112,20 +122,37 @@ class _MultiComponentReportDialogState
         });
       }
 
+      // Check if all compiled components have 0 records
+      final totalRecords =
+          _compiledComponents.fold<int>(0, (sum, c) => sum + c.rows.length);
+
+      if (_compiledComponents.isEmpty || totalRecords == 0) {
+        if (!mounted) return;
+        setState(() {
+          _status = _ReportStatus.empty;
+        });
+        return;
+      }
+
       if (!mounted) return;
       setState(() {
         _currentStepText = 'Generating combined PDF document...';
       });
 
+      final dateRangeText =
+          ReportFilterHelper.getDisplayText(_datePreset, _dateRange);
+
       const pdfService = PdfService();
       final pdfBytes = await pdfService.generateMultiComponentReportPdf(
         machine: widget.machine,
         components: _compiledComponents,
+        dateRangeText: _datePreset == ReportDatePreset.allTime ? null : dateRangeText,
       );
 
       final file = await pdfService.saveMultiComponentPdfFile(
         machine: widget.machine,
         components: _compiledComponents,
+        dateRangeText: _datePreset == ReportDatePreset.allTime ? null : dateRangeText,
       );
 
       if (!mounted) return;
@@ -178,6 +205,130 @@ class _MultiComponentReportDialogState
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // 1. Configuration / Filter View
+    if (_status == _ReportStatus.configuring) {
+      final count = widget.selectedSections.length;
+      return AppDialog(
+        title: 'Export PDF Report',
+        icon: Icons.picture_as_pdf_outlined,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Summary card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.surfaceContainerDark
+                      : AppColors.surfaceContainerLight,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.precision_manufacturing_rounded,
+                      color: isDark ? AppColors.primaryLight : AppColors.primary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${widget.machine.name} • $count ${count == 1 ? "component" : "components"}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Date Filter Section
+              ReportDateFilterSelector(
+                selectedPreset: _datePreset,
+                selectedRange: _dateRange,
+                onPresetChanged: (preset) {
+                  setState(() {
+                    _datePreset = preset;
+                    _dateRange = ReportFilterHelper.getRangeForPreset(preset);
+                  });
+                },
+                onRangeChanged: (range) {
+                  setState(() {
+                    _dateRange = range;
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+
+              // Exclude empty components toggle
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _excludeEmptyComponents = !_excludeEmptyComponents;
+                  });
+                },
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: Checkbox(
+                          value: _excludeEmptyComponents,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (val) {
+                            setState(() {
+                              _excludeEmptyComponents = val ?? true;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Skip components with 0 records',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: 'Cancel',
+            variant: AppButtonVariant.outline,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 8),
+          AppButton(
+            text: 'Generate PDF',
+            icon: Icons.picture_as_pdf_rounded,
+            size: AppButtonSize.small,
+            onPressed: _startGeneration,
+          ),
+        ],
+      );
+    }
+
+    // 2. Generating View
     if (_status == _ReportStatus.generating) {
       return AppDialog(
         title: 'Generating PDF Report',
@@ -232,6 +383,75 @@ class _MultiComponentReportDialogState
       );
     }
 
+    // 3. Empty Records View (No records found -> PDF not generated)
+    if (_status == _ReportStatus.empty) {
+      return AppDialog(
+        title: 'No Records to Export',
+        icon: Icons.warning_amber_rounded,
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.warningContainerDark
+                      : AppColors.warningContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.warning,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'No usage records found',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'The selected components have no usage records for "${ReportFilterHelper.getDisplayText(_datePreset, _dateRange)}".\n\nPDF was not generated.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: 'Close',
+            variant: AppButtonVariant.outline,
+            size: AppButtonSize.small,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 8),
+          AppButton(
+            text: 'Change Filter',
+            icon: Icons.filter_alt_outlined,
+            size: AppButtonSize.small,
+            onPressed: () {
+              setState(() {
+                _status = _ReportStatus.configuring;
+              });
+            },
+          ),
+        ],
+      );
+    }
+
+    // 4. Error View
     if (_status == _ReportStatus.error) {
       return AppDialog(
         title: 'PDF Generation Failed',
@@ -281,8 +501,11 @@ class _MultiComponentReportDialogState
       );
     }
 
-    // Success State
+    // 5. Success State
     final count = _compiledComponents.length;
+    final dateRangeLabel =
+        ReportFilterHelper.getDisplayText(_datePreset, _dateRange);
+
     return AppDialog(
       title: 'Report Ready',
       icon: Icons.check_circle_outline_rounded,
@@ -322,6 +545,18 @@ class _MultiComponentReportDialogState
               ),
               textAlign: TextAlign.center,
             ),
+            if (_datePreset != ReportDatePreset.allTime) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Filter: $dateRangeLabel',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 8),
           ],
         ),

@@ -18,6 +18,7 @@ class ReportsController extends AsyncNotifier<void> {
     required Section section,
     required List<UsageRecord> records,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -27,6 +28,7 @@ class ReportsController extends AsyncNotifier<void> {
         section: section,
         records: records,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -38,6 +40,7 @@ class ReportsController extends AsyncNotifier<void> {
   Future<void> shareMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -45,6 +48,7 @@ class ReportsController extends AsyncNotifier<void> {
       await service.shareMultiComponentPdf(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -78,6 +82,7 @@ class ReportsController extends AsyncNotifier<void> {
     required Section section,
     required List<UsageRecord> records,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -87,6 +92,7 @@ class ReportsController extends AsyncNotifier<void> {
         section: section,
         records: records,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -98,6 +104,7 @@ class ReportsController extends AsyncNotifier<void> {
   Future<void> printOrPreviewMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -105,6 +112,7 @@ class ReportsController extends AsyncNotifier<void> {
       await service.printOrPreviewMultiComponentPdf(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
       state = const AsyncValue.data(null);
     } catch (e, st) {

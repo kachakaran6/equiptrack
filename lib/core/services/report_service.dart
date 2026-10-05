@@ -29,6 +29,7 @@ class ReportService {
     required Section section,
     required List<UsageRecord> records,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -37,6 +38,7 @@ class ReportService {
         section: section,
         rows: rows,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to generate PDF', e, st);
@@ -48,11 +50,13 @@ class ReportService {
   Future<Uint8List> generateMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     try {
       return await pdfService.generateMultiComponentReportPdf(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to generate multi-component PDF', e, st);
@@ -64,11 +68,13 @@ class ReportService {
   Future<File> saveMultiComponentPdfFile({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     try {
       return await pdfService.saveMultiComponentPdfFile(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to save multi-component PDF', e, st);
@@ -80,11 +86,13 @@ class ReportService {
   Future<void> shareMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     try {
       await pdfService.shareMultiComponentPdf(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to share multi-component PDF', e, st);
@@ -96,11 +104,13 @@ class ReportService {
   Future<void> printOrPreviewMultiComponentPdf({
     required Machine machine,
     required List<ComponentReportData> components,
+    String? dateRangeText,
   }) async {
     try {
       await pdfService.printOrPreviewMultiComponentPdf(
         machine: machine,
         components: components,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to preview multi-component PDF', e, st);
@@ -133,6 +143,7 @@ class ReportService {
     required Section section,
     required List<UsageRecord> records,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -141,6 +152,7 @@ class ReportService {
         section: section,
         rows: rows,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to share PDF', e, st);
@@ -173,6 +185,7 @@ class ReportService {
     required Section section,
     required List<UsageRecord> records,
     String? categoryName,
+    String? dateRangeText,
   }) async {
     try {
       final rows = calculationService.calculate(records);
@@ -181,6 +194,7 @@ class ReportService {
         section: section,
         rows: rows,
         categoryName: categoryName,
+        dateRangeText: dateRangeText,
       );
     } catch (e, st) {
       AppLogger.error('ReportService: Failed to preview PDF', e, st);

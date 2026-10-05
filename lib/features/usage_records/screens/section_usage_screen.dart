@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/extensions/context_extensions.dart';
 import '../../../core/widgets/app_app_bar.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -58,6 +59,11 @@ class SectionUsageScreen extends ConsumerWidget {
               final machine = machineAsync.value;
               final section = sectionAsync.value;
               final rawRecords = rawRecordsAsync.value ?? [];
+
+              if (rawRecords.isEmpty) {
+                context.showInfoSnackBar('No usage records found to export for this component.');
+                return;
+              }
 
               if (machine != null && section != null) {
                 ExportActionsSheet.show(

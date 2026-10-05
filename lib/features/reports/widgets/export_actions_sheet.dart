@@ -11,8 +11,10 @@ import '../../../models/machine.dart';
 import '../../../models/section.dart';
 import '../../../models/usage_record.dart';
 import '../controllers/reports_controller.dart';
+import '../models/report_filter_options.dart';
+import 'report_date_filter_selector.dart';
 
-class ExportActionsSheet extends ConsumerWidget {
+class ExportActionsSheet extends ConsumerStatefulWidget {
   final Machine machine;
   final Section section;
   final List<UsageRecord> records;
@@ -41,9 +43,28 @@ class ExportActionsSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExportActionsSheet> createState() => _ExportActionsSheetState();
+}
+
+class _ExportActionsSheetState extends ConsumerState<ExportActionsSheet> {
+  ReportDatePreset _datePreset = ReportDatePreset.allTime;
+  DateTimeRange? _dateRange;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    final filteredRecords = _dateRange != null
+        ? widget.records
+            .where((r) => ReportFilterHelper.isDateInRange(r.usageDate, _dateRange))
+            .toList()
+        : widget.records;
+
+    final hasRecords = filteredRecords.isNotEmpty;
+    final dateRangeText = _datePreset == ReportDatePreset.allTime
+        ? null
+        : ReportFilterHelper.getDisplayText(_datePreset, _dateRange);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -71,7 +92,7 @@ class ExportActionsSheet extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${machine.name} • ${section.name} (${records.length} records)',
+                  '${widget.machine.name} • ${widget.section.name} (${filteredRecords.length} ${filteredRecords.length == 1 ? "record" : "records"})',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -82,213 +103,290 @@ class ExportActionsSheet extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
 
-        // Option 1: PDF Preview & Print
-        AppCard(
-          onTap: () async {
-            Navigator.of(context).pop();
-            String? categoryName;
-            if (section.categoryId != null) {
-              final cats = ref.read(categoriesStreamFamily(machine.id)).value;
-              categoryName = cats
-                  ?.where((c) => c.id == section.categoryId)
-                  .firstOrNull
-                  ?.name;
-            }
-            await ref
-                .read(reportsControllerProvider.notifier)
-                .printOrPreviewPdf(
-                  machine: machine,
-                  section: section,
-                  records: records,
-                  categoryName: categoryName,
-                );
+        // Date Filter Selector
+        ReportDateFilterSelector(
+          selectedPreset: _datePreset,
+          selectedRange: _dateRange,
+          onPresetChanged: (preset) {
+            setState(() {
+              _datePreset = preset;
+              _dateRange = ReportFilterHelper.getRangeForPreset(preset);
+            });
           },
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.errorContainerDark
-                      : AppColors.errorContainer,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                ),
-                child: const Icon(
-                  Icons.picture_as_pdf_rounded,
-                  color: AppColors.error,
+          onRangeChanged: (range) {
+            setState(() {
+              _dateRange = range;
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+
+        // Empty filter state notice
+        if (!hasRecords) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.warningContainerDark.withAlpha(80)
+                  : AppColors.warningContainer.withAlpha(120),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.warning.withAlpha(100)
+                    : AppColors.warning.withAlpha(80),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.warning,
                   size: 20,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Preview / Print PDF',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No records found for "${ReportFilterHelper.getDisplayText(_datePreset, _dateRange)}". Select another date filter to export.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDark ? Colors.amber[200] : Colors.brown[800],
+                      fontSize: 12,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'A4 document layout ready for printing or viewing',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-              ),
-            ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Option 1: PDF Preview & Print
+        Opacity(
+          opacity: hasRecords ? 1.0 : 0.5,
+          child: AppCard(
+            onTap: hasRecords
+                ? () async {
+                    Navigator.of(context).pop();
+                    String? categoryName;
+                    if (widget.section.categoryId != null) {
+                      final cats = ref
+                          .read(categoriesStreamFamily(widget.machine.id))
+                          .value;
+                      categoryName = cats
+                          ?.where((c) => c.id == widget.section.categoryId)
+                          .firstOrNull
+                          ?.name;
+                    }
+                    await ref
+                        .read(reportsControllerProvider.notifier)
+                        .printOrPreviewPdf(
+                          machine: widget.machine,
+                          section: widget.section,
+                          records: filteredRecords,
+                          categoryName: categoryName,
+                          dateRangeText: dateRangeText,
+                        );
+                  }
+                : null,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.errorContainerDark
+                        : AppColors.errorContainer,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Preview / Print PDF',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'A4 document layout ready for printing or viewing',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 8),
 
         // Option 2: Share PDF
-        AppCard(
-          keyString: AppKeys.exportPdfButton,
-          onTap: () async {
-            Navigator.of(context).pop();
-            try {
-              String? categoryName;
-              if (section.categoryId != null) {
-                final cats = ref.read(categoriesStreamFamily(machine.id)).value;
-                categoryName = cats
-                    ?.where((c) => c.id == section.categoryId)
-                    .firstOrNull
-                    ?.name;
-              }
-              await ref.read(reportsControllerProvider.notifier).sharePdf(
-                    machine: machine,
-                    section: section,
-                    records: records,
-                    categoryName: categoryName,
-                  );
-            } catch (e) {
-              if (context.mounted) {
-                context.showErrorSnackBar('Failed to share PDF: $e');
-              }
-            }
-          },
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.primaryContainerDark
-                      : AppColors.primaryContainerLight,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        Opacity(
+          opacity: hasRecords ? 1.0 : 0.5,
+          child: AppCard(
+            keyString: AppKeys.exportPdfButton,
+            onTap: hasRecords
+                ? () async {
+                    Navigator.of(context).pop();
+                    try {
+                      String? categoryName;
+                      if (widget.section.categoryId != null) {
+                        final cats = ref
+                            .read(categoriesStreamFamily(widget.machine.id))
+                            .value;
+                        categoryName = cats
+                            ?.where((c) => c.id == widget.section.categoryId)
+                            .firstOrNull
+                            ?.name;
+                      }
+                      await ref.read(reportsControllerProvider.notifier).sharePdf(
+                            machine: widget.machine,
+                            section: widget.section,
+                            records: filteredRecords,
+                            categoryName: categoryName,
+                            dateRangeText: dateRangeText,
+                          );
+                    } catch (e) {
+                      if (context.mounted) {
+                        context.showErrorSnackBar('Failed to share PDF: $e');
+                      }
+                    }
+                  }
+                : null,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.primaryContainerDark
+                        : AppColors.primaryContainerLight,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  child: Icon(
+                    Icons.share_rounded,
+                    color: isDark ? AppColors.primaryLight : AppColors.primary,
+                    size: 20,
+                  ),
                 ),
-                child: Icon(
-                  Icons.share_rounded,
-                  color: isDark ? AppColors.primaryLight : AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Share PDF File',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Share PDF File',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Export document and send via WhatsApp, Email, or Drive',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Export document and send via WhatsApp, Email, or Drive',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-              ),
-            ],
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 8),
 
         // Option 3: Share Excel (.xlsx)
-        AppCard(
-          keyString: AppKeys.exportExcelButton,
-          onTap: () async {
-            Navigator.of(context).pop();
-            try {
-              await ref.read(reportsControllerProvider.notifier).shareExcel(
-                    machine: machine,
-                    section: section,
-                    records: records,
-                  );
-            } catch (e) {
-              if (context.mounted) {
-                context.showErrorSnackBar('Failed to share Excel: $e');
-              }
-            }
-          },
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.successContainerDark
-                      : AppColors.successContainer,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        Opacity(
+          opacity: hasRecords ? 1.0 : 0.5,
+          child: AppCard(
+            keyString: AppKeys.exportExcelButton,
+            onTap: hasRecords
+                ? () async {
+                    Navigator.of(context).pop();
+                    try {
+                      await ref.read(reportsControllerProvider.notifier).shareExcel(
+                            machine: widget.machine,
+                            section: widget.section,
+                            records: filteredRecords,
+                          );
+                    } catch (e) {
+                      if (context.mounted) {
+                        context.showErrorSnackBar('Failed to share Excel: $e');
+                      }
+                    }
+                  }
+                : null,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.successContainerDark
+                        : AppColors.successContainer,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  child: const Icon(
+                    Icons.table_chart_rounded,
+                    color: AppColors.success,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.table_chart_rounded,
-                  color: AppColors.success,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Export Excel Spreadsheet (.xlsx)',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Export Excel Spreadsheet (.xlsx)',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Formatted spreadsheet with calculated replacement durations',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Formatted spreadsheet with calculated replacement durations',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-              ),
-            ],
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+                ),
+              ],
+            ),
           ),
         ),
       ],
