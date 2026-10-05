@@ -20,16 +20,20 @@ class ApiCategoryRepository implements CategoryRepository {
   @override
   Future<List<Category>> getCategories([String? machineId]) async {
     try {
-      // First attempt global user-wide categories
       dynamic data;
-      try {
-        data = await _apiClient.get('/categories');
-      } catch (e) {
-        if (machineId != null && machineId.isNotEmpty) {
+      if (machineId != null && machineId.isNotEmpty) {
+        // Query categories used in this machine
+        try {
           data = await _apiClient.get('/machines/$machineId/categories');
-        } else {
-          rethrow;
+        } catch (e) {
+          data = await _apiClient.get(
+            '/categories',
+            queryParameters: {'machine_id': machineId},
+          );
         }
+      } else {
+        // Global user categories
+        data = await _apiClient.get('/categories');
       }
 
       if (data is List) {

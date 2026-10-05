@@ -23,18 +23,38 @@ export class CategoriesService {
   }
 
   /**
-   * List categories for a machine, falling back to all user categories
+   * List categories used in a specific machine.
+   * If a category is not used by any component/section in the machine,
+   * it will not be returned unless includeUnused is true.
    */
   static async listCategoriesByMachine(
     machineId: string,
-    userId?: string
+    userId?: string,
+    options: { includeUnused?: boolean } = {}
   ): Promise<CategoryRow[] | null> {
-    if (userId) {
-      return this.listUserCategories(userId);
+    const machineCheck = await query('SELECT id FROM machines WHERE id = $1', [machineId]);
+    if (machineCheck.rows.length === 0) {
+      return null;
     }
 
+    if (options.includeUnused) {
+      if (userId) {
+        return this.listUserCategories(userId);
+      }
+      const result = await query<CategoryRow>(
+        'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE machine_id = $1 OR user_id IS NOT NULL ORDER BY name ASC',
+        [machineId]
+      );
+      return result.rows;
+    }
+
+    // Default: return only categories actively assigned to sections in this machine
     const result = await query<CategoryRow>(
-      'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE machine_id = $1 OR user_id IS NOT NULL ORDER BY name ASC',
+      `SELECT DISTINCT c.id, c.user_id, c.machine_id, c.name, c.created_at, c.updated_at
+       FROM categories c
+       INNER JOIN sections s ON s.category_id = c.id
+       WHERE s.machine_id = $1
+       ORDER BY c.name ASC`,
       [machineId]
     );
     return result.rows;

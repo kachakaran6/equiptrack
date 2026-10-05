@@ -3,6 +3,7 @@ import '../../../core/analytics/analytics_event.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../data/repositories/category_repository.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../models/section.dart';
 
@@ -30,6 +31,7 @@ class SectionsController extends AsyncNotifier<void> {
         categoryId: categoryId,
       );
       ref.invalidate(sectionsStreamFamily(machineId));
+      ref.invalidate(categoriesStreamFamily(machineId));
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(
@@ -66,6 +68,7 @@ class SectionsController extends AsyncNotifier<void> {
         clearCategory: clearCategory,
       );
       ref.invalidate(sectionsStreamFamily(machineId));
+      ref.invalidate(categoriesStreamFamily(machineId));
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(
@@ -90,6 +93,7 @@ class SectionsController extends AsyncNotifier<void> {
       final repo = ref.read(sectionRepositoryProvider);
       await repo.deleteSection(id);
       ref.invalidate(sectionsStreamFamily(machineId));
+      ref.invalidate(categoriesStreamFamily(machineId));
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(

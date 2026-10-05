@@ -265,10 +265,13 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                 final machine = machineAsync.value;
                 final sections = sectionsAsync.value ?? [];
                 final categories = categoriesAsync.value ?? [];
+                final usedCategories = categories
+                    .where((c) => sections.any((s) => s.categoryId == c.id))
+                    .toList();
                 if (machine != null) {
                   _generatePdfReport(
                     context: context,
-                    categories: categories,
+                    categories: usedCategories,
                     allSections: sections,
                     machine: machine,
                   );
@@ -364,12 +367,17 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                           }
                         }
 
-                        // Category count map
+                        // Filter to only categories that are actively used in this machine
+                        final usedCategories = categories
+                            .where((c) => (categorySectionsMap[c.id]?.isNotEmpty ?? false))
+                            .toList();
+
+                        // Category count map for used categories
                         final Map<String, int> categoryCounts = {
-                          for (final c in categories) c.id: (categorySectionsMap[c.id]?.length ?? 0),
+                          for (final c in usedCategories) c.id: (categorySectionsMap[c.id]?.length ?? 0),
                         };
 
-                        if (sections.isEmpty && categories.isEmpty) {
+                        if (sections.isEmpty && usedCategories.isEmpty) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -396,13 +404,22 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                             .where((s) => s.name.toLowerCase().contains(_searchQuery))
                             .length;
 
+                        // Reset selected category filter if it was set to an unused category
+                        if (_selectedCategoryFilterId != null &&
+                            _selectedCategoryFilterId != '__uncategorized__' &&
+                            !usedCategories.any((c) => c.id == _selectedCategoryFilterId)) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _selectedCategoryFilterId = null);
+                          });
+                        }
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Horizontal Category List with Distinct Colors
-                            if (categories.isNotEmpty || uncategorizedSections.isNotEmpty) ...[
+                            // Horizontal Category List with Distinct Colors (Only used categories)
+                            if (usedCategories.isNotEmpty || uncategorizedSections.isNotEmpty) ...[
                               _CategoryHorizontalList(
-                                categories: categories,
+                                categories: usedCategories,
                                 totalComponentCount: sections.length,
                                 categoryCounts: categoryCounts,
                                 uncategorizedCount: uncategorizedSections.length,
@@ -482,10 +499,10 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                                 icon: Icons.search_off_rounded,
                               )
                             else ...[
-                              // 1. Render Custom Categories Accordions
-                              for (int i = 0; i < categories.length; i++) ...[
+                              // 1. Render Custom Categories Accordions (only used categories in this machine)
+                              for (int i = 0; i < usedCategories.length; i++) ...[
                                 Builder(builder: (context) {
-                                  final category = categories[i];
+                                  final category = usedCategories[i];
                                   if (_selectedCategoryFilterId != null &&
                                       _selectedCategoryFilterId != category.id) {
                                     return const SizedBox.shrink();

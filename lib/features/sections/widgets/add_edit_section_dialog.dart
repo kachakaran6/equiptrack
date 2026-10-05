@@ -111,7 +111,7 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.section != null;
-    final categoriesAsync = ref.watch(categoriesStreamFamily(widget.machineId));
+    final categoriesAsync = ref.watch(allCategoriesProvider);
 
     final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
     final fillColor = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;

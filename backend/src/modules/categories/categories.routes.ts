@@ -6,15 +6,38 @@ import { CategoriesService } from './categories.service.js';
 export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('preHandler', authenticate);
 
-  // GET /api/categories — Return all categories for the authenticated user
-  fastify.get('/categories', async (request, reply) => {
-    const user = (request as any).user;
-    const categories = await CategoriesService.listUserCategories(user.id);
-    return reply.status(200).send({
-      success: true,
-      data: categories,
-    });
-  });
+  // GET /api/categories — Return all categories for the user, or categories used in a machine
+  fastify.get<{ Querystring: { machine_id?: string; include_unused?: string } }>(
+    '/categories',
+    async (request, reply) => {
+      const user = (request as any).user;
+      const machineId = request.query?.machine_id;
+      if (machineId) {
+        const includeUnused = request.query?.include_unused === 'true';
+        const categories = await CategoriesService.listCategoriesByMachine(
+          machineId,
+          user?.id,
+          { includeUnused }
+        );
+        if (categories === null) {
+          return reply.status(404).send({
+            success: false,
+            message: 'Machine not found',
+          });
+        }
+        return reply.status(200).send({
+          success: true,
+          data: categories,
+        });
+      }
+
+      const categories = await CategoriesService.listUserCategories(user.id);
+      return reply.status(200).send({
+        success: true,
+        data: categories,
+      });
+    }
+  );
 
   // POST /api/categories — Create a new user-wide category
   fastify.post('/categories', async (request, reply) => {
@@ -42,14 +65,16 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  // GET /api/machines/:machineId/categories (Backward-compatible)
-  fastify.get<{ Params: { machineId: string } }>(
+  // GET /api/machines/:machineId/categories
+  fastify.get<{ Params: { machineId: string }; Querystring: { include_unused?: string } }>(
     '/machines/:machineId/categories',
     async (request, reply) => {
       const user = (request as any).user;
+      const includeUnused = request.query?.include_unused === 'true';
       const categories = await CategoriesService.listCategoriesByMachine(
         request.params.machineId,
-        user?.id
+        user?.id,
+        { includeUnused }
       );
       if (categories === null) {
         return reply.status(404).send({

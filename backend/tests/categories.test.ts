@@ -61,6 +61,18 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
       }
 
       // Categories
+      if (clean.includes('FROM categories WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND id != $3')) {
+        const rows = state.categories.filter(
+          (c) => (c.user_id === params[0] || c.machine_id === params[0]) && c.name.toLowerCase() === params[1].toLowerCase() && c.id !== params[2]
+        );
+        return { rows, rowCount: rows.length };
+      }
+      if (clean.includes('FROM categories WHERE user_id = $1 AND LOWER(name) = LOWER($2)')) {
+        const rows = state.categories.filter(
+          (c) => (c.user_id === params[0] || c.machine_id === params[0]) && c.name.toLowerCase() === params[1].toLowerCase()
+        );
+        return { rows, rowCount: rows.length };
+      }
       if (clean.includes('FROM categories WHERE machine_id = $1 AND LOWER(name) = LOWER($2) AND id != $3')) {
         const rows = state.categories.filter(
           (c) => c.machine_id === params[0] && c.name.toLowerCase() === params[1].toLowerCase() && c.id !== params[2]
@@ -73,21 +85,32 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
         );
         return { rows, rowCount: rows.length };
       }
-      if (clean.includes('SELECT id, machine_id, name FROM categories WHERE id = $1') || clean.includes('SELECT id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1')) {
+      if (clean.includes('SELECT id, machine_id, name FROM categories WHERE id = $1') || clean.includes('SELECT id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1') || clean.includes('SELECT id, user_id, machine_id, name FROM categories WHERE id = $1') || clean.includes('SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1')) {
         const rows = state.categories.filter((c) => c.id === params[0]);
         return { rows, rowCount: rows.length };
       }
-      if (clean.includes('FROM categories WHERE machine_id = $1 ORDER BY name ASC')) {
+      if (clean.includes('INNER JOIN sections') && clean.includes('s.machine_id = $1')) {
+        const machineSectionCategoryIds = new Set(
+          state.sections.filter((s) => s.machine_id === params[0] && s.category_id).map((s) => s.category_id)
+        );
         const rows = state.categories
-          .filter((c) => c.machine_id === params[0])
+          .filter((c) => machineSectionCategoryIds.has(c.id))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        return { rows, rowCount: rows.length };
+      }
+      if (clean.includes('FROM categories WHERE machine_id = $1 OR user_id IS NOT NULL ORDER BY name ASC') || clean.includes('FROM categories WHERE machine_id = $1 ORDER BY name ASC') || clean.includes('FROM categories WHERE user_id = $1 ORDER BY name ASC')) {
+        const rows = state.categories
+          .slice()
           .sort((a, b) => a.name.localeCompare(b.name));
         return { rows, rowCount: rows.length };
       }
       if (clean.includes('INSERT INTO categories')) {
+        const isUserScoped = clean.includes('(user_id, name)');
         const c = {
           id: `category-${state.categories.length + 1}`,
-          machine_id: params[0],
-          name: params[1],
+          user_id: isUserScoped ? params[0] : null,
+          machine_id: isUserScoped ? null : params[0],
+          name: isUserScoped ? params[1] : params[1],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -211,20 +234,30 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
   });
 
   test('3. Lists all categories for machine ordered by name', async () => {
+    // With include_unused=true, all available categories are returned
     const listRes = await app.inject({
       method: 'GET',
-      url: `/api/machines/${machineId}/categories`,
+      url: `/api/machines/${machineId}/categories?include_unused=true`,
       headers: { authorization: `Bearer ${userToken}` },
     });
     assert.strictEqual(listRes.statusCode, 200);
     const names = listRes.json().data.map((c: any) => c.name);
     assert.deepStrictEqual(names, ['Bearings', 'Motors']);
+
+    // By default, only categories used in the machine are returned (0 assigned so far)
+    const usedRes = await app.inject({
+      method: 'GET',
+      url: `/api/machines/${machineId}/categories`,
+      headers: { authorization: `Bearer ${userToken}` },
+    });
+    assert.strictEqual(usedRes.statusCode, 200);
+    assert.deepStrictEqual(usedRes.json().data, []);
   });
 
   test('4. Updates category name and prevents renaming to an existing name', async () => {
     const categoriesRes = await app.inject({
       method: 'GET',
-      url: `/api/machines/${machineId}/categories`,
+      url: `/api/categories`,
       headers: { authorization: `Bearer ${userToken}` },
     });
     const bearings = categoriesRes.json().data.find((c: any) => c.name === 'Bearings');
@@ -252,7 +285,7 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
   test('5. Assigns component to category and allows Uncategorized', async () => {
     const categoriesRes = await app.inject({
       method: 'GET',
-      url: `/api/machines/${machineId}/categories`,
+      url: `/api/categories`,
       headers: { authorization: `Bearer ${userToken}` },
     });
     const motors = categoriesRes.json().data.find((c: any) => c.name === 'Motors');
@@ -266,6 +299,16 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
     });
     assert.strictEqual(sec1.statusCode, 201);
     assert.strictEqual(sec1.json().data.category_id, motors.id);
+
+    // Verify machine categories now returns Motors because it is actively used!
+    const usedRes = await app.inject({
+      method: 'GET',
+      url: `/api/machines/${machineId}/categories`,
+      headers: { authorization: `Bearer ${userToken}` },
+    });
+    assert.strictEqual(usedRes.statusCode, 200);
+    const usedNames = usedRes.json().data.map((c: any) => c.name);
+    assert.deepStrictEqual(usedNames, ['Motors']);
 
     // Create component with no category (Uncategorized)
     const sec2 = await app.inject({
@@ -281,7 +324,7 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
   test('6. Deleting category resets component category to Uncategorized without deleting component', async () => {
     const categoriesRes = await app.inject({
       method: 'GET',
-      url: `/api/machines/${machineId}/categories`,
+      url: `/api/categories`,
       headers: { authorization: `Bearer ${userToken}` },
     });
     const motors = categoriesRes.json().data.find((c: any) => c.name === 'Motors');
