@@ -16,6 +16,7 @@ import '../../features/sections/screens/machine_detail_screen.dart';
 import '../../features/shell/main_shell_screen.dart';
 import '../../features/usage_records/screens/section_usage_screen.dart';
 import '../../models/inventory_models.dart';
+import '../analytics/analytics_observer.dart';
 import 'app_routes.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -47,6 +48,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.machines,
     refreshListenable: refreshNotifier,
+    observers: [
+      AnalyticsNavigationObserver(),
+    ],
     routes: [
       GoRoute(
         path: AppRoutes.login,

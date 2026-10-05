@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/analytics/analytics_event.dart';
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -25,15 +27,39 @@ class AuthController extends Notifier<AuthStateData> {
 
   Future<bool> signIn(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
+    await AnalyticsService.instance.track(AnalyticsEvent.loginStarted);
+
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.signInWithEmailPassword(email, password);
+      final user = repo.currentUser;
+
+      if (user != null) {
+        await AnalyticsService.instance.identify(
+          userId: user.id,
+        );
+      }
+
+      await AnalyticsService.instance.track(AnalyticsEvent.loginCompleted);
       state = state.copyWith(isLoading: false, errorMessage: null);
       return true;
     } on AppFailure catch (e) {
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.loginFailed,
+        {
+          'reason': 'app_failure',
+          'error_code': e.code,
+        },
+      );
       state = state.copyWith(isLoading: false, errorMessage: e.message);
       return false;
     } catch (e) {
+      await AnalyticsService.instance.track(
+        AnalyticsEvent.loginFailed,
+        {
+          'reason': 'unexpected_error',
+        },
+      );
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'An error occurred during sign in: $e',
@@ -47,6 +73,8 @@ class AuthController extends Notifier<AuthStateData> {
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.signOut();
+      await AnalyticsService.instance.track(AnalyticsEvent.logoutCompleted);
+      await AnalyticsService.instance.reset();
     } catch (e) {
       AppLogger.error('Logout error', e);
     } finally {
