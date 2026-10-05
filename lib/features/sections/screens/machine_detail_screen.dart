@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_keys.dart';
@@ -40,6 +41,7 @@ class MachineDetailScreen extends ConsumerStatefulWidget {
 
 class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
   String _searchQuery = '';
+  String? _selectedCategoryFilterId;
   bool _selectionMode = false;
   final Set<String> _selectedComponentIds = {};
   final Set<String> _collapsedCategoryIds = {};
@@ -55,6 +57,13 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
       } else {
         _collapsedCategoryIds.add(categoryKey);
       }
+    });
+  }
+
+  void _startSelection(String componentId) {
+    setState(() {
+      _selectionMode = true;
+      _selectedComponentIds.add(componentId);
     });
   }
 
@@ -162,38 +171,73 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
           if (!_selectionMode) ...[
             machineAsync.maybeWhen(
               data: (machine) => machine != null
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.copy_rounded, size: 19),
-                          tooltip: 'Duplicate Machine',
-                          splashRadius: 20,
-                          onPressed: () async {
-                            final duplicated = await DuplicateMachineDialog.show(
-                              context,
-                              machine: machine,
-                            );
-                            if (duplicated != null && context.mounted) {
-                              context.go('/machines/${duplicated.id}');
-                            }
-                          },
+                  ? PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded),
+                      tooltip: 'Machine Settings & Options',
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        side: BorderSide(
+                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          tooltip: 'Edit Machine',
-                          splashRadius: 20,
-                          onPressed: () async {
-                            final updated = await AddEditMachineDialog.show(
-                              context,
-                              machine: machine,
-                            );
-                            if (updated != null) {
-                              ref.invalidate(singleMachineProvider(widget.machineId));
-                            }
-                          },
+                      ),
+                      color: isDark ? AppColors.dialogDark : AppColors.surfaceLight,
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'create_category',
+                          child: Row(
+                            children: [
+                              Icon(Icons.create_new_folder_outlined, size: 18),
+                              SizedBox(width: 12),
+                              Text('Create Category', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'edit_machine',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 18),
+                              SizedBox(width: 12),
+                              Text('Edit Machine', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'duplicate_machine',
+                          child: Row(
+                            children: [
+                              Icon(Icons.copy_rounded, size: 18),
+                              SizedBox(width: 12),
+                              Text('Duplicate Machine', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
                         ),
                       ],
+                      onSelected: (action) async {
+                        if (action == 'create_category') {
+                          AddEditCategoryDialog.show(
+                            context,
+                            machineId: widget.machineId,
+                          );
+                        } else if (action == 'edit_machine') {
+                          final updated = await AddEditMachineDialog.show(
+                            context,
+                            machine: machine,
+                          );
+                          if (updated != null) {
+                            ref.invalidate(singleMachineProvider(widget.machineId));
+                          }
+                        } else if (action == 'duplicate_machine') {
+                          final duplicated = await DuplicateMachineDialog.show(
+                            context,
+                            machine: machine,
+                          );
+                          if (duplicated != null && context.mounted) {
+                            context.go('/machines/${duplicated.id}');
+                          }
+                        }
+                      },
                     )
                   : const SizedBox.shrink(),
               orElse: () => const SizedBox.shrink(),
@@ -225,7 +269,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
               },
               icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
               label: Text(
-                'Generate PDF (${_selectedComponentIds.length})',
+                'Export PDF (${_selectedComponentIds.length})',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
             )
@@ -242,8 +286,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
         loading: () => ListView(
           padding: AppSpacing.screenPadding,
           children: const [
-            MachineHeaderSkeleton(),
-            SizedBox(height: 24),
+            SizedBox(height: 12),
             SectionListSkeleton(itemCount: 4),
           ],
         ),
@@ -268,62 +311,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
             child: ListView(
               padding: AppSpacing.screenPadding,
               children: [
-                // Compact Machine Summary Card
-                AppCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  backgroundColor: isDark
-                      ? AppColors.surfaceContainerLowDark
-                      : AppColors.surfaceContainerLowLight,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.primaryContainerDark
-                              : AppColors.primaryContainerLight,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                          border: Border.all(
-                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.precision_manufacturing_rounded,
-                          color: isDark ? AppColors.primaryLight : AppColors.primary,
-                          size: 19,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              machine.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (machine.description != null &&
-                                machine.description!.trim().isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                machine.description!.trim(),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
 
                 // Search Component Field
                 AppSearchField(
@@ -336,124 +324,7 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Action Toolbar: [ + Create Category ] & [ Select for Report ]
-                sectionsAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, _) => const SizedBox.shrink(),
-                  data: (sections) {
-                    if (sections.isEmpty) return const SizedBox.shrink();
-
-                    if (_selectionMode) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.primaryContainerDark.withAlpha(120)
-                              : AppColors.primaryContainerLight.withAlpha(140),
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                          border: Border.all(
-                            color: isDark ? AppColors.primaryLight.withAlpha(60) : AppColors.primary.withAlpha(60),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.checklist_rounded,
-                              size: 18,
-                              color: isDark ? AppColors.primaryLight : AppColors.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${_selectedComponentIds.length} of ${sections.length} selected',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? AppColors.primaryLight : AppColors.primary,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => _selectAll(sections),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('Select All', style: TextStyle(fontSize: 12)),
-                            ),
-                            const SizedBox(width: 4),
-                            TextButton(
-                              onPressed: _clearSelection,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('Clear', style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () => AddEditCategoryDialog.show(
-                                context,
-                                machineId: widget.machineId,
-                              ),
-                              icon: const Icon(Icons.create_new_folder_outlined, size: 16),
-                              label: const Text(
-                                'Create Category',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
-                                side: BorderSide(
-                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _selectionMode = true;
-                                });
-                              },
-                              icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                              label: const Text(
-                                'Select for Report',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
-                                side: BorderSide(
-                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                // Sections & Categories View
+                // Sections & Categories Data Handling
                 sectionsAsync.when(
                   loading: () => const SectionListSkeleton(),
                   error: (err, _) => AppErrorState(
@@ -471,25 +342,6 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                         onRetry: () => ref.invalidate(categoriesStreamFamily(widget.machineId)),
                       ),
                       data: (categories) {
-                        if (sections.isEmpty && categories.isEmpty) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              AppEmptyState(
-                                title: 'No components yet',
-                                message:
-                                    'Add a component (e.g. Big ID Fan, Gearbox, Spindle) or create categories to start tracking.',
-                                icon: Icons.category_outlined,
-                                actionLabel: 'Add Component',
-                                onAction: () => AddEditSectionDialog.show(
-                                  context,
-                                  machineId: widget.machineId,
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-
                         // Map of valid category IDs
                         final validCategoryIds = {for (final c in categories) c.id};
 
@@ -505,6 +357,30 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                           }
                         }
 
+                        // Category count map
+                        final Map<String, int> categoryCounts = {
+                          for (final c in categories) c.id: (categorySectionsMap[c.id]?.length ?? 0),
+                        };
+
+                        if (sections.isEmpty && categories.isEmpty) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppEmptyState(
+                                title: 'No components yet',
+                                message:
+                                    'Add a component (e.g. Big ID Fan, Gearbox, Spindle) to start tracking.',
+                                icon: Icons.category_outlined,
+                                actionLabel: 'Add Component',
+                                onAction: () => AddEditSectionDialog.show(
+                                  context,
+                                  machineId: widget.machineId,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
                         // Filter based on search query
                         final isSearching = _searchQuery.isNotEmpty;
 
@@ -513,79 +389,169 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                             .where((s) => s.name.toLowerCase().contains(_searchQuery))
                             .length;
 
-                        if (isSearching && totalMatching == 0) {
-                          return AppEmptyState(
-                            title: 'No matching components',
-                            message: 'No component names match "$_searchQuery".',
-                            icon: Icons.search_off_rounded,
-                          );
-                        }
-
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 1. Render Custom Categories Accordions
-                            for (final category in categories) ...[
-                              Builder(builder: (context) {
-                                final allCatSections = categorySectionsMap[category.id] ?? [];
-                                final filteredCatSections = isSearching
-                                    ? allCatSections
-                                        .where((s) => s.name.toLowerCase().contains(_searchQuery))
-                                        .toList()
-                                    : allCatSections;
-
-                                // If searching and category has 0 matches, skip
-                                if (isSearching && filteredCatSections.isEmpty) {
-                                  return const SizedBox.shrink();
-                                }
-
-                                final isExpanded = _isCategoryExpanded(category.id);
-
-                                return _CategoryAccordionSection(
-                                  machineId: widget.machineId,
-                                  category: category,
-                                  sections: filteredCatSections,
-                                  isExpanded: isExpanded,
-                                  selectionMode: _selectionMode,
-                                  selectedComponentIds: _selectedComponentIds,
-                                  onToggleExpand: () => _toggleCategoryExpanded(category.id),
-                                  onToggleComponentSelect: _toggleComponentSelection,
-                                  onToggleCategorySelect: () =>
-                                      _toggleCategorySelection(filteredCatSections),
-                                );
-                              }),
+                            // Horizontal Category List with Distinct Colors
+                            if (categories.isNotEmpty || uncategorizedSections.isNotEmpty) ...[
+                              _CategoryHorizontalList(
+                                categories: categories,
+                                totalComponentCount: sections.length,
+                                categoryCounts: categoryCounts,
+                                uncategorizedCount: uncategorizedSections.length,
+                                selectedCategoryId: _selectedCategoryFilterId,
+                                onCategorySelected: (catId) {
+                                  setState(() {
+                                    _selectedCategoryFilterId = catId;
+                                    // If a category is selected, auto-expand it
+                                    if (catId != null) {
+                                      _collapsedCategoryIds.remove(catId);
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
                             ],
 
-                            // 2. Render Uncategorized Accordion
-                            Builder(builder: (context) {
-                              final filteredUncategorized = isSearching
-                                  ? uncategorizedSections
-                                      .where((s) => s.name.toLowerCase().contains(_searchQuery))
-                                      .toList()
-                                  : uncategorizedSections;
+                            // Selection Mode Bar
+                            if (_selectionMode) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? AppColors.primaryContainerDark.withAlpha(120)
+                                      : AppColors.primaryContainerLight.withAlpha(140),
+                                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                                  border: Border.all(
+                                    color: isDark ? AppColors.primaryLight.withAlpha(60) : AppColors.primary.withAlpha(60),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.checklist_rounded,
+                                      size: 18,
+                                      color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${_selectedComponentIds.length} of ${sections.length} selected',
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _selectAll(sections),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text('Select All', style: TextStyle(fontSize: 12)),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    TextButton(
+                                      onPressed: _clearSelection,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
 
-                              // If no uncategorized components exist (and not searching), hide uncategorized
-                              if (filteredUncategorized.isEmpty &&
-                                  (categories.isNotEmpty || isSearching)) {
-                                return const SizedBox.shrink();
-                              }
+                            if (isSearching && totalMatching == 0)
+                              AppEmptyState(
+                                title: 'No matching components',
+                                message: 'No component names match "$_searchQuery".',
+                                icon: Icons.search_off_rounded,
+                              )
+                            else ...[
+                              // 1. Render Custom Categories Accordions
+                              for (int i = 0; i < categories.length; i++) ...[
+                                Builder(builder: (context) {
+                                  final category = categories[i];
+                                  if (_selectedCategoryFilterId != null &&
+                                      _selectedCategoryFilterId != category.id) {
+                                    return const SizedBox.shrink();
+                                  }
 
-                              const uncategorizedKey = '__uncategorized__';
-                              final isExpanded = _isCategoryExpanded(uncategorizedKey);
+                                  final allCatSections = categorySectionsMap[category.id] ?? [];
+                                  final filteredCatSections = isSearching
+                                      ? allCatSections
+                                          .where((s) => s.name.toLowerCase().contains(_searchQuery))
+                                          .toList()
+                                      : allCatSections;
 
-                              return _UncategorizedAccordionSection(
-                                machineId: widget.machineId,
-                                sections: filteredUncategorized,
-                                isExpanded: isExpanded,
-                                selectionMode: _selectionMode,
-                                selectedComponentIds: _selectedComponentIds,
-                                onToggleExpand: () =>
-                                    _toggleCategoryExpanded(uncategorizedKey),
-                                onToggleComponentSelect: _toggleComponentSelection,
-                                onToggleCategorySelect: () =>
-                                    _toggleCategorySelection(filteredUncategorized),
-                              );
-                            }),
+                                  // If searching and category has 0 matches, skip
+                                  if (isSearching && filteredCatSections.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final isExpanded = _isCategoryExpanded(category.id);
+                                  final color = _CategoryHorizontalList._palette[
+                                      i % _CategoryHorizontalList._palette.length];
+
+                                  return _CategoryAccordionSection(
+                                    machineId: widget.machineId,
+                                    category: category,
+                                    sections: filteredCatSections,
+                                    accentColor: color,
+                                    isExpanded: isExpanded,
+                                    selectionMode: _selectionMode,
+                                    selectedComponentIds: _selectedComponentIds,
+                                    onToggleExpand: () => _toggleCategoryExpanded(category.id),
+                                    onStartSelection: _startSelection,
+                                    onToggleComponentSelect: _toggleComponentSelection,
+                                    onToggleCategorySelect: () =>
+                                        _toggleCategorySelection(filteredCatSections),
+                                  );
+                                }),
+                              ],
+
+                              // 2. Render Uncategorized Accordion
+                              if (_selectedCategoryFilterId == null ||
+                                  _selectedCategoryFilterId == '__uncategorized__') ...[
+                                Builder(builder: (context) {
+                                  final filteredUncategorized = isSearching
+                                      ? uncategorizedSections
+                                          .where((s) => s.name.toLowerCase().contains(_searchQuery))
+                                          .toList()
+                                      : uncategorizedSections;
+
+                                  // If no uncategorized components exist (and not searching), hide uncategorized
+                                  if (filteredUncategorized.isEmpty &&
+                                      (categories.isNotEmpty || isSearching)) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  const uncategorizedKey = '__uncategorized__';
+                                  final isExpanded = _isCategoryExpanded(uncategorizedKey);
+
+                                  return _UncategorizedAccordionSection(
+                                    machineId: widget.machineId,
+                                    sections: filteredUncategorized,
+                                    isExpanded: isExpanded,
+                                    selectionMode: _selectionMode,
+                                    selectedComponentIds: _selectedComponentIds,
+                                    onToggleExpand: () =>
+                                        _toggleCategoryExpanded(uncategorizedKey),
+                                    onStartSelection: _startSelection,
+                                    onToggleComponentSelect: _toggleComponentSelection,
+                                    onToggleCategorySelect: () =>
+                                        _toggleCategorySelection(filteredUncategorized),
+                                  );
+                                }),
+                              ],
+                            ],
 
                             // Extra bottom padding so FAB does not overlap
                             const SizedBox(height: 80),
@@ -604,15 +570,183 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
   }
 }
 
+/// Horizontal Category List with Distinct Colors
+class _CategoryHorizontalList extends StatelessWidget {
+  final List<Category> categories;
+  final int totalComponentCount;
+  final Map<String, int> categoryCounts;
+  final int uncategorizedCount;
+  final String? selectedCategoryId;
+  final ValueChanged<String?> onCategorySelected;
+
+  static const List<Color> _palette = [
+    Color(0xFF3B82F6), // Blue
+    Color(0xFF10B981), // Emerald
+    Color(0xFFF59E0B), // Amber
+    Color(0xFF8B5CF6), // Violet
+    Color(0xFFEC4899), // Pink
+    Color(0xFF06B6D4), // Cyan
+    Color(0xFFF97316), // Orange
+    Color(0xFF14B8A6), // Teal
+  ];
+
+  const _CategoryHorizontalList({
+    required this.categories,
+    required this.totalComponentCount,
+    required this.categoryCounts,
+    required this.uncategorizedCount,
+    required this.selectedCategoryId,
+    required this.onCategorySelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          // "All" chip
+          _buildChip(
+            context: context,
+            label: 'All',
+            count: totalComponentCount,
+            isSelected: selectedCategoryId == null,
+            accentColor: isDark ? AppColors.primaryLight : AppColors.primary,
+            onTap: () => onCategorySelected(null),
+          ),
+          const SizedBox(width: 8),
+
+          // Each custom category chip with its unique color
+          for (int i = 0; i < categories.length; i++) ...[
+            Builder(builder: (context) {
+              final cat = categories[i];
+              final count = categoryCounts[cat.id] ?? 0;
+              final color = _palette[i % _palette.length];
+              final isSelected = selectedCategoryId == cat.id;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildChip(
+                  context: context,
+                  label: cat.name,
+                  count: count,
+                  isSelected: isSelected,
+                  accentColor: color,
+                  onTap: () => onCategorySelected(isSelected ? null : cat.id),
+                ),
+              );
+            }),
+          ],
+
+          // "Uncategorized" chip (if any)
+          if (uncategorizedCount > 0) ...[
+            _buildChip(
+              context: context,
+              label: 'Uncategorized',
+              count: uncategorizedCount,
+              isSelected: selectedCategoryId == '__uncategorized__',
+              accentColor: const Color(0xFF64748B),
+              onTap: () => onCategorySelected(
+                selectedCategoryId == '__uncategorized__' ? null : '__uncategorized__',
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required BuildContext context,
+    required String label,
+    required int count,
+    required bool isSelected,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accentColor.withAlpha(isDark ? 60 : 35)
+              : (isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHighLight),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? accentColor
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: accentColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected
+                    ? (isDark ? Colors.white : accentColor)
+                    : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? accentColor.withAlpha(isDark ? 90 : 50)
+                    : (isDark ? Colors.black.withAlpha(60) : Colors.white.withAlpha(180)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected
+                      ? (isDark ? Colors.white : accentColor)
+                      : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Category Accordion Section Widget
 class _CategoryAccordionSection extends ConsumerWidget {
   final String machineId;
   final Category category;
   final List<Section> sections;
+  final Color accentColor;
   final bool isExpanded;
   final bool selectionMode;
   final Set<String> selectedComponentIds;
   final VoidCallback onToggleExpand;
+  final ValueChanged<String> onStartSelection;
   final ValueChanged<String> onToggleComponentSelect;
   final VoidCallback onToggleCategorySelect;
 
@@ -620,10 +754,12 @@ class _CategoryAccordionSection extends ConsumerWidget {
     required this.machineId,
     required this.category,
     required this.sections,
+    required this.accentColor,
     required this.isExpanded,
     required this.selectionMode,
     required this.selectedComponentIds,
     required this.onToggleExpand,
+    required this.onStartSelection,
     required this.onToggleComponentSelect,
     required this.onToggleCategorySelect,
   });
@@ -689,10 +825,13 @@ class _CategoryAccordionSection extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(
-                      Icons.folder_outlined,
-                      size: 18,
-                      color: isDark ? AppColors.primaryLight : AppColors.primary,
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     // Category Name
@@ -775,30 +914,12 @@ class _CategoryAccordionSection extends ConsumerWidget {
               if (sections.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'No components in this category.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => AddEditSectionDialog.show(
-                          context,
-                          machineId: machineId,
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 14),
-                        label: const Text('Add Component', style: TextStyle(fontSize: 11)),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'No components in this category yet. Add a component or edit an existing component to assign it here.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 )
               else
@@ -816,6 +937,7 @@ class _CategoryAccordionSection extends ConsumerWidget {
                         section: section,
                         isSelectionMode: selectionMode,
                         isSelected: selectedComponentIds.contains(section.id),
+                        onStartSelection: () => onStartSelection(section.id),
                         onToggleSelect: () => onToggleComponentSelect(section.id),
                       );
                     },
@@ -837,6 +959,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
   final bool selectionMode;
   final Set<String> selectedComponentIds;
   final VoidCallback onToggleExpand;
+  final ValueChanged<String> onStartSelection;
   final ValueChanged<String> onToggleComponentSelect;
   final VoidCallback onToggleCategorySelect;
 
@@ -847,6 +970,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
     required this.selectionMode,
     required this.selectedComponentIds,
     required this.onToggleExpand,
+    required this.onStartSelection,
     required this.onToggleComponentSelect,
     required this.onToggleCategorySelect,
   });
@@ -963,6 +1087,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
                         section: section,
                         isSelectionMode: selectionMode,
                         isSelected: selectedComponentIds.contains(section.id),
+                        onStartSelection: () => onStartSelection(section.id),
                         onToggleSelect: () => onToggleComponentSelect(section.id),
                       );
                     },
@@ -982,6 +1107,7 @@ class _ComponentRowCard extends ConsumerWidget {
   final Section section;
   final bool isSelectionMode;
   final bool isSelected;
+  final VoidCallback? onStartSelection;
   final VoidCallback? onToggleSelect;
 
   const _ComponentRowCard({
@@ -989,6 +1115,7 @@ class _ComponentRowCard extends ConsumerWidget {
     required this.section,
     this.isSelectionMode = false,
     this.isSelected = false,
+    this.onStartSelection,
     this.onToggleSelect,
   });
 
@@ -999,8 +1126,15 @@ class _ComponentRowCard extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
     final recordsAsync = ref.watch(usageRecordsStreamFamily(section.id));
 
-    return AppCard(
-      keyString: '${AppKeys.sectionCardPrefix}${section.id}',
+    return InkWell(
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        if (isSelectionMode) {
+          onToggleSelect?.call();
+        } else {
+          onStartSelection?.call();
+        }
+      },
       onTap: () {
         if (isSelectionMode) {
           onToggleSelect?.call();
@@ -1008,127 +1142,131 @@ class _ComponentRowCard extends ConsumerWidget {
           context.go('/machines/$machineId/sections/${section.id}');
         }
       },
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (isSelectionMode) ...[
-            Checkbox(
-              value: isSelected,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-              onChanged: (_) => onToggleSelect?.call(),
-            ),
-            const SizedBox(width: 8),
-          ],
-          // Compact Component Icon Container (36x36)
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.secondaryContainerDark
-                  : AppColors.secondaryContainerLight,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                width: 1,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: AppCard(
+        keyString: '${AppKeys.sectionCardPrefix}${section.id}',
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (isSelectionMode) ...[
+              Checkbox(
+                value: isSelected,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onChanged: (_) => onToggleSelect?.call(),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Compact Component Icon Container (36x36)
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.secondaryContainerDark
+                    : AppColors.secondaryContainerLight,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                Icons.tune_rounded,
+                color: isDark ? AppColors.secondaryLight : AppColors.secondary,
+                size: 18,
               ),
             ),
-            child: Icon(
-              Icons.tune_rounded,
-              color: isDark ? AppColors.secondaryLight : AppColors.secondary,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Component Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  section.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+            const SizedBox(width: 12),
+            // Component Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    section.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                recordsAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.only(top: 2, bottom: 2),
-                    child: AppSkeletonLine(width: 80, height: 9),
-                  ),
-                  error: (_, _) => const SizedBox.shrink(),
-                  data: (records) {
-                    final recordCountText = records.isEmpty
-                        ? 'No usage records'
-                        : '${records.length} ${records.length == 1 ? "usage record" : "usage records"}';
+                  const SizedBox(height: 3),
+                  recordsAsync.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.only(top: 2, bottom: 2),
+                      child: AppSkeletonLine(width: 80, height: 9),
+                    ),
+                    error: (_, _) => const SizedBox.shrink(),
+                    data: (records) {
+                      final recordCountText = records.isEmpty
+                          ? 'No usage records'
+                          : '${records.length} ${records.length == 1 ? "usage record" : "usage records"}';
 
-                    return Text(
-                      recordCountText,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      return Text(
+                        recordCountText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (!isSelectionMode)
-            // Standardized Overflow Menu
-            AppPopupMenu<String>(
-              items: const [
-                AppPopupMenuItem(
-                  value: 'edit',
-                  label: 'Edit',
-                  icon: Icons.edit_outlined,
-                ),
-                AppPopupMenuItem(
-                  value: 'delete',
-                  label: 'Delete',
-                  icon: Icons.delete_outline_rounded,
-                  isDestructive: true,
-                ),
-              ],
-              onSelected: (action) async {
-                if (action == 'edit') {
-                  AddEditSectionDialog.show(
-                    context,
-                    machineId: machineId,
-                    section: section,
-                  );
-                } else if (action == 'delete') {
-                  final confirm = await AppConfirmDialog.show(
-                    context: context,
-                    title: 'Delete component?',
-                    message: 'Are you sure you want to delete component "${section.name}"?',
-                    cascadeNotice:
-                        'Deleting this component will permanently delete all its logged usage records.',
-                    confirmLabel: 'Delete',
+            if (!isSelectionMode)
+              // Standardized Overflow Menu
+              AppPopupMenu<String>(
+                items: const [
+                  AppPopupMenuItem(
+                    value: 'edit',
+                    label: 'Edit',
+                    icon: Icons.edit_outlined,
+                  ),
+                  AppPopupMenuItem(
+                    value: 'delete',
+                    label: 'Delete',
+                    icon: Icons.delete_outline_rounded,
                     isDestructive: true,
-                  );
-                  if (confirm == true) {
-                    final ok = await ref
-                        .read(sectionsControllerProvider.notifier)
-                        .deleteSection(section.id, section.machineId);
-                    if (context.mounted) {
-                      if (ok) {
-                        context.showSuccessSnackBar('Component deleted');
-                      } else {
-                        context.showErrorSnackBar('Failed to delete component');
+                  ),
+                ],
+                onSelected: (action) async {
+                  if (action == 'edit') {
+                    AddEditSectionDialog.show(
+                      context,
+                      machineId: machineId,
+                      section: section,
+                    );
+                  } else if (action == 'delete') {
+                    final confirm = await AppConfirmDialog.show(
+                      context: context,
+                      title: 'Delete component?',
+                      message: 'Are you sure you want to delete component "${section.name}"?',
+                      cascadeNotice:
+                          'Deleting this component will permanently delete all its logged usage records.',
+                      confirmLabel: 'Delete',
+                      isDestructive: true,
+                    );
+                    if (confirm == true) {
+                      final ok = await ref
+                          .read(sectionsControllerProvider.notifier)
+                          .deleteSection(section.id, section.machineId);
+                      if (context.mounted) {
+                        if (ok) {
+                          context.showSuccessSnackBar('Component deleted');
+                        } else {
+                          context.showErrorSnackBar('Failed to delete component');
+                        }
                       }
                     }
                   }
-                }
-              },
-            ),
-        ],
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

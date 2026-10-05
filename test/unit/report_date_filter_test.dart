@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:machine_usage_app/core/errors/app_failure.dart';
 import 'package:machine_usage_app/core/services/pdf_service.dart';
 import 'package:machine_usage_app/features/reports/models/report_filter_options.dart';
-import 'package:machine_usage_app/models/calculated_usage_row.dart';
 import 'package:machine_usage_app/models/machine.dart';
 import 'package:machine_usage_app/models/section.dart';
 

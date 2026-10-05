@@ -161,6 +161,9 @@ class _MultiComponentReportDialogState
         _savedFile = file;
         _status = _ReportStatus.completed;
       });
+
+      // Directly open share modal after PDF creation
+      await _share();
     } catch (e, st) {
       AppLogger.error('Failed to generate multi-component PDF report', e, st);
       if (!mounted) return;

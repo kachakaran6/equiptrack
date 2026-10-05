@@ -75,7 +75,7 @@ void main() {
       updatedAt: now,
     );
 
-    testWidgets('Renders Category Accordions with component counts and action buttons',
+    testWidgets('Renders Category chips, Accordions, and search field',
         (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -105,14 +105,11 @@ void main() {
       // Check Machine details header
       expect(find.text('Extruder 01'), findsWidgets);
 
-      // Check Action Buttons
-      expect(find.text('Create Category'), findsOneWidget);
-      expect(find.text('Select for Report'), findsOneWidget);
-
-      // Check Category Accordion headers
-      expect(find.text('Bearings'), findsOneWidget);
-      expect(find.text('Motors'), findsOneWidget);
-      expect(find.text('Uncategorized'), findsOneWidget);
+      // Check Horizontal Category filter chips (All, Bearings, Motors, Uncategorized)
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Bearings'), findsWidgets);
+      expect(find.text('Motors'), findsWidgets);
+      expect(find.text('Uncategorized'), findsWidgets);
 
       // Check Components inside accordions
       expect(find.text('Thrust Bearing A'), findsOneWidget);
@@ -121,7 +118,7 @@ void main() {
       expect(find.text('Heating Band'), findsOneWidget);
     });
 
-    testWidgets('Selection mode enables checkboxes and Generate PDF button',
+    testWidgets('Long press on component enables selection mode and Export PDF button',
         (tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
@@ -148,28 +145,29 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap 'Select for Report'
-      await tester.tap(find.text('Select for Report'));
+      // Long press on a component to activate selection mode
+      await tester.longPress(find.text('Thrust Bearing A'));
       await tester.pumpAndSettle();
 
       // Check selection bar appears
       expect(find.text('Select All'), findsOneWidget);
       expect(find.text('Clear'), findsOneWidget);
-      expect(find.text('Generate PDF (0)'), findsOneWidget);
+      expect(find.text('Export PDF (1)'), findsOneWidget);
+      expect(find.text('1 of 4 selected'), findsOneWidget);
 
       // Tap 'Select All'
       await tester.tap(find.text('Select All'));
       await tester.pumpAndSettle();
 
       // Check all 4 components are selected
-      expect(find.text('Generate PDF (4)'), findsOneWidget);
+      expect(find.text('Export PDF (4)'), findsOneWidget);
       expect(find.text('4 of 4 selected'), findsOneWidget);
 
       // Tap 'Clear'
       await tester.tap(find.text('Clear'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Generate PDF (0)'), findsOneWidget);
+      expect(find.text('Export PDF (0)'), findsOneWidget);
       expect(find.text('0 of 4 selected'), findsOneWidget);
     });
   });
