@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/analytics/analytics_event.dart';
 import '../../../core/analytics/analytics_screen.dart';
 import '../../../core/analytics/analytics_service.dart';
-import '../../../core/analytics/widgets/analytics_privacy_dialog.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -59,10 +58,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final themeMode = ref.watch(themeControllerProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system && theme.brightness == Brightness.dark);
     final user = ref.watch(currentUserProvider);
     final categoriesAsync = ref.watch(allCategoriesProvider);
-    final themeMode = ref.watch(themeControllerProvider);
     final updateState = ref.watch(appUpdateControllerProvider);
 
     return ResponsiveScaffold(
@@ -203,54 +203,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ================= SECTION 2: APPEARANCE / THEME =================
+          // ================= SECTION 2: APPEARANCE =================
           const AppSectionHeader(
             title: 'Appearance',
-            subtitle: 'Visual theme and color mode',
-          ),
-          const SizedBox(height: 8),
-          AppCard(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                _buildThemeOption(
-                  context,
-                  title: 'System',
-                  icon: Icons.brightness_auto_rounded,
-                  isSelected: themeMode == ThemeMode.system,
-                  onTap: () => ref
-                      .read(themeControllerProvider.notifier)
-                      .setThemeMode(ThemeMode.system),
-                ),
-                const SizedBox(width: 8),
-                _buildThemeOption(
-                  context,
-                  title: 'Light',
-                  icon: Icons.light_mode_rounded,
-                  isSelected: themeMode == ThemeMode.light,
-                  onTap: () => ref
-                      .read(themeControllerProvider.notifier)
-                      .setThemeMode(ThemeMode.light),
-                ),
-                const SizedBox(width: 8),
-                _buildThemeOption(
-                  context,
-                  title: 'Dark',
-                  icon: Icons.dark_mode_rounded,
-                  isSelected: themeMode == ThemeMode.dark,
-                  onTap: () => ref
-                      .read(themeControllerProvider.notifier)
-                      .setThemeMode(ThemeMode.dark),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // ================= SECTION 3: PRIVACY & TELEMETRY =================
-          const AppSectionHeader(
-            title: 'Privacy & Analytics',
-            subtitle: 'Telemetry controls & diagnostic data sharing',
+            subtitle: 'Dark or light theme mode',
           ),
           const SizedBox(height: 8),
           AppCard(
@@ -265,7 +221,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                   ),
                   child: Icon(
-                    Icons.shield_outlined,
+                    isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
                     color: isDark ? AppColors.primaryLight : AppColors.primary,
                     size: 20,
                   ),
@@ -276,16 +232,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Telemetry Sharing',
+                        'Dark Mode',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        AnalyticsService.instance.consent.isGranted
-                            ? 'Enabled (helping detect crashes & improve app)'
-                            : 'Disabled (zero diagnostic data collected)',
+                        isDark ? 'Dark theme enabled' : 'Light theme enabled',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 12,
@@ -294,18 +248,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                AppButton(
-                  text: 'Manage',
-                  variant: AppButtonVariant.outline,
-                  size: AppButtonSize.small,
-                  onPressed: () => AnalyticsPrivacyDialog.show(context),
+                Switch.adaptive(
+                  value: isDark,
+                  activeTrackColor: isDark ? AppColors.primaryLight : AppColors.primary,
+                  onChanged: (val) {
+                    ref.read(themeControllerProvider.notifier).setThemeMode(
+                          val ? ThemeMode.dark : ThemeMode.light,
+                        );
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // ================= SECTION 4: APP UPDATES & SYSTEM =================
+          // ================= SECTION 3: APP UPDATES & SYSTEM =================
           const AppSectionHeader(
             title: 'App Version & Updates',
             subtitle: 'Google Play update channel and build information',
@@ -439,56 +396,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 40),
         ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppColors.primaryLight : AppColors.primary;
-
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? primaryColor.withValues(alpha: isDark ? 0.25 : 0.15)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            border: Border.all(
-              color: isSelected ? primaryColor : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? primaryColor : theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? primaryColor : theme.colorScheme.onSurface,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -34,7 +34,7 @@ void main() {
       updatedAt: now,
     );
 
-    testWidgets('Renders Global Categories, Theme, Privacy, and Account sections',
+    testWidgets('Renders Global Categories, Theme, Version, and Account sections',
         (tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -62,7 +62,8 @@ void main() {
       expect(find.text('Electrical'), findsOneWidget);
       expect(find.text('Hydraulic'), findsOneWidget);
       expect(find.text('Appearance'), findsOneWidget);
-      expect(find.text('Privacy & Analytics'), findsOneWidget);
+      expect(find.text('Dark Mode'), findsOneWidget);
+      expect(find.byType(Switch), findsOneWidget);
       expect(find.text('App Version & Updates'), findsOneWidget);
       expect(find.text('Account'), findsOneWidget);
       expect(find.text('test@equiptrack.com'), findsOneWidget);
