@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import '../analytics/analytics_service.dart';
+
 /// Lightweight structured logger that sanitizes sensitive data in production
-/// and forwards runtime errors to backend DB for diagnosis.
+/// and forwards runtime errors to backend DB and PostHog for diagnosis.
 class AppLogger {
   AppLogger._();
 
@@ -41,6 +43,16 @@ class AppLogger {
       print(stackTrace);
     }
     _reportToBackend(message, error, stackTrace);
+
+    try {
+      AnalyticsService.instance.captureError(
+        error ?? message,
+        stackTrace: stackTrace,
+        properties: {'log_message': message},
+      );
+    } catch (_) {
+      // Ignore background analytics capture errors
+    }
   }
 
   static void _reportToBackend(String message, dynamic error, StackTrace? stackTrace) {
