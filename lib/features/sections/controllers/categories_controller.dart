@@ -18,24 +18,27 @@ class CategoriesController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<Category?> createCategory({
-    required String machineId,
     required String name,
+    String? machineId,
   }) async {
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(categoryRepositoryProvider);
       final category = await repo.createCategory(
-        machineId: machineId,
         name: name,
+        machineId: machineId,
       );
-      ref.invalidate(categoriesStreamFamily(machineId));
+      ref.invalidate(allCategoriesProvider);
+      if (machineId != null) {
+        ref.invalidate(categoriesStreamFamily(machineId));
+      }
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(
         AnalyticsEvent.categoryCreated,
         {
-          'machine_id': machineId,
           'category_id': category.id,
+          'machine_id': ?machineId,
         },
       );
       return category;
@@ -49,8 +52,8 @@ class CategoriesController extends AsyncNotifier<void> {
 
   Future<Category?> updateCategory({
     required String id,
-    required String machineId,
     required String name,
+    String? machineId,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -59,14 +62,17 @@ class CategoriesController extends AsyncNotifier<void> {
         id: id,
         name: name,
       );
-      ref.invalidate(categoriesStreamFamily(machineId));
+      ref.invalidate(allCategoriesProvider);
+      if (machineId != null) {
+        ref.invalidate(categoriesStreamFamily(machineId));
+      }
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(
         AnalyticsEvent.categoryUpdated,
         {
-          'machine_id': machineId,
           'category_id': category.id,
+          'machine_id': ?machineId,
         },
       );
       return category;
@@ -80,22 +86,25 @@ class CategoriesController extends AsyncNotifier<void> {
 
   Future<bool> deleteCategory({
     required String id,
-    required String machineId,
+    String? machineId,
   }) async {
     state = const AsyncValue.loading();
     try {
       final repo = ref.read(categoryRepositoryProvider);
       await repo.deleteCategory(id);
-      // Invalidate both categories and sections because deleted category's components become uncategorized
-      ref.invalidate(categoriesStreamFamily(machineId));
-      ref.invalidate(sectionsStreamFamily(machineId));
+      // Invalidate all categories and affected sections
+      ref.invalidate(allCategoriesProvider);
+      if (machineId != null) {
+        ref.invalidate(categoriesStreamFamily(machineId));
+        ref.invalidate(sectionsStreamFamily(machineId));
+      }
       state = const AsyncValue.data(null);
 
       await AnalyticsService.instance.track(
         AnalyticsEvent.categoryDeleted,
         {
-          'machine_id': machineId,
           'category_id': id,
+          'machine_id': ?machineId,
         },
       );
       return true;

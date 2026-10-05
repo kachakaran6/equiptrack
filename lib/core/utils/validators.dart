@@ -44,6 +44,10 @@ class FormValidators {
     return requiredField(value, 'Record name');
   }
 
+  static String? categoryName(String? value) {
+    return requiredField(value, 'Category name');
+  }
+
   static String? usageDate(DateTime? date) {
     if (date == null) {
       return 'Usage date is required';
@@ -51,3 +55,4 @@ class FormValidators {
     return null;
   }
 }
+

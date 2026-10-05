@@ -17,6 +17,7 @@ class AppRoutes {
   static const String inventorySubProductDetailRoute = '/inventory/sub-products/:subProductId';
   static const String inventoryEditSubProductRoute = '/inventory/sub-products/:subProductId/edit';
   static const String inventoryReports = '/inventory/reports';
+  static const String settings = '/settings';
 
   // Helper route generators
   static String machineDetailsPath(String machineId) => '/machines/$machineId';

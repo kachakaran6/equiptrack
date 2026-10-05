@@ -12,6 +12,8 @@ class AnalyticsScreen {
   static const String inventoryAddSubProduct = 'InventoryAddSubProduct';
   static const String inventorySubProductDetail = 'InventorySubProductDetail';
   static const String inventoryReports = 'StockReports';
+  static const String settings = 'Settings';
   static const String privacySettings = 'PrivacySettings';
   static const String updateDialog = 'AppUpdate';
 }
+

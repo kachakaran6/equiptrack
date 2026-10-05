@@ -1,14 +1,14 @@
-/// Component category model representing a grouping of components within a machine.
+/// Component category model representing a reusable grouping across machines.
 class Category {
   final String id;
-  final String machineId;
+  final String? machineId;
   final String name;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   const Category({
     required this.id,
-    required this.machineId,
+    this.machineId,
     required this.name,
     required this.createdAt,
     required this.updatedAt,
@@ -17,7 +17,7 @@ class Category {
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
       id: json['id'] as String,
-      machineId: json['machine_id'] as String,
+      machineId: json['machine_id'] as String?,
       name: json['name'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -27,7 +27,7 @@ class Category {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'machine_id': machineId,
+      if (machineId != null) 'machine_id': machineId,
       'name': name,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -60,5 +60,6 @@ class Category {
           name == other.name;
 
   @override
-  int get hashCode => id.hashCode ^ machineId.hashCode ^ name.hashCode;
+  int get hashCode => id.hashCode ^ (machineId?.hashCode ?? 0) ^ name.hashCode;
 }
+

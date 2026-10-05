@@ -11,24 +11,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('CategoryRepository & CategoriesController Tests', () {
-    test('getCategories lists categories from API', () async {
+    test('getCategories lists global and machine categories from API', () async {
       final now = DateTime.now();
       final mockClient = MockClient((request) async {
-        if (request.url.path.endsWith('/machines/m-1/categories') && request.method == 'GET') {
+        if (request.url.path.endsWith('/categories') && request.method == 'GET') {
           return http.Response(
             jsonEncode({
               'success': true,
               'data': [
                 {
                   'id': 'cat-1',
-                  'machine_id': 'm-1',
                   'name': 'Bearings',
                   'created_at': now.toIso8601String(),
                   'updated_at': now.toIso8601String(),
                 },
                 {
                   'id': 'cat-2',
-                  'machine_id': 'm-1',
                   'name': 'Motors',
                   'created_at': now.toIso8601String(),
                   'updated_at': now.toIso8601String(),
@@ -44,16 +42,16 @@ void main() {
       final apiClient = ApiClient(httpClient: mockClient);
       final repo = ApiCategoryRepository(apiClient);
 
-      final categories = await repo.getCategories('m-1');
+      final categories = await repo.getCategories();
       expect(categories.length, 2);
       expect(categories[0].name, 'Bearings');
       expect(categories[1].name, 'Motors');
     });
 
-    test('createCategory sends POST and returns Category', () async {
+    test('createCategory sends POST to /categories and returns Category', () async {
       final now = DateTime.now();
       final mockClient = MockClient((request) async {
-        if (request.url.path.endsWith('/machines/m-1/categories') && request.method == 'POST') {
+        if (request.url.path.endsWith('/categories') && request.method == 'POST') {
           final body = jsonDecode(request.body);
           expect(body['name'], 'Pumps');
 
@@ -62,7 +60,6 @@ void main() {
               'success': true,
               'data': {
                 'id': 'cat-3',
-                'machine_id': 'm-1',
                 'name': 'Pumps',
                 'created_at': now.toIso8601String(),
                 'updated_at': now.toIso8601String(),
@@ -77,7 +74,7 @@ void main() {
       final apiClient = ApiClient(httpClient: mockClient);
       final repo = ApiCategoryRepository(apiClient);
 
-      final result = await repo.createCategory(machineId: 'm-1', name: 'Pumps');
+      final result = await repo.createCategory(name: 'Pumps');
       expect(result.id, 'cat-3');
       expect(result.name, 'Pumps');
     });
@@ -94,7 +91,6 @@ void main() {
               'success': true,
               'data': {
                 'id': 'cat-1',
-                'machine_id': 'm-1',
                 'name': 'High-Speed Bearings',
                 'created_at': now.toIso8601String(),
                 'updated_at': now.toIso8601String(),
@@ -142,7 +138,6 @@ void main() {
               'success': true,
               'data': {
                 'id': 'cat-new',
-                'machine_id': 'm-1',
                 'name': 'Sensors',
                 'created_at': now.toIso8601String(),
                 'updated_at': now.toIso8601String(),
@@ -168,11 +163,11 @@ void main() {
       );
 
       final controller = container.read(categoriesControllerProvider.notifier);
-      final created = await controller.createCategory(machineId: 'm-1', name: 'Sensors');
+      final created = await controller.createCategory(name: 'Sensors');
       expect(created, isNotNull);
       expect(created!.name, 'Sensors');
 
-      final deleted = await controller.deleteCategory(id: 'cat-new', machineId: 'm-1');
+      final deleted = await controller.deleteCategory(id: 'cat-new');
       expect(deleted, isTrue);
     });
   });

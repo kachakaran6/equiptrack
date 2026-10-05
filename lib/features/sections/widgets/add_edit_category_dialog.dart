@@ -10,26 +10,28 @@ import '../../../models/category.dart';
 import '../controllers/categories_controller.dart';
 
 class AddEditCategoryDialog extends ConsumerStatefulWidget {
-  final String machineId;
+  final String? machineId;
   final Category? category;
 
   const AddEditCategoryDialog({
     super.key,
-    required this.machineId,
+    this.machineId,
     this.category,
   });
 
   static Future<Category?> show(
     BuildContext context, {
-    required String machineId,
+    String? machineId,
+    Category? existingCategory,
     Category? category,
   }) {
+    final cat = existingCategory ?? category;
     return showDialog<Category>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AddEditCategoryDialog(
         machineId: machineId,
-        category: category,
+        category: cat,
       ),
     );
   }
@@ -72,14 +74,14 @@ class _AddEditCategoryDialogState extends ConsumerState<AddEditCategoryDialog> {
 
     if (!isEditing) {
       result = await controller.createCategory(
-        machineId: widget.machineId,
         name: name,
+        machineId: widget.machineId,
       );
     } else {
       result = await controller.updateCategory(
         id: widget.category!.id,
-        machineId: widget.machineId,
         name: name,
+        machineId: widget.machineId,
       );
     }
 
@@ -109,7 +111,7 @@ class _AddEditCategoryDialogState extends ConsumerState<AddEditCategoryDialog> {
       hasUnsavedChanges: _isDirty && !_isSubmitting,
       child: AppDialog(
         title: isEditing ? 'Edit Category' : 'Create Category',
-        icon: isEditing ? Icons.edit_note_rounded : Icons.create_new_folder_outlined,
+        icon: isEditing ? Icons.edit_rounded : Icons.create_new_folder_rounded,
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: Form(
@@ -120,18 +122,11 @@ class _AddEditCategoryDialogState extends ConsumerState<AddEditCategoryDialog> {
               children: [
                 AppTextField(
                   label: 'Category Name',
-                  hintText: 'e.g. Bearings, Motors, Electrical, Side A',
+                  hintText: 'e.g. Electrical, Mechanical, Hydraulic',
                   controller: _nameController,
                   isRequired: true,
                   autofocus: true,
-                  validator: (val) {
-                    final res = FormValidators.requiredField(val, 'Category name');
-                    if (res != null) return res;
-                    if (val!.trim().length > 255) {
-                      return 'Category name must not exceed 255 characters';
-                    }
-                    return null;
-                  },
+                  validator: FormValidators.categoryName,
                 ),
               ],
             ),
@@ -141,16 +136,15 @@ class _AddEditCategoryDialogState extends ConsumerState<AddEditCategoryDialog> {
           AppButton(
             text: 'Cancel',
             variant: AppButtonVariant.outline,
-            size: AppButtonSize.small,
+            size: AppButtonSize.medium,
             onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 4),
           AppButton(
             text: isEditing ? 'Save Changes' : 'Create Category',
-            icon: Icons.check_rounded,
-            size: AppButtonSize.small,
+            variant: AppButtonVariant.primary,
+            size: AppButtonSize.medium,
             isLoading: _isSubmitting,
-            onPressed: _isSubmitting ? null : _submit,
+            onPressed: _submit,
           ),
         ],
       ),

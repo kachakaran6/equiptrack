@@ -5,9 +5,9 @@ import '../../core/utils/app_logger.dart';
 import '../../models/category.dart';
 
 abstract class CategoryRepository {
-  Future<List<Category>> getCategories(String machineId);
+  Future<List<Category>> getCategories([String? machineId]);
   Future<Category?> getCategoryById(String id);
-  Future<Category> createCategory({required String machineId, required String name});
+  Future<Category> createCategory({required String name, String? machineId});
   Future<Category> updateCategory({required String id, required String name});
   Future<void> deleteCategory(String id);
 }
@@ -18,9 +18,20 @@ class ApiCategoryRepository implements CategoryRepository {
   ApiCategoryRepository(this._apiClient);
 
   @override
-  Future<List<Category>> getCategories(String machineId) async {
+  Future<List<Category>> getCategories([String? machineId]) async {
     try {
-      final data = await _apiClient.get('/machines/$machineId/categories');
+      // First attempt global user-wide categories
+      dynamic data;
+      try {
+        data = await _apiClient.get('/categories');
+      } catch (e) {
+        if (machineId != null && machineId.isNotEmpty) {
+          data = await _apiClient.get('/machines/$machineId/categories');
+        } else {
+          rethrow;
+        }
+      }
+
       if (data is List) {
         return data
             .map((item) => Category.fromJson(Map<String, dynamic>.from(item as Map)))
@@ -28,7 +39,7 @@ class ApiCategoryRepository implements CategoryRepository {
       }
       return [];
     } catch (e, st) {
-      AppLogger.error('Error fetching categories for machine $machineId via API', e, st);
+      AppLogger.error('Error fetching categories via API', e, st);
       if (e is DatabaseFailure && e.code == '404') {
         return [];
       }
@@ -57,16 +68,30 @@ class ApiCategoryRepository implements CategoryRepository {
 
   @override
   Future<Category> createCategory({
-    required String machineId,
     required String name,
+    String? machineId,
   }) async {
     try {
-      final data = await _apiClient.post(
-        '/machines/$machineId/categories',
-        body: {
-          'name': name.trim(),
-        },
-      );
+      dynamic data;
+      try {
+        data = await _apiClient.post(
+          '/categories',
+          body: {
+            'name': name.trim(),
+          },
+        );
+      } catch (e) {
+        if (machineId != null && machineId.isNotEmpty) {
+          data = await _apiClient.post(
+            '/machines/$machineId/categories',
+            body: {
+              'name': name.trim(),
+            },
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       return Category.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {
@@ -101,13 +126,6 @@ class ApiCategoryRepository implements CategoryRepository {
   Future<void> deleteCategory(String id) async {
     try {
       await _apiClient.delete('/categories/$id');
-    } on AppFailure catch (e) {
-      if (e.code == '404' ||
-          e.message.toLowerCase().contains('not found') ||
-          e.message.toLowerCase().contains('does not exist')) {
-        return; // Already deleted on backend
-      }
-      rethrow;
     } catch (e, st) {
       AppLogger.error('Error deleting category $id via API', e, st);
       if (e is AppFailure) rethrow;
@@ -121,8 +139,15 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
   return ApiCategoryRepository(apiClient);
 });
 
+/// Stream/Future family of categories for any machine or global
 final categoriesStreamFamily =
     FutureProvider.family<List<Category>, String>((ref, machineId) async {
   final repo = ref.watch(categoryRepositoryProvider);
   return repo.getCategories(machineId);
+});
+
+/// Global user categories provider
+final allCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+  final repo = ref.watch(categoryRepositoryProvider);
+  return repo.getCategories();
 });

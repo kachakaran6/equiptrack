@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/analytics/widgets/analytics_privacy_dialog.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -55,10 +54,10 @@ class MachineListScreen extends ConsumerWidget {
           showBackButton: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.shield_outlined, size: 20),
-            tooltip: 'Privacy & Analytics',
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            tooltip: 'Settings',
             splashRadius: 20,
-            onPressed: () => AnalyticsPrivacyDialog.show(context),
+            onPressed: () => context.push(AppRoutes.settings),
           ),
           const ThemeToggleButton(),
           IconButton(

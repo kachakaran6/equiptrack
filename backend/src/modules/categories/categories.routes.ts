@@ -6,12 +6,50 @@ import { CategoriesService } from './categories.service.js';
 export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('preHandler', authenticate);
 
-  // GET /api/machines/:machineId/categories
+  // GET /api/categories — Return all categories for the authenticated user
+  fastify.get('/categories', async (request, reply) => {
+    const user = (request as any).user;
+    const categories = await CategoriesService.listUserCategories(user.id);
+    return reply.status(200).send({
+      success: true,
+      data: categories,
+    });
+  });
+
+  // POST /api/categories — Create a new user-wide category
+  fastify.post('/categories', async (request, reply) => {
+    const user = (request as any).user;
+    const parsed = createCategorySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        message: parsed.error.issues[0]?.message || 'Invalid category data',
+        errors: parsed.error.issues,
+      });
+    }
+
+    const res = await CategoriesService.createUserCategory(user.id, parsed.data);
+    if (res.error) {
+      return reply.status(res.status || 400).send({
+        success: false,
+        message: res.error,
+      });
+    }
+
+    return reply.status(201).send({
+      success: true,
+      data: res.category,
+    });
+  });
+
+  // GET /api/machines/:machineId/categories (Backward-compatible)
   fastify.get<{ Params: { machineId: string } }>(
     '/machines/:machineId/categories',
     async (request, reply) => {
+      const user = (request as any).user;
       const categories = await CategoriesService.listCategoriesByMachine(
-        request.params.machineId
+        request.params.machineId,
+        user?.id
       );
       if (categories === null) {
         return reply.status(404).send({
@@ -27,10 +65,11 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // POST /api/machines/:machineId/categories
+  // POST /api/machines/:machineId/categories (Backward-compatible)
   fastify.post<{ Params: { machineId: string } }>(
     '/machines/:machineId/categories',
     async (request, reply) => {
+      const user = (request as any).user;
       const parsed = createCategorySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -42,7 +81,8 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
       const res = await CategoriesService.createCategory(
         request.params.machineId,
-        parsed.data
+        parsed.data,
+        user?.id
       );
 
       if (res.error) {
@@ -61,7 +101,8 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /api/categories/:id
   fastify.get<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    const category = await CategoriesService.getCategoryById(request.params.id);
+    const user = (request as any).user;
+    const category = await CategoriesService.getCategoryById(request.params.id, user?.id);
     if (!category) {
       return reply.status(404).send({
         success: false,
@@ -77,6 +118,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // PATCH /api/categories/:id
   fastify.patch<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
+    const user = (request as any).user;
     const parsed = updateCategorySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -88,7 +130,8 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
     const res = await CategoriesService.updateCategory(
       request.params.id,
-      parsed.data
+      parsed.data,
+      user?.id
     );
 
     if (res.error) {
@@ -106,7 +149,8 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // DELETE /api/categories/:id
   fastify.delete<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    await CategoriesService.deleteCategory(request.params.id);
+    const user = (request as any).user;
+    await CategoriesService.deleteCategory(request.params.id, user?.id);
     return reply.status(200).send({
       success: true,
       message: 'Category deleted successfully',

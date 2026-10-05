@@ -123,6 +123,13 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              context.push(AppRoutes.settings);
+            },
+          ),
+          IconButton(
             tooltip: 'Stock Reports',
             icon: const Icon(Icons.assessment_outlined),
             onPressed: () {

@@ -13,6 +13,7 @@ import '../../features/inventory/screens/stock_report_screen.dart';
 import '../../features/inventory/screens/sub_product_detail_screen.dart';
 import '../../features/machines/screens/machine_list_screen.dart';
 import '../../features/sections/screens/machine_detail_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/main_shell_screen.dart';
 import '../../features/usage_records/screens/section_usage_screen.dart';
 import '../../models/inventory_models.dart';
@@ -56,6 +57,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
 
       // Top-level modal/sub screens outside shell if needed, or within Shell
