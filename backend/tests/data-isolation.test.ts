@@ -8,13 +8,15 @@ import * as db from '../src/db/index.js';
 class TestDatabaseHarness {
   users: Array<{ id: string; email: string; password_hash: string; created_at: string; updated_at: string }> = [];
   machines: Array<{ id: string; user_id: string; name: string; description: string | null; created_at: string; updated_at: string }> = [];
-  sections: Array<{ id: string; machine_id: string; user_id: string; name: string; created_at: string; updated_at: string }> = [];
+  sections: Array<{ id: string; machine_id: string; user_id: string; name: string; category_id: string | null; created_at: string; updated_at: string }> = [];
+  categories: Array<{ id: string; machine_id: string; name: string; created_at: string; updated_at: string }> = [];
   usageRecords: Array<{ id: string; section_id: string; user_id: string; name: string; usage_date: string; created_at: string; updated_at: string }> = [];
 
   reset() {
     this.users = [];
     this.machines = [];
     this.sections = [];
+    this.categories = [];
     this.usageRecords = [];
   }
 
@@ -84,16 +86,33 @@ class TestDatabaseHarness {
       return { rowCount: initialLen - this.machines.length };
     }
 
+    // 2.5 Categories Queries
+    if (cleanSql.includes('FROM categories WHERE machine_id = $1') && cleanSql.includes('LOWER(name) = LOWER($2)')) {
+      const rows = this.categories.filter((c) => c.machine_id === params[0] && c.name.toLowerCase() === params[1].toLowerCase());
+      return { rows, rowCount: rows.length };
+    }
+    if (cleanSql.includes('FROM categories WHERE machine_id = $1')) {
+      const rows = this.categories.filter((c) => c.machine_id === params[0]);
+      return { rows, rowCount: rows.length };
+    }
+    if (cleanSql.includes('INSERT INTO categories')) {
+      const newCategory = {
+        id: `category-${this.categories.length + 1}`,
+        machine_id: params[0],
+        name: params[1],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.categories.push(newCategory);
+      return { rows: [newCategory], rowCount: 1 };
+    }
+
     // 3. Sections Queries
-    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC') || cleanSql.includes('SELECT name FROM sections WHERE machine_id = $1')) {
+    if (cleanSql.includes('FROM sections WHERE machine_id = $1')) {
       const rows = this.sections.filter((s) => s.machine_id === params[0]);
       return { rows, rowCount: rows.length };
     }
-    if (cleanSql.includes('SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE id = $1')) {
-      const rows = this.sections.filter((s) => s.id === params[0]);
-      return { rows, rowCount: rows.length };
-    }
-    if (cleanSql.includes('SELECT id FROM sections WHERE id = $1')) {
+    if (cleanSql.includes('FROM sections WHERE id = $1')) {
       const rows = this.sections.filter((s) => s.id === params[0]);
       return { rows, rowCount: rows.length };
     }
@@ -103,6 +122,7 @@ class TestDatabaseHarness {
         machine_id: params[0],
         user_id: params[1],
         name: params[2],
+        category_id: params[3] || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -110,9 +130,10 @@ class TestDatabaseHarness {
       return { rows: [newSection], rowCount: 1 };
     }
     if (cleanSql.includes('UPDATE sections')) {
-      const index = this.sections.findIndex((s) => s.id === params[1]);
+      const idParam = params[params.length - 1];
+      const index = this.sections.findIndex((s) => s.id === idParam);
       if (index === -1) return { rows: [], rowCount: 0 };
-      this.sections[index].name = params[0];
+      if (params[0] !== undefined) this.sections[index].name = params[0];
       return { rows: [this.sections[index]], rowCount: 1 };
     }
     if (cleanSql.includes('DELETE FROM sections WHERE id = $1')) {
