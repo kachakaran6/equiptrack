@@ -11,6 +11,7 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { machineRoutes } from './modules/machines/machines.routes.js';
+import { categoryRoutes } from './modules/categories/categories.routes.js';
 import { sectionRoutes } from './modules/sections/sections.routes.js';
 import { usageRecordRoutes } from './modules/usage-records/usage-records.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
@@ -126,6 +127,7 @@ export function buildApp(): FastifyInstance {
   // 5. Register API Routes
   app.register(authRoutes, { prefix: '/api/auth' });
   app.register(machineRoutes, { prefix: '/api/machines' });
+  app.register(categoryRoutes, { prefix: '/api' });
   app.register(sectionRoutes, { prefix: '/api' });
   app.register(usageRecordRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api/reports' });

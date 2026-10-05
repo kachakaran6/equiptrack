@@ -6,6 +6,7 @@ export interface SectionRow {
   machine_id: string;
   user_id: string;
   name: string;
+  category_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,7 +19,7 @@ export class SectionsService {
     }
 
     const result = await query<SectionRow>(
-      'SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC',
+      'SELECT id, machine_id, user_id, name, category_id, created_at, updated_at FROM sections WHERE machine_id = $1 ORDER BY name ASC',
       [machineId]
     );
     return result.rows;
@@ -26,7 +27,7 @@ export class SectionsService {
 
   static async getSectionById(_userId: string, sectionId: string): Promise<SectionRow | null> {
     const result = await query<SectionRow>(
-      'SELECT id, machine_id, user_id, name, created_at, updated_at FROM sections WHERE id = $1',
+      'SELECT id, machine_id, user_id, name, category_id, created_at, updated_at FROM sections WHERE id = $1',
       [sectionId]
     );
     return result.rows[0] || null;
@@ -42,9 +43,11 @@ export class SectionsService {
       return null;
     }
 
+    const categoryId = input.category_id ?? null;
+
     const result = await query<SectionRow>(
-      'INSERT INTO sections (machine_id, user_id, name) VALUES ($1, $2, $3) RETURNING id, machine_id, user_id, name, created_at, updated_at',
-      [machineId, userId, input.name]
+      'INSERT INTO sections (machine_id, user_id, name, category_id) VALUES ($1, $2, $3, $4) RETURNING id, machine_id, user_id, name, category_id, created_at, updated_at',
+      [machineId, userId, input.name, categoryId]
     );
     return result.rows[0];
   }
@@ -54,12 +57,32 @@ export class SectionsService {
     sectionId: string,
     input: UpdateSectionInput
   ): Promise<SectionRow | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (input.name !== undefined) {
+      fields.push(`name = $${idx++}`);
+      values.push(input.name);
+    }
+    if (input.category_id !== undefined) {
+      fields.push(`category_id = $${idx++}`);
+      values.push(input.category_id);
+    }
+
+    if (fields.length === 0) {
+      return this.getSectionById(_userId, sectionId);
+    }
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(sectionId);
+
     const result = await query<SectionRow>(
       `UPDATE sections 
-       SET name = $1, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $2 
-       RETURNING id, machine_id, user_id, name, created_at, updated_at`,
-      [input.name, sectionId]
+       SET ${fields.join(', ')} 
+       WHERE id = $${idx} 
+       RETURNING id, machine_id, user_id, name, category_id, created_at, updated_at`,
+      values
     );
     return result.rows[0] || null;
   }
@@ -72,4 +95,3 @@ export class SectionsService {
     return (result.rowCount ?? 0) > 0;
   }
 }
-
