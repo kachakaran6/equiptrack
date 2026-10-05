@@ -28,7 +28,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Transaction?'),
         content: Text(
-          'Are you sure you want to delete this ${tx.type} transaction of ${tx.quantity} units from ${tx.date}? This will update the current stock accordingly.',
+          'Are you sure you want to delete this ${tx.type} transaction of ${tx.quantity} units from ${tx.displayDate}? This will update the current stock accordingly.',
         ),
         actions: [
           TextButton(
@@ -520,7 +520,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                                   Row(
                                     children: [
                                       Text(
-                                        '${isIn ? "+" : "-"}${tx.quantity} units',
+                                        '${isIn ? "+" : "-"}${tx.quantity} ${tx.quantity == 1 ? 'unit' : 'units'}',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
@@ -529,7 +529,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '•  ${tx.date}',
+                                        '•  ${tx.displayDate}',
                                         style: TextStyle(fontSize: 11, color: theme.hintColor),
                                       ),
                                     ],

@@ -448,7 +448,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
               Icon(Icons.calendar_today_outlined, size: 14, color: isDark ? Colors.grey[500] : Colors.grey[600]),
               const SizedBox(width: 4),
               Text(
-                tx.date,
+                tx.displayDate,
                 style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
               ),
               const SizedBox(width: 14),

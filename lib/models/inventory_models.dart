@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 @immutable
 class ProductCustomField {
@@ -259,6 +260,18 @@ class InventoryTransaction {
 
   bool get isIn => type.toUpperCase() == 'IN';
   bool get isOut => type.toUpperCase() == 'OUT';
+
+  String get displayDate {
+    if (date.isEmpty) return '';
+    try {
+      final cleanDateStr = date.contains('T') ? date.split('T').first : date;
+      final parsed = DateTime.tryParse(cleanDateStr);
+      if (parsed != null) {
+        return DateFormat('dd MMM yyyy').format(parsed);
+      }
+    } catch (_) {}
+    return date.length >= 10 ? date.substring(0, 10) : date;
+  }
 
   factory InventoryTransaction.fromJson(Map<String, dynamic> json) {
     final rawValues = json['sub_product_values'];
