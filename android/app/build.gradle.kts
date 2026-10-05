@@ -48,12 +48,35 @@ android {
         }
     }
 
+val envFile = rootProject.file(".env").takeIf { it.exists() }
+    ?: project.file("../../.env").takeIf { it.exists() }
+val envProperties = Properties()
+if (envFile != null && envFile.exists()) {
+    envFile.bufferedReader().use { reader ->
+        reader.forEachLine { line ->
+            val trimmed = line.trim()
+            if (trimmed.isNotEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
+                val parts = trimmed.split("=", limit = 2)
+                envProperties[parts[0].trim()] = parts[1].trim()
+            }
+        }
+    }
+}
+val posthogToken = envProperties.getProperty("POSTHOG_PROJECT_TOKEN")
+    ?: System.getenv("POSTHOG_PROJECT_TOKEN")
+    ?: ""
+val posthogHost = envProperties.getProperty("POSTHOG_HOST")
+    ?: System.getenv("POSTHOG_HOST")
+    ?: "https://us.i.posthog.com"
+
     defaultConfig {
         applicationId = "com.equiptrack.com"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["POSTHOG_PROJECT_TOKEN"] = posthogToken
+        manifestPlaceholders["POSTHOG_HOST"] = posthogHost
     }
 
     buildTypes {

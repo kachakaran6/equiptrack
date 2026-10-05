@@ -32,6 +32,23 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- PostHog Analytics & Observability Configuration -->
+        <meta-data
+            android:name="com.posthog.posthog.API_KEY"
+            android:value="${POSTHOG_PROJECT_TOKEN}" />
+        <meta-data
+            android:name="com.posthog.posthog.POSTHOG_HOST"
+            android:value="${POSTHOG_HOST}" />
+        <meta-data
+            android:name="com.posthog.posthog.TRACK_APPLICATION_LIFECYCLE_EVENTS"
+            android:value="false" />
+        <meta-data
+            android:name="com.posthog.posthog.SESSION_REPLAY"
+            android:value="true" />
+        <meta-data
+            android:name="com.posthog.posthog.SESSION_REPLAY_MASK_ALL_TEXT_INPUTS"
+            android:value="true" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
