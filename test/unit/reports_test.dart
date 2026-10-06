@@ -80,6 +80,40 @@ void main() {
       expect(header.startsWith('%PDF'), isTrue);
     });
 
+    test('PdfService generates valid multi-component PDF bytes', () async {
+      final rows = calculationService.calculate(testRecords);
+      final pdfBytes = await pdfService.generateMultiComponentReportPdf(
+        machine: testMachine,
+        components: [
+          ComponentReportData(
+            section: testSection,
+            categoryName: 'Spindle System',
+            rows: rows,
+          ),
+        ],
+      );
+
+      expect(pdfBytes, isNotEmpty);
+      final header = String.fromCharCodes(pdfBytes.take(5));
+      expect(header.startsWith('%PDF'), isTrue);
+    });
+
+    test('PdfService throws ValidationFailure when components have 0 rows', () async {
+      expect(
+        () => pdfService.generateMultiComponentReportPdf(
+          machine: testMachine,
+          components: [
+            ComponentReportData(
+              section: testSection,
+              categoryName: 'Spindle System',
+              rows: const [],
+            ),
+          ],
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
     test('ExcelService generates valid .xlsx bytes with metadata and rows', () {
       final rows = calculationService.calculate(testRecords);
       final excelBytes = excelService.generateUsageReportExcel(
@@ -95,3 +129,4 @@ void main() {
     });
   });
 }
+

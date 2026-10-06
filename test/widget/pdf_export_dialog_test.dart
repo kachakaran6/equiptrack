@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:machine_usage_app/core/constants/app_keys.dart';
 import 'package:machine_usage_app/core/theme/app_theme.dart';
 import 'package:machine_usage_app/data/repositories/usage_record_repository.dart';
 import 'package:machine_usage_app/features/reports/models/report_filter_options.dart';
@@ -234,6 +233,35 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Export PDF Report'), findsNothing);
+    });
+
+    testWidgets('Renders properly on small mobile viewport and in Dark Theme',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: Scaffold(
+              body: PdfExportDialog(
+                machine: testMachine,
+                sections: [testSection1],
+                initialRecords: sampleRecords,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Export PDF Report'), findsOneWidget);
+      expect(find.text('CNC Milling Center 01'), findsOneWidget);
+      expect(find.text('Export PDF'), findsOneWidget);
     });
   });
 }

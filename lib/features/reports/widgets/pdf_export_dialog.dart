@@ -763,15 +763,20 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
             fontSize: 12,
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-            color: highlightValue
-                ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                : theme.colorScheme.onSurface,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: highlightValue
+                  ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                  : theme.colorScheme.onSurface,
+            ),
           ),
         ),
       ],
@@ -1043,8 +1048,11 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               : AppColors.surfaceContainerLight.withAlpha(120),
           border: Border(top: BorderSide(color: borderColor, width: 1)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             AppButton(
               text: 'Close',
@@ -1052,7 +1060,6 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               size: AppButtonSize.medium,
               onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 8),
             AppButton(
               text: 'Preview / Print',
               icon: Icons.visibility_outlined,
@@ -1060,7 +1067,6 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               size: AppButtonSize.medium,
               onPressed: _openOrPreview,
             ),
-            const SizedBox(width: 8),
             AppButton(
               text: 'Share PDF',
               icon: Icons.share_rounded,
@@ -1082,8 +1088,11 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               : AppColors.surfaceContainerLight.withAlpha(120),
           border: Border(top: BorderSide(color: borderColor, width: 1)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             AppButton(
               text: 'Cancel',
@@ -1091,7 +1100,6 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               size: AppButtonSize.medium,
               onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 8),
             AppButton(
               text: 'Change Filter',
               icon: Icons.filter_alt_outlined,
@@ -1116,8 +1124,11 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               : AppColors.surfaceContainerLight.withAlpha(120),
           border: Border(top: BorderSide(color: borderColor, width: 1)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             AppButton(
               text: 'Cancel',
@@ -1125,7 +1136,6 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
               size: AppButtonSize.medium,
               onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 8),
             AppButton(
               text: 'Try Again',
               icon: Icons.refresh_rounded,
@@ -1148,8 +1158,11 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
             : AppColors.surfaceContainerLight.withAlpha(120),
         border: Border(top: BorderSide(color: borderColor, width: 1)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           AppButton(
             text: 'Cancel',
@@ -1157,7 +1170,6 @@ class _PdfExportDialogState extends ConsumerState<PdfExportDialog> {
             size: AppButtonSize.medium,
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const SizedBox(width: 10),
           AppButton(
             keyString: AppKeys.exportPdfButton,
             text: 'Export PDF',
