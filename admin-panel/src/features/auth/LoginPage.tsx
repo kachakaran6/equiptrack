@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertTriangle, Lock, Mail, ArrowRight } from 'lucide-react'
+import { AlertCircle, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -43,41 +43,41 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <Card className="border-zinc-800 bg-zinc-950/80 shadow-2xl">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-base text-zinc-100 font-semibold">Sign in to console</CardTitle>
-        <CardDescription className="text-xs text-zinc-400">
-          Enter administrator credentials to authenticate
+    <Card className="border-border/80 bg-card shadow-lg">
+      <CardHeader className="space-y-1.5 pb-4">
+        <CardTitle className="text-lg font-semibold text-foreground">Sign in to console</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Enter administrator credentials to access management console
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         {sessionExpired && !error && (
-          <div className="mb-4 flex items-center gap-2 rounded border border-amber-900/60 bg-amber-950/30 p-2.5 text-xs text-amber-300">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
+          <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
             <span>Session expired. Please sign in again.</span>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 flex items-start gap-2 rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="email">Administrator Email</Label>
+            <Label htmlFor="email" className="text-xs font-medium">Administrator Email</Label>
             <div className="relative">
-              <Mail className="absolute left-2.5 top-2 h-3.5 w-3.5 text-zinc-500" />
+              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@equiptrack.internal"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-8"
+                className="pl-9 h-10 text-sm"
                 autoFocus
                 required
               />
@@ -85,16 +85,18 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-xs font-medium">Password</Label>
+            </div>
             <div className="relative">
-              <Lock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-zinc-500" />
+              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-8"
+                className="pl-9 h-10 text-sm"
                 required
               />
             </div>
@@ -102,18 +104,18 @@ export const LoginPage: React.FC = () => {
 
           <Button
             type="submit"
-            className="w-full bg-zinc-100 text-zinc-900 hover:bg-zinc-200 mt-2 font-medium"
+            className="w-full h-10 mt-2 font-medium text-sm gap-2"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                 Authenticating...
               </span>
             ) : (
-              <span className="flex items-center gap-1.5">
-                Sign In
-                <ArrowRight className="h-3.5 w-3.5" />
+              <span className="flex items-center gap-2">
+                <span>Sign In</span>
+                <ArrowRight className="h-4 w-4" />
               </span>
             )}
           </Button>
