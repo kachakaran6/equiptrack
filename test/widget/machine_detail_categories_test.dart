@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:machine_usage_app/core/theme/app_theme.dart';
+import 'package:machine_usage_app/core/widgets/app_popup_menu.dart';
 import 'package:machine_usage_app/data/repositories/category_repository.dart';
 import 'package:machine_usage_app/data/repositories/section_repository.dart';
 import 'package:machine_usage_app/data/repositories/usage_record_repository.dart';
@@ -169,6 +170,54 @@ void main() {
 
       expect(find.text('Export PDF (0)'), findsOneWidget);
       expect(find.text('0 of 4 selected'), findsOneWidget);
+    });
+
+    testWidgets('Tapping three dots on category accordion shows Export PDF option',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            singleMachineProvider('m-1').overrideWith((ref) => Future.value(testMachine)),
+            categoriesStreamFamily('m-1').overrideWith((ref) => Future.value([catBearings, catMotors])),
+            sectionsStreamFamily('m-1').overrideWith((ref) => Future.value([sec1, sec2, sec3, secUncat])),
+            usageRecordsStreamFamily('s-1').overrideWith((ref) => Future.value([])),
+            usageRecordsStreamFamily('s-2').overrideWith((ref) => Future.value([])),
+            usageRecordsStreamFamily('s-3').overrideWith((ref) => Future.value([])),
+            usageRecordsStreamFamily('s-4').overrideWith((ref) => Future.value([])),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const MachineDetailScreen(machineId: 'm-1'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Find AppPopupMenu on the Bearings category (first category accordion)
+      final appPopupFinder = find.byType(AppPopupMenu<String>);
+      expect(appPopupFinder, findsWidgets);
+
+      // Tap the first category accordion's AppPopupMenu button
+      await tester.tap(appPopupFinder.first);
+      await tester.pumpAndSettle();
+
+      // Verify Export PDF, Edit Category, Delete Category are displayed
+      expect(find.text('Export PDF'), findsOneWidget);
+      expect(find.text('Edit Category'), findsOneWidget);
+      expect(find.text('Delete Category'), findsOneWidget);
+
+      // Tap Export PDF to verify it opens the dialog
+      await tester.tap(find.text('Export PDF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Export PDF Report'), findsOneWidget);
+      expect(find.text('Bearings'), findsWidgets);
     });
   });
 }

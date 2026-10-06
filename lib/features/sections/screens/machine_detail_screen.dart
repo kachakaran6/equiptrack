@@ -26,6 +26,7 @@ import '../../machines/controllers/machines_controller.dart';
 import '../../machines/widgets/add_edit_machine_dialog.dart';
 import '../../machines/widgets/duplicate_machine_dialog.dart';
 import '../../reports/widgets/multi_component_report_dialog.dart';
+import '../../reports/widgets/pdf_export_dialog.dart';
 import '../controllers/categories_controller.dart';
 import '../controllers/sections_controller.dart';
 import '../widgets/add_edit_category_dialog.dart';
@@ -152,6 +153,28 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
       context,
       machine: machine,
       selectedSections: sortedSelectedSections,
+      categoryNames: categoryMap,
+    );
+  }
+
+  void _exportCategoryPdf({
+    required BuildContext context,
+    required dynamic machine,
+    required String categoryTitle,
+    required List<Section> sections,
+    String? categoryId,
+  }) {
+    if (sections.isEmpty) {
+      context.showInfoSnackBar('No components in "$categoryTitle" to export.');
+      return;
+    }
+
+    final categoryMap = categoryId != null ? {categoryId: categoryTitle} : <String, String>{};
+
+    PdfExportDialog.showMulti(
+      context,
+      machine: machine,
+      selectedSections: sections,
       categoryNames: categoryMap,
     );
   }
@@ -537,6 +560,13 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                                     onToggleComponentSelect: _toggleComponentSelection,
                                     onToggleCategorySelect: () =>
                                         _toggleCategorySelection(filteredCatSections),
+                                    onExportPdf: () => _exportCategoryPdf(
+                                      context: context,
+                                      machine: machine,
+                                      categoryTitle: category.name,
+                                      sections: filteredCatSections,
+                                      categoryId: category.id,
+                                    ),
                                   );
                                 }),
                               ],
@@ -572,6 +602,13 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                                     onToggleComponentSelect: _toggleComponentSelection,
                                     onToggleCategorySelect: () =>
                                         _toggleCategorySelection(filteredUncategorized),
+                                    onExportPdf: () => _exportCategoryPdf(
+                                      context: context,
+                                      machine: machine,
+                                      categoryTitle: 'Uncategorized',
+                                      sections: filteredUncategorized,
+                                      categoryId: null,
+                                    ),
                                   );
                                 }),
                               ],
@@ -773,6 +810,7 @@ class _CategoryAccordionSection extends ConsumerWidget {
   final ValueChanged<String> onStartSelection;
   final ValueChanged<String> onToggleComponentSelect;
   final VoidCallback onToggleCategorySelect;
+  final VoidCallback? onExportPdf;
 
   const _CategoryAccordionSection({
     required this.machineId,
@@ -786,6 +824,7 @@ class _CategoryAccordionSection extends ConsumerWidget {
     required this.onStartSelection,
     required this.onToggleComponentSelect,
     required this.onToggleCategorySelect,
+    this.onExportPdf,
   });
 
   @override
@@ -880,6 +919,11 @@ class _CategoryAccordionSection extends ConsumerWidget {
                       AppPopupMenu<String>(
                         items: const [
                           AppPopupMenuItem(
+                            value: 'export_pdf',
+                            label: 'Export PDF',
+                            icon: Icons.picture_as_pdf_outlined,
+                          ),
+                          AppPopupMenuItem(
                             value: 'edit',
                             label: 'Edit Category',
                             icon: Icons.edit_outlined,
@@ -892,7 +936,9 @@ class _CategoryAccordionSection extends ConsumerWidget {
                           ),
                         ],
                         onSelected: (action) async {
-                          if (action == 'edit') {
+                          if (action == 'export_pdf') {
+                            onExportPdf?.call();
+                          } else if (action == 'edit') {
                             AddEditCategoryDialog.show(
                               context,
                               machineId: machineId,
@@ -959,6 +1005,7 @@ class _CategoryAccordionSection extends ConsumerWidget {
                       return _ComponentRowCard(
                         machineId: machineId,
                         section: section,
+                        categoryName: category.name,
                         isSelectionMode: selectionMode,
                         isSelected: selectedComponentIds.contains(section.id),
                         onStartSelection: () => onStartSelection(section.id),
@@ -986,6 +1033,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
   final ValueChanged<String> onStartSelection;
   final ValueChanged<String> onToggleComponentSelect;
   final VoidCallback onToggleCategorySelect;
+  final VoidCallback? onExportPdf;
 
   const _UncategorizedAccordionSection({
     required this.machineId,
@@ -997,6 +1045,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
     required this.onStartSelection,
     required this.onToggleComponentSelect,
     required this.onToggleCategorySelect,
+    this.onExportPdf,
   });
 
   @override
@@ -1078,6 +1127,23 @@ class _UncategorizedAccordionSection extends StatelessWidget {
                       singular: 'component',
                       plural: 'components',
                     ),
+                    if (!selectionMode && sections.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      AppPopupMenu<String>(
+                        items: const [
+                          AppPopupMenuItem(
+                            value: 'export_pdf',
+                            label: 'Export PDF',
+                            icon: Icons.picture_as_pdf_outlined,
+                          ),
+                        ],
+                        onSelected: (action) {
+                          if (action == 'export_pdf') {
+                            onExportPdf?.call();
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1129,6 +1195,7 @@ class _UncategorizedAccordionSection extends StatelessWidget {
 class _ComponentRowCard extends ConsumerWidget {
   final String machineId;
   final Section section;
+  final String? categoryName;
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onStartSelection;
@@ -1137,6 +1204,7 @@ class _ComponentRowCard extends ConsumerWidget {
   const _ComponentRowCard({
     required this.machineId,
     required this.section,
+    this.categoryName,
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onStartSelection,
@@ -1246,6 +1314,11 @@ class _ComponentRowCard extends ConsumerWidget {
               AppPopupMenu<String>(
                 items: const [
                   AppPopupMenuItem(
+                    value: 'export_pdf',
+                    label: 'Export PDF',
+                    icon: Icons.picture_as_pdf_outlined,
+                  ),
+                  AppPopupMenuItem(
                     value: 'edit',
                     label: 'Edit',
                     icon: Icons.edit_outlined,
@@ -1258,7 +1331,19 @@ class _ComponentRowCard extends ConsumerWidget {
                   ),
                 ],
                 onSelected: (action) async {
-                  if (action == 'edit') {
+                  if (action == 'export_pdf') {
+                    final machine = ref.read(singleMachineProvider(machineId)).value;
+                    if (machine != null) {
+                      final records = recordsAsync.value ?? [];
+                      PdfExportDialog.showSingle(
+                        context,
+                        machine: machine,
+                        section: section,
+                        records: records,
+                        categoryName: categoryName,
+                      );
+                    }
+                  } else if (action == 'edit') {
                     AddEditSectionDialog.show(
                       context,
                       machineId: machineId,
