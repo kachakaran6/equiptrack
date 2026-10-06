@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { errorsApi } from '@/lib/api/errorsApi'
 import type { ErrorLog } from '@/types/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -38,6 +38,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
+import { FormattedDate } from '@/components/ui/formatted-date'
+import { CopyableCode } from '@/components/ui/copyable-code'
 import {
   Search,
   Trash2,
@@ -48,9 +51,11 @@ import {
   User,
   Copy,
   Check,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react'
 
-export const ErrorsPage: React.FC = () => {
+export const ErrorsPage: FC = () => {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [severityFilter, setSeverityFilter] = useState<string>('ALL')
@@ -83,36 +88,43 @@ export const ErrorsPage: React.FC = () => {
 
   const sanitizeStackTrace = (stack?: string | null) => {
     if (!stack) return 'No stack trace recorded.'
-    // Redact potential connection strings or JWT tokens
     return stack
       .replace(/postgres:\/\/[^@]+@/gi, 'postgres://[REDACTED]@')
       .replace(/Bearer\s+[A-Za-z0-9-_=.]+/gi, 'Bearer [REDACTED]')
       .replace(/bot[0-9]+:[A-Za-z0-9_-]+/gi, 'bot[REDACTED]')
   }
 
+  const getSeverityVariant = (severity: string) => {
+    const upper = severity.toUpperCase()
+    if (upper === 'FATAL' || upper === 'ERROR') return 'danger'
+    if (upper === 'WARN' || upper === 'WARNING') return 'warning'
+    if (upper === 'INFO') return 'info'
+    return 'neutral'
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             System Error Logs
           </h1>
-          <p className="text-xs text-zinc-400">
-            Inspect backend exceptions, API runtime faults, and sanitized diagnostics
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Inspect backend exceptions, API runtime faults, and sanitized server diagnostics
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
 
           {errorLogs.length > 0 && (
@@ -120,31 +132,31 @@ export const ErrorsPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsClearOpen(true)}
-              className="h-8 gap-1.5 text-xs text-red-400 border-zinc-800 hover:bg-red-950/20"
+              className="h-9 gap-2 shadow-xs text-rose-600 dark:text-rose-400 border-rose-500/20 hover:bg-rose-500/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Clear Logs
+              <span>Clear Logs</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search error messages, endpoints, codes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-9 h-9 text-sm"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono text-zinc-400">Severity:</span>
+          <span className="text-xs font-medium text-muted-foreground">Severity:</span>
           <Select value={severityFilter} onValueChange={setSeverityFilter}>
-            <SelectTrigger className="w-36 h-8 text-xs">
+            <SelectTrigger className="w-40 h-9 text-xs">
               <SelectValue placeholder="All Severities" />
             </SelectTrigger>
             <SelectContent>
@@ -159,102 +171,101 @@ export const ErrorsPage: React.FC = () => {
       </div>
 
       {/* Errors Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-280px)]">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Severity</TableHead>
-              <TableHead>Method & Endpoint</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Error Code</TableHead>
-              <TableHead>Message</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-64" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredErrors.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-zinc-500">
-                  No error logs recorded. System is operating cleanly.
-                </TableCell>
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-border/80 bg-muted/40 hover:bg-muted/40">
+                <TableHead className="font-semibold text-xs text-muted-foreground">Timestamp</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Severity</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Method & Endpoint</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground text-center">Status</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Error Code</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Message</TableHead>
               </TableRow>
-            ) : (
-              filteredErrors.map((err) => (
-                <TableRow
-                  key={err.id}
-                  onClick={() => setSelectedError(err)}
-                  className="cursor-pointer hover:bg-zinc-900/60"
-                >
-                  <TableCell className="font-mono text-[11px] text-zinc-400 whitespace-nowrap">
-                    {new Date(err.created_at).toLocaleString()}
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge
-                      variant={
-                        err.severity === 'FATAL' || err.severity === 'ERROR'
-                          ? 'destructive'
-                          : err.severity === 'WARN'
-                          ? 'warning'
-                          : 'secondary'
-                      }
-                    >
-                      {err.severity}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-zinc-300">
-                    <span className="font-bold text-zinc-400 mr-1.5">{err.method || 'GET'}</span>
-                    <span>{err.endpoint || '/'}</span>
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px]">
-                    <span className={err.status_code && err.status_code >= 500 ? 'text-red-400' : 'text-amber-400'}>
-                      {err.status_code || 500}
-                    </span>
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[10px] text-zinc-500">
-                    {err.error_code || 'INTERNAL_ERROR'}
-                  </TableCell>
-
-                  <TableCell className="text-zinc-200 text-xs max-w-sm truncate">
-                    {err.message}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-64" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredErrors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-44 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500/70" />
+                      <p className="text-sm font-medium text-foreground">No error logs recorded</p>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        {searchTerm ? 'No errors match your search filter.' : 'All services and database layers are operating cleanly without exceptions.'}
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredErrors.map((err) => (
+                  <TableRow
+                    key={err.id}
+                    onClick={() => setSelectedError(err)}
+                    className="cursor-pointer hover:bg-muted/40 transition-colors"
+                  >
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      <FormattedDate value={err.created_at} />
+                    </TableCell>
+
+                    <TableCell>
+                      <StatusPill
+                        variant={getSeverityVariant(err.severity)}
+                        label={err.severity}
+                        size="sm"
+                      />
+                    </TableCell>
+
+                    <TableCell className="font-mono text-xs text-foreground/90">
+                      <span className="font-bold text-muted-foreground mr-1.5">{err.method || 'GET'}</span>
+                      <span>{err.endpoint || '/'}</span>
+                    </TableCell>
+
+                    <TableCell className="font-mono text-xs text-center">
+                      <span className={err.status_code && err.status_code >= 500 ? 'font-semibold text-rose-600 dark:text-rose-400' : 'font-semibold text-amber-600 dark:text-amber-400'}>
+                        {err.status_code || 500}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <CopyableCode value={err.error_code || 'INTERNAL_ERROR'} truncateLength={16} />
+                    </TableCell>
+
+                    <TableCell className="text-xs text-foreground/80 max-w-sm truncate">
+                      {err.message}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Error Details Sheet */}
       <Sheet open={!!selectedError} onOpenChange={() => setSelectedError(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-zinc-950 border-l border-zinc-800">
-          <SheetHeader className="border-b border-zinc-800 pb-4">
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-card border-l border-border">
+          <SheetHeader className="border-b border-border/80 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    selectedError?.severity === 'FATAL' || selectedError?.severity === 'ERROR'
-                      ? 'destructive'
-                      : 'secondary'
-                  }
-                >
-                  {selectedError?.severity}
-                </Badge>
-                <span className="font-mono text-xs text-zinc-500">{selectedError?.error_code}</span>
+                {selectedError && (
+                  <StatusPill
+                    variant={getSeverityVariant(selectedError.severity)}
+                    label={selectedError.severity}
+                  />
+                )}
+                <span className="font-mono text-xs text-muted-foreground">{selectedError?.error_code}</span>
               </div>
               <Button
                 variant="outline"
@@ -267,65 +278,68 @@ export const ErrorsPage: React.FC = () => {
                     setTimeout(() => setCopied(false), 2000)
                   }
                 }}
-                className="h-7 px-2 text-[11px] gap-1 border-zinc-800 bg-zinc-900/60"
+                className="h-8 px-2.5 text-xs gap-1.5 shadow-xs"
               >
-                {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                {copied ? 'Copied' : 'Copy Info'}
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copied ? 'Copied' : 'Copy Info'}</span>
               </Button>
             </div>
-            <SheetTitle className="text-sm font-semibold text-zinc-100 break-words mt-2">
+            <SheetTitle className="text-base font-semibold text-foreground break-words mt-3">
               {selectedError?.message}
             </SheetTitle>
-            <SheetDescription className="font-mono text-[11px] text-zinc-500 flex items-center gap-2">
-              <Clock className="h-3 w-3" />
-              {selectedError && new Date(selectedError.created_at).toLocaleString()}
+            <SheetDescription className="font-mono text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{selectedError && new Date(selectedError.created_at).toLocaleString()}</span>
             </SheetDescription>
           </SheetHeader>
 
           <div className="space-y-4 py-4 font-mono text-xs">
             {/* Meta tags */}
-            <div className="grid grid-cols-2 gap-2 rounded border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3.5 font-sans">
               <div>
-                <div className="text-[10px] text-zinc-500 flex items-center gap-1">
-                  <Globe className="h-3 w-3" /> Endpoint
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Globe className="h-3.5 w-3.5" />
+                  <span>Endpoint</span>
                 </div>
-                <div className="text-zinc-200 mt-0.5 truncate">
+                <div className="text-xs font-mono font-medium text-foreground mt-0.5 truncate">
                   {selectedError?.method} {selectedError?.endpoint}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500">HTTP Status</div>
-                <div className="text-zinc-200 mt-0.5">{selectedError?.status_code || 500}</div>
+                <div className="text-[11px] text-muted-foreground">HTTP Status</div>
+                <div className="text-xs font-mono font-semibold text-foreground mt-0.5">{selectedError?.status_code || 500}</div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500 flex items-center gap-1">
-                  <User className="h-3 w-3" /> User ID
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <User className="h-3.5 w-3.5" />
+                  <span>User ID</span>
                 </div>
-                <div className="text-zinc-200 mt-0.5 truncate">
+                <div className="text-xs font-mono text-foreground mt-0.5 truncate">
                   {selectedError?.user_id || 'Unauthenticated'}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500">Error ID</div>
-                <div className="text-zinc-200 mt-0.5 truncate">{selectedError?.id}</div>
+                <div className="text-[11px] text-muted-foreground">Error ID</div>
+                <div className="text-xs font-mono text-foreground mt-0.5 truncate">{selectedError?.id}</div>
               </div>
             </div>
 
             {/* Stack trace */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1 text-[11px] text-zinc-400 font-semibold">
-                <Terminal className="h-3.5 w-3.5" /> Stack Trace (Sanitized)
+            <div className="space-y-1.5 font-sans">
+              <div className="flex items-center gap-1.5 text-xs text-foreground font-semibold">
+                <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Stack Trace (Sanitized)</span>
               </div>
-              <pre className="overflow-x-auto rounded border border-zinc-800 bg-black p-3 text-[11px] text-zinc-300 leading-relaxed max-h-72">
+              <pre className="overflow-x-auto rounded-xl border border-border bg-muted/50 p-3.5 text-[11px] font-mono text-foreground/90 leading-relaxed max-h-72">
                 {sanitizeStackTrace(selectedError?.stack_trace)}
               </pre>
             </div>
 
             {/* Metadata if present */}
             {selectedError?.metadata && (
-              <div className="space-y-1.5">
-                <div className="text-[11px] text-zinc-400 font-semibold">Metadata & Parameters</div>
-                <pre className="overflow-x-auto rounded border border-zinc-800 bg-black p-3 text-[11px] text-zinc-300">
+              <div className="space-y-1.5 font-sans">
+                <div className="text-xs text-foreground font-semibold">Metadata &amp; Parameters</div>
+                <pre className="overflow-x-auto rounded-xl border border-border bg-muted/50 p-3.5 text-[11px] font-mono text-foreground/90">
                   {JSON.stringify(selectedError.metadata, null, 2)}
                 </pre>
               </div>
@@ -346,6 +360,7 @@ export const ErrorsPage: React.FC = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
               onClick={() => clearMutation.mutate()}
               disabled={clearMutation.isPending}
             >

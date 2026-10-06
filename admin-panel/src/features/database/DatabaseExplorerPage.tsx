@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { databaseApi } from '@/lib/api/databaseApi'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Database,
@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 
-export const DatabaseExplorerPage: React.FC = () => {
+export const DatabaseExplorerPage: FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
 
   const { data: tables = [], isLoading, refetch, isFetching } = useQuery({
@@ -32,45 +32,44 @@ export const DatabaseExplorerPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-            <Database className="h-5 w-5 text-zinc-400" />
-            Database Schema Explorer
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>Database Schema Explorer</span>
           </h1>
-          <p className="text-xs text-zinc-400">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Inspect real-time table schemas, record counts, and explore datasets safely through backend metadata
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh Schema
+            <span>Refresh Schema</span>
           </Button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+      {/* Search Bar & Table Count */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Filter database tables..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-9 h-9 text-sm"
           />
         </div>
 
-        <div className="font-mono text-[11px] text-zinc-500">
-          {tables.length} managed tables discovered
+        <div className="text-xs font-medium text-muted-foreground">
+          {tables.length} managed {tables.length === 1 ? 'table' : 'tables'} discovered
         </div>
       </div>
 
@@ -78,19 +77,24 @@ export const DatabaseExplorerPage: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           Array.from({ length: 6 }).map((_, idx) => (
-            <Card key={idx} className="border-zinc-800 bg-zinc-950/60">
-              <CardHeader className="pb-2">
+            <Card key={idx} className="border-border bg-card">
+              <CardHeader className="pb-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-20" />
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full mt-2" />
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
               </CardContent>
             </Card>
           ))
         ) : filteredTables.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-xs text-zinc-500">
-            No database tables found matching your search.
+          <div className="col-span-full py-16 text-center rounded-xl border border-dashed border-border bg-card">
+            <Database className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground">No tables found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {searchTerm ? 'No tables match your search query.' : 'No database tables available to explore.'}
+            </p>
           </div>
         ) : (
           filteredTables.map((tbl) => (
@@ -99,48 +103,54 @@ export const DatabaseExplorerPage: React.FC = () => {
               to={`/database/${tbl.name}`}
               className="group block"
             >
-              <Card className="h-full border-zinc-800/80 bg-zinc-950/60 transition-colors hover:border-zinc-700 hover:bg-zinc-900/40">
+              <Card className="h-full border-border bg-card transition-all duration-150 hover:border-indigo-500/50 hover:shadow-xs">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-mono text-zinc-200 group-hover:text-zinc-100 flex items-center gap-2">
-                      <TableIcon className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
-                      {tbl.name}
+                    <CardTitle className="text-sm font-mono font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center gap-2 transition-colors">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <TableIcon className="h-3.5 w-3.5" />
+                      </div>
+                      <span>{tbl.name}</span>
                     </CardTitle>
-                    <ArrowRight className="h-3.5 w-3.5 text-zinc-600 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-300" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
                   </div>
-                  <CardDescription className="font-mono text-[11px] text-zinc-500">
-                    PostgreSQL Table
+                  <CardDescription className="text-xs text-muted-foreground">
+                    PostgreSQL System Table
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between font-mono text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 text-zinc-500">
-                      <Rows className="h-3.5 w-3.5" /> Rows:
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Rows className="h-3.5 w-3.5" />
+                      <span>Rows:</span>
                     </span>
-                    <Badge variant="secondary" className="font-mono text-[11px]">
+                    <span className="font-mono font-semibold tabular-nums px-2 py-0.5 rounded-full bg-muted border border-border text-foreground text-[11px]">
                       {tbl.rowCount.toLocaleString()}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between font-mono text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 text-zinc-500">
-                      <Columns className="h-3.5 w-3.5" /> Columns:
                     </span>
-                    <span className="text-zinc-300">{(tbl.columns || []).length} columns</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1 pt-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Columns className="h-3.5 w-3.5" />
+                      <span>Columns:</span>
+                    </span>
+                    <span className="font-mono text-muted-foreground text-[11px]">
+                      {(tbl.columns || []).length} cols
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 pt-1.5 border-t border-border/60">
                     {(tbl.columns || []).slice(0, 4).map((col) => (
                       <span
                         key={col.column_name}
-                        className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400 border border-zinc-800/60"
+                        className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/60"
                       >
                         {col.column_name}
                       </span>
                     ))}
                     {(tbl.columns || []).length > 4 && (
-                      <span className="font-mono text-[9px] text-zinc-600 px-1 py-0.5">
+                      <span className="font-mono text-[10px] text-muted-foreground/60 px-1 py-0.5">
                         +{(tbl.columns || []).length - 4} more
                       </span>
                     )}
