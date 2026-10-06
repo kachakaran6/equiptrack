@@ -3,26 +3,26 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0 cursor-pointer select-none",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0 cursor-pointer select-none",
   {
     variants: {
       variant: {
         default:
-          "bg-zinc-100 text-zinc-900 shadow hover:bg-zinc-200 active:bg-zinc-300",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/95",
         destructive:
-          "bg-red-900/60 text-red-200 border border-red-800 hover:bg-red-900 active:bg-red-950",
+          "bg-rose-600 text-white shadow-xs hover:bg-rose-700 active:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-700",
         outline:
-          "border border-zinc-800 bg-transparent shadow-sm hover:bg-zinc-800/60 hover:text-zinc-100 active:bg-zinc-800",
+          "border border-border bg-background shadow-xs hover:bg-muted hover:text-foreground active:bg-muted/80",
         secondary:
-          "bg-zinc-800 text-zinc-100 shadow-sm hover:bg-zinc-700/80 active:bg-zinc-700",
-        ghost: "hover:bg-zinc-800/60 hover:text-zinc-100 active:bg-zinc-800",
-        link: "text-zinc-100 underline-offset-4 hover:underline",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 active:bg-secondary/90",
+        ghost: "hover:bg-muted/80 hover:text-foreground active:bg-muted",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 px-3 py-1.5",
-        sm: "h-7 rounded px-2.5 text-xs",
-        lg: "h-9 rounded-md px-4 text-sm",
-        icon: "h-8 w-8",
+        default: "h-8.5 px-3 py-1.5",
+        sm: "h-7.5 rounded-md px-2.5 text-xs",
+        lg: "h-10 rounded-lg px-4 text-sm",
+        icon: "h-8.5 w-8.5",
       },
     },
     defaultVariants: {
