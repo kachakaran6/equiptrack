@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import type { FC, FormEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { backupApi, type UpdateBackupConfigInput } from '@/lib/api/backupApi'
@@ -21,10 +22,9 @@ import {
   RefreshCw,
   CheckCircle,
   Save,
-  Clock,
 } from 'lucide-react'
 
-export const BackupSchedulePage: React.FC = () => {
+export const BackupSchedulePage: FC = () => {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<UpdateBackupConfigInput>({
     enabled: false,
@@ -65,7 +65,7 @@ export const BackupSchedulePage: React.FC = () => {
     onError: (err: Error) => setErrorMsg(err.message),
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setErrorMsg(null)
 
@@ -81,54 +81,56 @@ export const BackupSchedulePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Back link */}
+      <div>
+        <Link to="/backups">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8 px-2">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Backups</span>
+          </Button>
+        </Link>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
-        <div className="flex items-center gap-3">
-          <Link to="/backups">
-            <Button variant="outline" size="icon" className="h-8 w-8 border-zinc-800 bg-zinc-900/50">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 text-zinc-400" />
-              Automated Backup Schedule &amp; Retention
-            </h1>
-            <p className="text-xs text-zinc-400">
-              Configure background database snapshot routines, format presets, and retention cycles
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>Automated Backup Schedule &amp; Retention</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Configure background database snapshot routines, format presets, and retention cycles
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 rounded border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300">
+        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="rounded border border-red-900/60 bg-red-950/30 p-3 text-xs text-red-300">
+        <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
           {errorMsg}
         </div>
       )}
 
       {isLoading ? (
-        <Card className="border-zinc-800 bg-zinc-950/60">
+        <Card className="border-border bg-card">
           <CardContent className="p-6 space-y-4">
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
@@ -137,18 +139,18 @@ export const BackupSchedulePage: React.FC = () => {
         </Card>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="border-zinc-800 bg-zinc-950/60">
-            <CardHeader className="pb-3 border-b border-zinc-800">
-              <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-                Schedule Configuration
+          <Card className="border-border bg-card shadow-xs">
+            <CardHeader className="pb-3 border-b border-border/80">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Schedule &amp; Format Parameters
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-4 text-xs">
+            <CardContent className="p-5 space-y-5 text-xs">
               {/* Enabled Switch */}
-              <div className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 p-3">
+              <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
                 <div className="space-y-0.5">
-                  <div className="font-semibold text-zinc-200">Scheduled Automatic Backups</div>
-                  <div className="text-[11px] text-zinc-400">
+                  <div className="font-semibold text-foreground text-sm">Scheduled Automatic Backups</div>
+                  <div className="text-xs text-muted-foreground">
                     When enabled, the backend server triggers automated snapshots at the specified cron interval
                   </div>
                 </div>
@@ -161,30 +163,30 @@ export const BackupSchedulePage: React.FC = () => {
               {/* Cron expression */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="cron-exp" className="font-mono text-xs">
+                  <Label htmlFor="cron-exp" className="text-xs font-medium">
                     Cron Expression * (e.g. 0 2 * * *)
                   </Label>
                   <Input
                     id="cron-exp"
                     value={formData.cron_expression || ''}
                     onChange={(e) => setFormData({ ...formData, cron_expression: e.target.value })}
-                    className="font-mono text-xs"
+                    className="font-mono text-xs h-9"
                     required
                   />
-                  <p className="text-[11px] text-zinc-500 font-mono">
-                    Default: 0 2 * * * (Runs every day at 02:00 AM)
+                  <p className="text-[11px] text-muted-foreground">
+                    Default: <code className="text-foreground">0 2 * * *</code> (Runs every day at 02:00 AM)
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="timezone" className="font-mono text-xs">
+                  <Label htmlFor="timezone" className="text-xs font-medium">
                     Timezone
                   </Label>
                   <Select
                     value={formData.timezone}
                     onValueChange={(val) => setFormData({ ...formData, timezone: val })}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -200,14 +202,14 @@ export const BackupSchedulePage: React.FC = () => {
               {/* Format & Compression */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="font-mono text-xs">Snapshot Format</Label>
+                  <Label className="text-xs font-medium">Snapshot Format</Label>
                   <Select
                     value={formData.format}
                     onValueChange={(val: 'SQL' | 'JSON' | 'CSV' | 'ZIP') =>
                       setFormData({ ...formData, format: val })
                     }
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -220,14 +222,14 @@ export const BackupSchedulePage: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="font-mono text-xs">Compression</Label>
+                  <Label className="text-xs font-medium">Compression Algorithm</Label>
                   <Select
                     value={formData.compression}
                     onValueChange={(val: 'GZIP' | 'NONE') =>
                       setFormData({ ...formData, compression: val })
                     }
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -240,7 +242,7 @@ export const BackupSchedulePage: React.FC = () => {
 
               {/* Retention */}
               <div className="space-y-1.5">
-                <Label htmlFor="retention" className="font-mono text-xs">
+                <Label htmlFor="retention" className="text-xs font-medium">
                   Retention Window (Days)
                 </Label>
                 <Input
@@ -252,21 +254,21 @@ export const BackupSchedulePage: React.FC = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, retention_days: parseInt(e.target.value) || 30 })
                   }
-                  className="font-mono text-xs max-w-xs"
+                  className="font-mono text-xs max-w-xs h-9"
                 />
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-muted-foreground">
                   Older snapshot files exceeding this threshold are automatically pruned during maintenance.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-zinc-800 flex justify-end">
+              <div className="pt-4 border-t border-border/80 flex justify-end">
                 <Button
                   type="submit"
                   disabled={updateMutation.isPending}
-                  className="gap-1.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                  className="gap-2 shadow-xs h-9"
                 >
-                  <Save className="h-3.5 w-3.5" />
-                  {updateMutation.isPending ? 'Saving...' : 'Save Schedule Settings'}
+                  <Save className="h-4 w-4" />
+                  <span>{updateMutation.isPending ? 'Saving...' : 'Save Schedule Settings'}</span>
                 </Button>
               </div>
             </CardContent>

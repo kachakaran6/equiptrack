@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { backupApi, type TriggerBackupInput } from '@/lib/api/backupApi'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,6 +23,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
+import { FormattedDate } from '@/components/ui/formatted-date'
 import {
   HardDriveDownload,
   Send,
@@ -31,12 +33,12 @@ import {
   Play,
   RefreshCw,
   CheckCircle,
-  Clock,
   Database,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react'
 
-export const BackupsPage: React.FC = () => {
+export const BackupsPage: FC = () => {
   const queryClient = useQueryClient()
   const [isRunOpen, setIsRunOpen] = useState(false)
   const [runParams, setRunParams] = useState<TriggerBackupInput>({
@@ -74,27 +76,26 @@ export const BackupsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-            <HardDriveDownload className="h-5 w-5 text-zinc-400" />
-            Backup &amp; Disaster Recovery
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>Backup &amp; Disaster Recovery</span>
           </h1>
-          <p className="text-xs text-zinc-400">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Database snapshots, scheduled automated exports, and Telegram cloud delivery
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
 
           <Button
@@ -103,16 +104,16 @@ export const BackupsPage: React.FC = () => {
               setErrorMsg(null)
               setIsRunOpen(true)
             }}
-            className="h-8 gap-1.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 text-xs font-medium"
+            className="h-9 gap-2 shadow-xs"
           >
-            <Play className="h-3.5 w-3.5" />
-            Run Backup Now
+            <Play className="h-4 w-4" />
+            <span>Run Backup Now</span>
           </Button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 rounded border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300 font-mono">
+        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -121,63 +122,78 @@ export const BackupsPage: React.FC = () => {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {/* Last Snapshot Status */}
-        <Card className="border-zinc-800 bg-zinc-950/60">
+        <Card className="border-border bg-card shadow-xs">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-              Last Snapshot Status
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Last Snapshot Status
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                <HardDriveDownload className="h-3.5 w-3.5" />
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2 font-mono text-xs">
+          <CardContent className="space-y-2 text-xs">
             {historyLoading ? (
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-12 w-full" />
             ) : lastBackup ? (
               <>
                 <div className="flex items-center justify-between">
-                  <Badge variant={lastBackup.status === 'COMPLETED' ? 'success' : 'destructive'}>
-                    {lastBackup.status}
-                  </Badge>
-                  <span className="text-[11px] text-zinc-400">
-                    Format: <strong className="text-zinc-200">{lastBackup.format}</strong>
+                  <StatusPill
+                    variant={lastBackup.status === 'COMPLETED' ? 'success' : 'danger'}
+                    label={lastBackup.status}
+                    size="sm"
+                  />
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    Format: <strong className="text-foreground">{lastBackup.format}</strong>
                   </span>
                 </div>
-                <div className="text-[11px] text-zinc-500 pt-1">
-                  Time: {new Date(lastBackup.started_at).toLocaleString()}
+                <div className="text-[11px] text-muted-foreground pt-1 flex items-center justify-between">
+                  <span>Executed:</span>
+                  <FormattedDate value={lastBackup.started_at} />
                 </div>
-                <div className="text-[11px] text-zinc-500 truncate">
+                <div className="text-[11px] text-muted-foreground truncate">
                   Target: {lastBackup.destination}
                 </div>
               </>
             ) : (
-              <div className="text-zinc-500 py-2">No backups recorded yet.</div>
+              <div className="text-muted-foreground py-2 text-xs">No backups recorded yet.</div>
             )}
           </CardContent>
         </Card>
 
         {/* Telegram Cloud Sync */}
-        <Card className="border-zinc-800 bg-zinc-950/60">
+        <Card className="border-border bg-card shadow-xs">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase flex items-center justify-between">
-              <span>Telegram Delivery</span>
-              <Send className="h-3.5 w-3.5 text-zinc-500" />
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Telegram Delivery
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <Send className="h-3.5 w-3.5" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 text-xs">
             {configLoading ? (
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-12 w-full" />
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Bot Integration:</span>
-                  <Badge variant={config?.telegram_configured ? 'success' : 'secondary'}>
-                    {config?.telegram_configured ? 'Active' : 'Unconfigured'}
-                  </Badge>
+                  <span className="text-muted-foreground">Bot Integration:</span>
+                  <StatusPill
+                    variant={config?.telegram_configured ? 'success' : 'neutral'}
+                    label={config?.telegram_configured ? 'Active' : 'Unconfigured'}
+                    size="sm"
+                  />
                 </div>
-                <div className="font-mono text-[11px] text-zinc-500">
+                <div className="font-mono text-[11px] text-muted-foreground">
                   Target Chat: {config?.telegram_chat_id_masked || 'None'}
                 </div>
                 <div className="pt-1">
-                  <Link to="/backups/telegram" className="text-[11px] text-zinc-300 hover:underline flex items-center gap-1">
-                    Manage Telegram credentials <ArrowRight className="h-3 w-3" />
+                  <Link to="/backups/telegram" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium">
+                    <span>Manage Telegram credentials</span>
+                    <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
               </>
@@ -186,30 +202,37 @@ export const BackupsPage: React.FC = () => {
         </Card>
 
         {/* Automated Schedule */}
-        <Card className="border-zinc-800 bg-zinc-950/60">
+        <Card className="border-border bg-card shadow-xs">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase flex items-center justify-between">
-              <span>Scheduled Cron</span>
-              <CalendarClock className="h-3.5 w-3.5 text-zinc-500" />
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Scheduled Cron
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <CalendarClock className="h-3.5 w-3.5" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 text-xs">
             {configLoading ? (
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-12 w-full" />
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Auto Backups:</span>
-                  <Badge variant={config?.enabled ? 'success' : 'secondary'}>
-                    {config?.enabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
+                  <span className="text-muted-foreground">Auto Backups:</span>
+                  <StatusPill
+                    variant={config?.enabled ? 'success' : 'neutral'}
+                    label={config?.enabled ? 'Enabled' : 'Disabled'}
+                    size="sm"
+                  />
                 </div>
-                <div className="font-mono text-[11px] text-zinc-500">
+                <div className="font-mono text-[11px] text-muted-foreground">
                   Cron: {config?.cron_expression || '0 2 * * *'} ({config?.timezone || 'UTC'})
                 </div>
                 <div className="pt-1">
-                  <Link to="/backups/schedule" className="text-[11px] text-zinc-300 hover:underline flex items-center gap-1">
-                    Configure Schedule &amp; Retention <ArrowRight className="h-3 w-3" />
+                  <Link to="/backups/schedule" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium">
+                    <span>Configure Schedule &amp; Retention</span>
+                    <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
               </>
@@ -219,53 +242,59 @@ export const BackupsPage: React.FC = () => {
       </div>
 
       {/* Navigation Quick Links */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Link to="/backups/telegram" className="group">
-          <Card className="border-zinc-800 bg-zinc-950/40 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/30">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Link to="/backups/telegram" className="group block">
+          <Card className="h-full border-border bg-card p-4 transition-all duration-150 hover:border-indigo-500/50 hover:shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Send className="h-4 w-4 text-zinc-400" />
-                <span className="text-xs font-semibold text-zinc-200 group-hover:text-zinc-100">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <Send className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   Telegram Configuration
                 </span>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-300" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
             </div>
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-2 text-xs text-muted-foreground pl-10.5">
               Bot token &amp; direct chat broadcast channel
             </p>
           </Card>
         </Link>
 
-        <Link to="/backups/schedule" className="group">
-          <Card className="border-zinc-800 bg-zinc-950/40 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/30">
+        <Link to="/backups/schedule" className="group block">
+          <Card className="h-full border-border bg-card p-4 transition-all duration-150 hover:border-indigo-500/50 hover:shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <CalendarClock className="h-4 w-4 text-zinc-400" />
-                <span className="text-xs font-semibold text-zinc-200 group-hover:text-zinc-100">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <CalendarClock className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   Cron &amp; Schedule Policy
                 </span>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-300" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
             </div>
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-2 text-xs text-muted-foreground pl-10.5">
               Set automated interval, compression, and retention
             </p>
           </Card>
         </Link>
 
-        <Link to="/backups/history" className="group">
-          <Card className="border-zinc-800 bg-zinc-950/40 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/30">
+        <Link to="/backups/history" className="group block">
+          <Card className="h-full border-border bg-card p-4 transition-all duration-150 hover:border-indigo-500/50 hover:shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <History className="h-4 w-4 text-zinc-400" />
-                <span className="text-xs font-semibold text-zinc-200 group-hover:text-zinc-100">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <History className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   Backup Execution History
                 </span>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 text-zinc-500 group-hover:text-zinc-300" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
             </div>
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-2 text-xs text-muted-foreground pl-10.5">
               Audit all previous dumps, sizes, and destinations
             </p>
           </Card>
@@ -276,24 +305,26 @@ export const BackupsPage: React.FC = () => {
       <Dialog open={isRunOpen} onOpenChange={setIsRunOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-zinc-300" />
-              Trigger On-Demand Backup
-            </DialogTitle>
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-indigo-500" />
+              <DialogTitle className="text-base font-semibold">
+                Trigger On-Demand Backup
+              </DialogTitle>
+            </div>
             <DialogDescription>
               Execute an immediate PostgreSQL database snapshot using the backend backup subsystem.
             </DialogDescription>
           </DialogHeader>
 
           {errorMsg && (
-            <div className="rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
               {errorMsg}
             </div>
           )}
 
           <div className="space-y-4 py-2 text-xs">
             <div className="space-y-1.5">
-              <Label>Export Format</Label>
+              <Label className="text-xs font-medium">Export Format</Label>
               <Select
                 value={runParams.format}
                 onValueChange={(val: 'SQL' | 'JSON' | 'CSV' | 'ZIP') =>
@@ -313,7 +344,7 @@ export const BackupsPage: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Compression Algorithm</Label>
+              <Label className="text-xs font-medium">Compression Algorithm</Label>
               <Select
                 value={runParams.compression}
                 onValueChange={(val: 'GZIP' | 'NONE') =>
@@ -330,11 +361,11 @@ export const BackupsPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3.5">
               <div className="space-y-0.5">
-                <div className="font-semibold text-zinc-200">Send to Telegram</div>
-                <div className="text-[11px] text-zinc-400">
-                  Broadcast snapshot artifact to the configured Telegram chat
+                <div className="font-semibold text-foreground text-xs">Send to Telegram</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Broadcast snapshot artifact to the configured Telegram channel
                 </div>
               </div>
               <Switch
@@ -360,8 +391,8 @@ export const BackupsPage: React.FC = () => {
             >
               {triggerMutation.isPending ? (
                 <span className="flex items-center gap-2">
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent" />
-                  Generating Snapshot...
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Generating Snapshot...</span>
                 </span>
               ) : (
                 'Run Backup'

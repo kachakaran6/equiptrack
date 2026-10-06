@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { backupApi } from '@/lib/api/backupApi'
 import type { BackupHistoryItem } from '@/types/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -22,6 +22,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
+import { FormattedDate } from '@/components/ui/formatted-date'
+import { CopyableCode } from '@/components/ui/copyable-code'
 import {
   History,
   ArrowLeft,
@@ -30,9 +33,10 @@ import {
   Clock,
   HardDriveDownload,
   FileCode,
+  Archive,
 } from 'lucide-react'
 
-export const BackupHistoryPage: React.FC = () => {
+export const BackupHistoryPage: FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedBackup, setSelectedBackup] = useState<BackupHistoryItem | null>(null)
 
@@ -60,172 +64,196 @@ export const BackupHistoryPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Back link */}
+      <div>
+        <Link to="/backups">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8 px-2">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Backups</span>
+          </Button>
+        </Link>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
-        <div className="flex items-center gap-3">
-          <Link to="/backups">
-            <Button variant="outline" size="icon" className="h-8 w-8 border-zinc-800 bg-zinc-900/50">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-              <History className="h-5 w-5 text-zinc-400" />
-              Backup Execution History
-            </h1>
-            <p className="text-xs text-zinc-400">
-              Complete historical log of all database snapshots, checksums, and delivery statuses
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>Backup Execution History</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Complete historical log of all database snapshots, checksums, and delivery statuses
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
         </div>
       </div>
 
       {/* Search Bar */}
       <div className="flex items-center justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search destination, format, status..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-9 h-9 text-sm"
           />
         </div>
       </div>
 
-      {/* History Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-280px)]">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
-            <TableRow>
-              <TableHead>Started Time</TableHead>
-              <TableHead>Completed</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Format</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Destination</TableHead>
-              <TableHead>Checksum</TableHead>
-              <TableHead className="text-right">Details</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredHistory.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-32 text-center text-zinc-500">
-                  No backup execution records found.
-                </TableCell>
+      {/* History Table Container */}
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-border/80 bg-muted/40 hover:bg-muted/40">
+                <TableHead className="font-semibold text-xs text-muted-foreground">Started Time</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Completed</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Status</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Format</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Size</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Destination</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Checksum</TableHead>
+                <TableHead className="text-right font-semibold text-xs text-muted-foreground">Details</TableHead>
               </TableRow>
-            ) : (
-              filteredHistory.map((item) => (
-                <TableRow key={item.id} className="hover:bg-zinc-900/60 font-mono text-xs">
-                  <TableCell className="text-zinc-400 whitespace-nowrap text-[11px]">
-                    {new Date(item.started_at).toLocaleString()}
-                  </TableCell>
-
-                  <TableCell className="text-zinc-500 whitespace-nowrap text-[11px]">
-                    {item.completed_at ? new Date(item.completed_at).toLocaleTimeString() : 'In Progress'}
-                  </TableCell>
-
-                  <TableCell>
-                    <Badge variant={item.status === 'COMPLETED' ? 'success' : item.status === 'FAILED' ? 'destructive' : 'secondary'}>
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="text-zinc-200">
-                    <Badge variant="outline" className="text-[10px]">
-                      {item.format}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="text-zinc-300">
-                    {formatBytes(item.size_bytes)}
-                  </TableCell>
-
-                  <TableCell className="text-zinc-400 text-[11px] max-w-xs truncate font-sans">
-                    {item.destination}
-                  </TableCell>
-
-                  <TableCell className="text-zinc-500 text-[10px] truncate max-w-[120px]">
-                    {item.checksum || '—'}
-                  </TableCell>
-
-                  <TableCell className="text-right font-sans">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedBackup(item)}
-                      className="h-6 px-2 text-[10px] font-mono text-zinc-400 hover:text-zinc-100"
-                    >
-                      <FileCode className="h-3 w-3 mr-1" />
-                      Inspect
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-14" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredHistory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-44 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Archive className="h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-sm font-medium text-foreground">No backup history records</p>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        {searchTerm ? 'No backups match your search filter.' : 'Completed snapshot routines will be cataloged here.'}
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredHistory.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-muted/40 transition-colors">
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      <FormattedDate value={item.started_at} />
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {item.completed_at ? (
+                        <FormattedDate value={item.completed_at} format="time-only" />
+                      ) : (
+                        <StatusPill variant="info" label="In Progress" pulse size="sm" />
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <StatusPill
+                        variant={item.status === 'COMPLETED' ? 'success' : item.status === 'FAILED' ? 'danger' : 'neutral'}
+                        label={item.status}
+                        size="sm"
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md bg-muted border border-border text-foreground uppercase">
+                        {item.format}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="font-mono text-xs tabular-nums text-foreground/90 font-medium">
+                      {formatBytes(item.size_bytes)}
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                      {item.destination}
+                    </TableCell>
+
+                    <TableCell>
+                      <CopyableCode value={item.checksum} truncateLength={14} />
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedBackup(item)}
+                        className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1"
+                      >
+                        <FileCode className="h-3.5 w-3.5" />
+                        <span>Inspect</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Backup Details Dialog */}
       <Dialog open={!!selectedBackup} onOpenChange={() => setSelectedBackup(null)}>
-        <DialogContent className="sm:max-w-lg bg-zinc-950 border-zinc-800">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-              <HardDriveDownload className="h-4 w-4 text-zinc-400" />
-              Backup Artifact Inspection
-            </DialogTitle>
-            <DialogDescription className="font-mono text-[11px] text-zinc-500 flex items-center gap-2">
-              <Clock className="h-3 w-3" />
-              Started: {selectedBackup && new Date(selectedBackup.started_at).toLocaleString()}
+            <div className="flex items-center gap-2">
+              <HardDriveDownload className="h-4 w-4 text-indigo-500" />
+              <DialogTitle className="text-base font-semibold">
+                Backup Artifact Inspection
+              </DialogTitle>
+            </div>
+            <DialogDescription className="font-mono text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Started: {selectedBackup && new Date(selectedBackup.started_at).toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2 font-mono text-xs">
-            <div className="grid grid-cols-2 gap-2 rounded border border-zinc-800 bg-zinc-900/50 p-3">
+          <div className="space-y-4 py-2 font-mono text-xs">
+            <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3.5 font-sans">
               <div>
-                <div className="text-[10px] text-zinc-500">Status</div>
-                <div className="text-zinc-200 mt-0.5 font-semibold">{selectedBackup?.status}</div>
+                <div className="text-[11px] text-muted-foreground">Status</div>
+                <div className="mt-0.5">
+                  <StatusPill
+                    variant={selectedBackup?.status === 'COMPLETED' ? 'success' : 'danger'}
+                    label={selectedBackup?.status}
+                    size="sm"
+                  />
+                </div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500">Format</div>
-                <div className="text-zinc-200 mt-0.5">{selectedBackup?.format}</div>
+                <div className="text-[11px] text-muted-foreground">Format</div>
+                <div className="text-xs font-mono font-semibold text-foreground mt-0.5">{selectedBackup?.format}</div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500">Size</div>
-                <div className="text-zinc-200 mt-0.5">{formatBytes(selectedBackup?.size_bytes)}</div>
+                <div className="text-[11px] text-muted-foreground">Size</div>
+                <div className="text-xs font-mono font-semibold text-foreground mt-0.5">{formatBytes(selectedBackup?.size_bytes)}</div>
               </div>
               <div>
-                <div className="text-[10px] text-zinc-500">Duration</div>
-                <div className="text-zinc-200 mt-0.5">
+                <div className="text-[11px] text-muted-foreground">Duration</div>
+                <div className="text-xs font-mono text-foreground mt-0.5">
                   {selectedBackup?.completed_at
                     ? `${Math.max(
                         1,
@@ -240,26 +268,26 @@ export const BackupHistoryPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="text-[10px] text-zinc-500">Destination URI / Cloud Path</div>
-              <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2 text-zinc-300 break-all text-[11px]">
+            <div className="space-y-1.5 font-sans">
+              <div className="text-xs text-muted-foreground font-medium">Destination URI / Cloud Path</div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3 text-foreground font-mono break-all text-xs">
                 {selectedBackup?.destination}
               </div>
             </div>
 
             {selectedBackup?.checksum && (
-              <div className="space-y-1">
-                <div className="text-[10px] text-zinc-500">SHA-256 Checksum</div>
-                <div className="rounded border border-zinc-800 bg-zinc-900/50 p-2 text-zinc-400 break-all text-[10px]">
-                  {selectedBackup.checksum}
+              <div className="space-y-1.5 font-sans">
+                <div className="text-xs text-muted-foreground font-medium">SHA-256 Checksum</div>
+                <div className="rounded-xl border border-border bg-muted/40 p-3 text-foreground font-mono break-all text-xs">
+                  <CopyableCode value={selectedBackup.checksum} truncateLength={0} />
                 </div>
               </div>
             )}
 
             {selectedBackup?.error_message && (
-              <div className="space-y-1">
-                <div className="text-[10px] text-red-400">Error Description</div>
-                <div className="rounded border border-red-900/60 bg-red-950/30 p-2 text-red-300 text-[11px]">
+              <div className="space-y-1.5 font-sans">
+                <div className="text-xs text-rose-600 dark:text-rose-400 font-medium">Error Description</div>
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-rose-600 dark:text-rose-400 text-xs">
                   {selectedBackup.error_message}
                 </div>
               </div>

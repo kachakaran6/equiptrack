@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { backupApi } from '@/lib/api/backupApi'
@@ -6,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
 import {
   Dialog,
   DialogContent,
@@ -23,9 +24,11 @@ import {
   CheckCircle,
   AlertTriangle,
   RefreshCw,
+  Shield,
+  HelpCircle,
 } from 'lucide-react'
 
-export const TelegramConfigPage: React.FC = () => {
+export const TelegramConfigPage: FC = () => {
   const queryClient = useQueryClient()
   const [isUpdateOpen, setIsUpdateOpen] = useState(false)
   const [botToken, setBotToken] = useState('')
@@ -68,35 +71,37 @@ export const TelegramConfigPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Back link */}
+      <div>
+        <Link to="/backups">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8 px-2">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Backups</span>
+          </Button>
+        </Link>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
-        <div className="flex items-center gap-3">
-          <Link to="/backups">
-            <Button variant="outline" size="icon" className="h-8 w-8 border-zinc-800 bg-zinc-900/50">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-              <Send className="h-5 w-5 text-zinc-400" />
-              Telegram Channel Configuration
-            </h1>
-            <p className="text-xs text-zinc-400">
-              Connect a Telegram Bot to deliver database snapshots directly to your phone / channel
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <span>Telegram Channel Configuration</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Connect a Telegram Bot to deliver database snapshots directly to your channel or chat
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
 
           <Button
@@ -105,16 +110,16 @@ export const TelegramConfigPage: React.FC = () => {
               setErrorMsg(null)
               setIsUpdateOpen(true)
             }}
-            className="h-8 gap-1.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 text-xs font-medium"
+            className="h-9 gap-2 shadow-xs"
           >
-            <KeyRound className="h-3.5 w-3.5" />
-            Change Credentials
+            <KeyRound className="h-4 w-4" />
+            <span>Change Credentials</span>
           </Button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 rounded border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300">
+        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -122,10 +127,10 @@ export const TelegramConfigPage: React.FC = () => {
 
       {testResult && (
         <div
-          className={`flex items-start gap-2 rounded border p-3 text-xs ${
+          className={`flex items-start gap-2.5 rounded-xl border p-4 text-xs ${
             testResult.success
-              ? 'border-emerald-900/60 bg-emerald-950/30 text-emerald-300'
-              : 'border-red-900/60 bg-red-950/30 text-red-300'
+              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              : 'border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400'
           }`}
         >
           {testResult.success ? (
@@ -133,7 +138,7 @@ export const TelegramConfigPage: React.FC = () => {
           ) : (
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           )}
-          <div className="flex-1">
+          <div className="flex-1 font-medium">
             <span className="font-semibold">{testResult.success ? 'Success: ' : 'Failed: '}</span>
             <span>{testResult.message}</span>
           </div>
@@ -141,7 +146,7 @@ export const TelegramConfigPage: React.FC = () => {
             variant="ghost"
             size="sm"
             onClick={() => setTestResult(null)}
-            className="h-5 text-[10px] px-1.5"
+            className="h-6 text-xs px-2"
           >
             Dismiss
           </Button>
@@ -149,59 +154,64 @@ export const TelegramConfigPage: React.FC = () => {
       )}
 
       {/* Status Details */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="border-zinc-800 bg-zinc-950/60">
-          <CardHeader className="pb-3 border-b border-zinc-800">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-              Current Configuration
-            </CardTitle>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/80">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Current Configuration
+              </CardTitle>
+              <Send className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
-          <CardContent className="p-4 space-y-4 text-xs font-mono">
+          <CardContent className="p-5 space-y-4 text-xs font-mono">
             {isLoading ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Skeleton className="h-6 w-full" />
                 <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-8 w-full" />
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Integration Status:</span>
-                  <Badge variant={config?.telegram_configured ? 'success' : 'destructive'}>
-                    {config?.telegram_configured ? 'Configured & Ready' : 'Not Configured'}
-                  </Badge>
+                <div className="flex items-center justify-between font-sans">
+                  <span className="text-muted-foreground">Integration Status:</span>
+                  <StatusPill
+                    variant={config?.telegram_configured ? 'success' : 'danger'}
+                    label={config?.telegram_configured ? 'Configured & Ready' : 'Not Configured'}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Bot Token:</span>
-                  <span className="text-zinc-300">
+                  <span className="text-muted-foreground font-sans">Bot Token:</span>
+                  <span className="text-foreground font-medium">
                     {config?.telegram_configured ? '••••••••••••••••••••' : 'Not set'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Destination Chat ID:</span>
-                  <span className="text-zinc-300">
+                  <span className="text-muted-foreground font-sans">Destination Chat ID:</span>
+                  <span className="text-foreground font-medium">
                     {config?.telegram_chat_id_masked || 'Not set'}
                   </span>
                 </div>
 
-                <div className="pt-2 border-t border-zinc-900">
+                <div className="pt-3 border-t border-border/60 font-sans">
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={!config?.telegram_configured || testMutation.isPending}
                     onClick={() => testMutation.mutate()}
-                    className="w-full h-8 text-xs border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800"
+                    className="w-full h-9 text-xs shadow-xs"
                   >
                     {testMutation.isPending ? (
                       <span className="flex items-center gap-2">
-                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
-                        Sending Test Message...
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <span>Sending Test Message...</span>
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <Send className="h-3.5 w-3.5" />
-                        Send Live Test Notification
+                        <span>Send Live Test Notification</span>
                       </span>
                     )}
                   </Button>
@@ -212,22 +222,28 @@ export const TelegramConfigPage: React.FC = () => {
         </Card>
 
         {/* Security & Setup Guidelines */}
-        <Card className="border-zinc-800 bg-zinc-950/60">
-          <CardHeader className="pb-3 border-b border-zinc-800">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-              Security Protocol
-            </CardTitle>
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/80">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Security &amp; Setup Guide
+              </CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
-          <CardContent className="p-4 space-y-3 text-xs leading-relaxed text-zinc-400 font-sans">
+          <CardContent className="p-5 space-y-4 text-xs leading-relaxed text-muted-foreground">
             <p>
-              Telegram credentials are encrypted and stored safely on the backend. The raw bot token is never exposed to the client browser after initial submission.
+              Telegram credentials are encrypted and stored safely in backend environment storage. The raw bot token is never transmitted back to client browsers after initial input.
             </p>
-            <div className="rounded border border-zinc-800 bg-zinc-900/40 p-3 space-y-1 font-mono text-[11px]">
-              <div className="text-zinc-200 font-semibold">How to obtain chat credentials:</div>
-              <ol className="list-decimal list-inside space-y-0.5 text-zinc-400">
-                <li>Create a bot with @BotFather on Telegram.</li>
-                <li>Copy the API token provided.</li>
-                <li>Add your bot to your target channel or group.</li>
+            <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-2 font-mono text-[11px]">
+              <div className="text-foreground font-semibold font-sans flex items-center gap-1.5">
+                <HelpCircle className="h-3.5 w-3.5 text-indigo-500" />
+                <span>How to obtain chat credentials:</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground font-sans text-xs">
+                <li>Create a bot with <strong className="text-foreground">@BotFather</strong> on Telegram.</li>
+                <li>Copy the HTTP API token provided.</li>
+                <li>Add your bot as administrator to your target channel or group.</li>
                 <li>Enter the numeric Chat ID (e.g. -1004449055995).</li>
               </ol>
             </div>
@@ -246,31 +262,31 @@ export const TelegramConfigPage: React.FC = () => {
           </DialogHeader>
 
           {errorMsg && (
-            <div className="rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
               {errorMsg}
             </div>
           )}
 
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="bot-token">Telegram Bot Token *</Label>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="bot-token" className="text-xs font-medium">Telegram Bot Token *</Label>
               <Input
                 id="bot-token"
                 type="password"
                 value={botToken}
                 onChange={(e) => setBotToken(e.target.value)}
-                placeholder="8543528216:AAGanxPI2pkdiAH4U1g4MVl7avVjNVe5dfc"
+                placeholder="e.g. 8543528216:AAGanxPI2pkdiAH4U1g4MVl7avVjNVe5dfc"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="chat-id">Telegram Chat ID *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="chat-id" className="text-xs font-medium">Telegram Chat ID *</Label>
               <Input
                 id="chat-id"
                 value={chatId}
                 onChange={(e) => setChatId(e.target.value)}
-                placeholder="-1004449055995"
+                placeholder="e.g. -1004449055995"
                 required
               />
             </div>
