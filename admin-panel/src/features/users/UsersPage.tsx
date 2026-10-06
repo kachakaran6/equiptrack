@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -50,6 +49,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
+import { FormattedDate } from '@/components/ui/formatted-date'
 import {
   UserPlus,
   Search,
@@ -61,6 +62,7 @@ import {
   RefreshCw,
   PowerOff,
   CheckCircle,
+  Users as UsersIcon,
 } from 'lucide-react'
 
 export const UsersPage: React.FC = () => {
@@ -188,28 +190,29 @@ export const UsersPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/70 pb-5">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
-            User Accounts & Roles
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <UsersIcon className="h-6 w-6 text-primary" />
+            <span>User Accounts & Roles</span>
           </h1>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage administrative privileges, credentials, and account statuses
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-1.5 border-border/80 bg-card hover:bg-muted/70 text-xs shadow-xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin text-primary' : 'text-muted-foreground'}`} />
+            <span>Refresh</span>
           </Button>
 
           <Button
@@ -218,46 +221,46 @@ export const UsersPage: React.FC = () => {
               setFormError(null)
               setIsAddOpen(true)
             }}
-            className="h-8 gap-1.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 text-xs font-medium"
+            className="h-9 gap-1.5 text-xs font-medium shadow-xs"
           >
-            <UserPlus className="h-3.5 w-3.5" />
-            Add User
+            <UserPlus className="h-4 w-4" />
+            <span>Add User</span>
           </Button>
         </div>
       </div>
 
       {actionSuccess && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300">
-          <CheckCircle className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-700 dark:text-emerald-300">
+          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
           <span>{actionSuccess}</span>
         </div>
       )}
 
       {actionError && (
-        <div className="flex items-center justify-between rounded-md border border-red-900/60 bg-red-950/30 p-3 text-xs text-red-300">
+        <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-300">
           <span>{actionError}</span>
-          <Button variant="ghost" size="sm" onClick={() => setActionError(null)} className="h-6 text-[10px]">
+          <Button variant="ghost" size="sm" onClick={() => setActionError(null)} className="h-6 text-xs hover:bg-rose-500/20">
             Dismiss
           </Button>
         </div>
       )}
 
       {/* Filters & Search */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name, email, phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-9 h-9 text-xs bg-card border-border/80"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono text-zinc-400">Role:</span>
+          <span className="text-xs text-muted-foreground font-medium">Role:</span>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectTrigger className="w-36 h-9 text-xs bg-card border-border/80">
               <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
@@ -270,139 +273,138 @@ export const UsersPage: React.FC = () => {
       </div>
 
       {/* Data Table with Sticky Header & Scrollable Body */}
-      <div className="rounded-md border border-zinc-800/80 bg-zinc-950/70 overflow-hidden max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-auto relative">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
-            <TableRow className="border-b border-zinc-800 bg-zinc-900 hover:bg-zinc-900">
-              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">User</TableHead>
-              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Role</TableHead>
-              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Status</TableHead>
-              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Created</TableHead>
-              <TableHead className="text-zinc-300 bg-zinc-900 font-semibold">Last Activity</TableHead>
-              <TableHead className="text-right text-zinc-300 bg-zinc-900 font-semibold">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-zinc-500">
-                  No user accounts found matching your search.
-                </TableCell>
+      <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-xs relative">
+        <div className="max-h-[calc(100vh-290px)] overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted/50 backdrop-blur-xs border-b border-border/70">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-semibold text-xs text-muted-foreground">User Name & Email</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Access Role</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Status</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Registered</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Last Login</TableHead>
+                <TableHead className="text-right font-semibold text-xs text-muted-foreground">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredUsers.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-zinc-100">{u.name}</span>
-                      <span className="font-mono text-[11px] text-zinc-400">{u.email}</span>
-                      {u.phone && <span className="font-mono text-[10px] text-zinc-500">{u.phone}</span>}
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    {(() => {
-                      const isAdmin = (u.role || '').toUpperCase() === 'ADMIN'
-                      return (
-                        <Badge variant={isAdmin ? 'default' : 'secondary'}>
-                          {isAdmin && <Shield className="mr-1 h-3 w-3 inline" />}
-                          {isAdmin ? 'ADMIN' : 'USER'}
-                        </Badge>
-                      )
-                    })()}
-                  </TableCell>
-
-                  <TableCell>
-                    {(() => {
-                      const isActive = (u.status || '').toUpperCase() === 'ACTIVE'
-                      return (
-                        <Badge variant={isActive ? 'success' : 'destructive'}>
-                          {isActive ? 'ACTIVE' : (u.status || 'SUSPENDED').toUpperCase()}
-                        </Badge>
-                      )
-                    })()}
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-zinc-400">
-                    {new Date(u.created_at).toLocaleDateString()}
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-zinc-500">
-                    {u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never'}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-100">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link to={`/users/${u.id}`} className="flex items-center">
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                            View Profile
-                          </Link>
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const isAdmin = (u.role || '').toUpperCase() === 'ADMIN'
-                            const newRole: UserRole = isAdmin ? 'USER' : 'ADMIN'
-                            setRoleChangeTarget({ user: u, newRole })
-                          }}
-                        >
-                          <Shield className="mr-2 h-3.5 w-3.5" />
-                          Change to {(u.role || '').toUpperCase() === 'ADMIN' ? 'User' : 'Admin'}
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const isActive = (u.status || '').toUpperCase() === 'ACTIVE'
-                            const newStatus: UserStatus = isActive ? 'SUSPENDED' : 'ACTIVE'
-                            statusMutation.mutate({ id: u.id, status: newStatus })
-                          }}
-                        >
-                          <PowerOff className="mr-2 h-3.5 w-3.5" />
-                          {(u.status || '').toUpperCase() === 'ACTIVE' ? 'Suspend Account' : 'Activate Account'}
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem onClick={() => setPasswordTarget(u)}>
-                          <KeyRound className="mr-2 h-3.5 w-3.5" />
-                          Reset Password
-                        </DropdownMenuItem>
-
-                        <DropdownMenuSeparator />
-
-                        <DropdownMenuItem
-                          onClick={() => setDeleteTarget(u)}
-                          disabled={u.id === currentAdmin?.id}
-                          className="text-red-400 focus:text-red-300"
-                        >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-36 text-center text-muted-foreground">
+                    <p className="text-sm font-medium">No user accounts found.</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Try adjusting your search terms or role filters.</p>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredUsers.map((u) => {
+                  const isAdmin = (u.role || '').toUpperCase() === 'ADMIN'
+                  const isActive = (u.status || '').toUpperCase() === 'ACTIVE'
+
+                  return (
+                    <TableRow key={u.id} className="hover:bg-muted/40 transition-colors">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground text-sm">{u.name}</span>
+                          <span className="text-xs text-muted-foreground">{u.email}</span>
+                          {u.phone && <span className="font-mono text-[10px] text-muted-foreground/70 mt-0.5">{u.phone}</span>}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <StatusPill
+                          variant={isAdmin ? 'info' : 'neutral'}
+                          label={isAdmin ? 'Admin' : 'User'}
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <StatusPill
+                          variant={isActive ? 'success' : 'danger'}
+                          label={isActive ? 'Active' : 'Suspended'}
+                        />
+                      </TableCell>
+
+                      <TableCell className="text-xs">
+                        <FormattedDate value={u.created_at} format="date-only" />
+                      </TableCell>
+
+                      <TableCell className="text-xs">
+                        <FormattedDate value={u.last_login_at} format="full" fallback="Never" />
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52 p-1.5">
+                            <DropdownMenuLabel className="text-xs">User Operations</DropdownMenuLabel>
+                            <DropdownMenuItem asChild className="cursor-pointer">
+                              <Link to={`/users/${u.id}`} className="flex items-center">
+                                <Eye className="mr-2 h-4 w-4 text-primary" />
+                                View Profile & Logs
+                              </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const newRole: UserRole = isAdmin ? 'USER' : 'ADMIN'
+                                setRoleChangeTarget({ user: u, newRole })
+                              }}
+                            >
+                              <Shield className="mr-2 h-4 w-4 text-amber-500" />
+                              Change to {isAdmin ? 'Standard User' : 'Administrator'}
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const newStatus: UserStatus = isActive ? 'SUSPENDED' : 'ACTIVE'
+                                statusMutation.mutate({ id: u.id, status: newStatus })
+                              }}
+                            >
+                              <PowerOff className="mr-2 h-4 w-4 text-muted-foreground" />
+                              {isActive ? 'Suspend Account' : 'Activate Account'}
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onClick={() => setPasswordTarget(u)} className="cursor-pointer">
+                              <KeyRound className="mr-2 h-4 w-4 text-indigo-400" />
+                              Reset Password
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTarget(u)}
+                              disabled={u.id === currentAdmin?.id}
+                              className="text-rose-500 focus:text-rose-600 focus:bg-rose-500/10 cursor-pointer"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Add User Dialog */}
@@ -416,69 +418,73 @@ export const UsersPage: React.FC = () => {
           </DialogHeader>
 
           {formError && (
-            <div className="rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
               {formError}
             </div>
           )}
 
-          <form onSubmit={handleAddSubmit} className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="add-name">Full Name *</Label>
+          <form onSubmit={handleAddSubmit} className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-name" className="text-xs font-medium">Full Name *</Label>
               <Input
                 id="add-name"
                 value={newUserData.name}
                 onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
                 placeholder="e.g. Karan Admin"
+                className="h-9 text-sm"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="add-email">Email Address *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-email" className="text-xs font-medium">Email Address *</Label>
               <Input
                 id="add-email"
                 type="email"
                 value={newUserData.email}
                 onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
                 placeholder="name@equiptrack.internal"
+                className="h-9 text-sm"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="add-pass">Initial Password *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-pass" className="text-xs font-medium">Initial Password *</Label>
               <Input
                 id="add-pass"
                 type="password"
                 value={newUserData.password}
                 onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
                 placeholder="Minimum 6 characters"
+                className="h-9 text-sm"
                 required
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="add-phone">Phone Number (Optional)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-phone" className="text-xs font-medium">Phone Number (Optional)</Label>
               <Input
                 id="add-phone"
                 value={newUserData.phone || ''}
                 onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
                 placeholder="+91 98765 43210"
+                className="h-9 text-sm"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label>Access Role</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Access Privilege Tier</Label>
               <Select
                 value={newUserData.role}
                 onValueChange={(val: UserRole) => setNewUserData({ ...newUserData, role: val })}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USER">User (Standard Access)</SelectItem>
-                  <SelectItem value="ADMIN">Admin (Full Control Access)</SelectItem>
+                  <SelectItem value="USER">Standard User (Mobile App Access)</SelectItem>
+                  <SelectItem value="ADMIN">Administrator (Full Console Access)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -507,9 +513,9 @@ export const UsersPage: React.FC = () => {
             <AlertDialogTitle>Change User Access Role</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to change {roleChangeTarget?.user.name}&apos;s role to{' '}
-              <strong className="text-zinc-100 font-mono">{roleChangeTarget?.newRole}</strong>?
+              <strong className="text-foreground font-semibold">{roleChangeTarget?.newRole}</strong>?
               {roleChangeTarget?.newRole === 'USER' && (
-                <span className="block mt-2 text-amber-400">
+                <span className="block mt-2 text-amber-600 dark:text-amber-400">
                   Warning: Removing admin privileges will prevent this user from accessing the admin console.
                 </span>
               )}
@@ -537,24 +543,25 @@ export const UsersPage: React.FC = () => {
       <Dialog open={!!passwordTarget} onOpenChange={() => setPasswordTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
+            <DialogTitle>Reset User Password</DialogTitle>
             <DialogDescription>
-              Set a new password for <span className="text-zinc-200 font-medium">{passwordTarget?.name}</span> ({passwordTarget?.email}).
+              Set a new password for <span className="text-foreground font-medium">{passwordTarget?.name}</span> ({passwordTarget?.email}).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="reset-pass">New Secure Password</Label>
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="reset-pass" className="text-xs font-medium">New Secure Password</Label>
               <Input
                 id="reset-pass"
                 type="password"
                 placeholder="Enter new password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setPasswordTarget(null)}>
               Cancel
             </Button>
@@ -578,13 +585,14 @@ export const UsersPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User Account</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong className="text-zinc-100">{deleteTarget?.name}</strong> ({deleteTarget?.email})?
+              Are you sure you want to delete <strong className="text-foreground">{deleteTarget?.name}</strong> ({deleteTarget?.email})?
               This action is permanent and will remove their access immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 text-white"
               onClick={() => {
                 if (deleteTarget) {
                   deleteMutation.mutate(deleteTarget.id)

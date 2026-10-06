@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import type { FC } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usageRecordsApi, type CreateUsageRecordInput } from '@/lib/api/usageRecordsApi'
 import { machinesApi } from '@/lib/api/machinesApi'
@@ -51,6 +52,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FormattedDate } from '@/components/ui/formatted-date'
+import { StatusPill } from '@/components/ui/status-pill'
 import {
   Plus,
   Search,
@@ -59,9 +62,11 @@ import {
   Trash2,
   RefreshCw,
   CheckCircle,
+  Clock,
+  User as UserIcon,
 } from 'lucide-react'
 
-export const UsageRecordsPage: React.FC = () => {
+export const UsageRecordsPage: FC = () => {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMachine, setSelectedMachine] = useState<string>('ALL')
@@ -136,7 +141,7 @@ export const UsageRecordsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminUsageRecords'] })
       setDeletingRecord(null)
-      setSuccessMsg('Usage record removed.')
+      setSuccessMsg('Usage record removed successfully.')
       setTimeout(() => setSuccessMsg(null), 4000)
     },
     onError: (err: Error) => setErrorMsg(err.message),
@@ -179,72 +184,72 @@ export const UsageRecordsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Equipment Usage Records
           </h1>
-          <p className="text-xs text-zinc-400">
-            Log, inspect, and audit equipment operating days, dates, and operator assignments
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Log, inspect, and audit equipment operating days, active dates, and operator assignments
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-8 gap-1.5 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-300"
+            className="h-9 gap-2 shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            Refresh
+            <span>Refresh</span>
           </Button>
 
           <Button
             size="sm"
             onClick={handleOpenCreate}
             disabled={machines.length === 0}
-            className="h-8 gap-1.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 text-xs font-medium"
+            className="h-9 gap-2 shadow-xs"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add Usage Record
+            <Plus className="h-4 w-4" />
+            <span>Add Usage Record</span>
           </Button>
         </div>
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 rounded border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300">
+        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle className="h-4 w-4 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search records, operators, notes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-9 h-9 text-sm"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono text-zinc-400">Machine Filter:</span>
+          <span className="text-xs font-medium text-muted-foreground">Machine Filter:</span>
           <Select value={selectedMachine} onValueChange={setSelectedMachine}>
-            <SelectTrigger className="w-48 h-8 text-xs">
+            <SelectTrigger className="w-56 h-9 text-xs">
               <SelectValue placeholder="All Machines" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Machines</SelectItem>
+              <SelectItem value="ALL">All Machines ({machines.length})</SelectItem>
               {machines.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
-                  {m.name}
+                  {m.name} {m.code ? `(${m.code})` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -252,96 +257,126 @@ export const UsageRecordsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/70 overflow-auto max-h-[calc(100vh-280px)]">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
-            <TableRow>
-              <TableHead>Machine / Section</TableHead>
-              <TableHead>Operator / User</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>End Date</TableHead>
-              <TableHead>Usage Days</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : filteredRecords.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-zinc-500">
-                  No usage records found.
-                </TableCell>
+      {/* Usage Records Table Container */}
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-border/80 bg-muted/40 hover:bg-muted/40">
+                <TableHead className="font-semibold text-xs text-muted-foreground">Machine / Section</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Operator / User</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Start Date</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">End Date</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Usage Days</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Notes</TableHead>
+                <TableHead className="text-right font-semibold text-xs text-muted-foreground">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredRecords.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <div className="font-semibold text-zinc-100">{r.machine_name || 'Machine ' + r.machine_id.slice(0, 6)}</div>
-                    <div className="font-mono text-[11px] text-zinc-400">{r.section_name || 'Section ' + r.section_id.slice(0, 6)}</div>
-                  </TableCell>
-
-                  <TableCell className="text-zinc-300 text-xs">
-                    {r.user_name || <span className="font-mono text-zinc-600 text-[11px]">{r.user_id ? r.user_id.slice(0, 8) : '—'}</span>}
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-zinc-300">
-                    {new Date(r.start_date).toLocaleDateString()}
-                  </TableCell>
-
-                  <TableCell className="font-mono text-[11px] text-zinc-400">
-                    {r.end_date ? new Date(r.end_date).toLocaleDateString() : <span className="text-emerald-400 font-medium">Ongoing</span>}
-                  </TableCell>
-
-                  <TableCell className="font-mono font-semibold text-zinc-200 text-xs">
-                    {r.usage_days} {r.usage_days === 1 ? 'day' : 'days'}
-                  </TableCell>
-
-                  <TableCell className="text-zinc-400 text-xs max-w-xs truncate">
-                    {r.notes || <span className="text-zinc-600">—</span>}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-100">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleOpenEdit(r)}>
-                          <Edit2 className="mr-2 h-3.5 w-3.5" />
-                          Edit Record
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setDeletingRecord(r)}
-                          className="text-red-400 focus:text-red-300"
-                        >
-                          <Trash2 className="mr-2 h-3.5 w-3.5" />
-                          Delete Record
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredRecords.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-44 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Clock className="h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-sm font-medium text-foreground">No usage records found</p>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        {searchTerm ? 'No records match your search filter.' : 'Log your first equipment run session to track operating duration.'}
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredRecords.map((r) => (
+                  <TableRow key={r.id} className="hover:bg-muted/40 transition-colors">
+                    <TableCell>
+                      <div className="font-medium text-foreground text-sm">
+                        {r.machine_name || 'Machine ' + r.machine_id.slice(0, 6)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.section_name || 'Section ' + r.section_id.slice(0, 6)}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      {r.user_name ? (
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium text-foreground">{r.user_name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {r.user_id ? r.user_id.slice(0, 8) + '...' : '—'}
+                        </span>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="text-xs text-muted-foreground">
+                      <FormattedDate value={r.start_date} />
+                    </TableCell>
+
+                    <TableCell className="text-xs">
+                      {r.end_date ? (
+                        <FormattedDate value={r.end_date} />
+                      ) : (
+                        <StatusPill variant="success" label="Ongoing" pulse />
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                        {r.usage_days}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {r.usage_days === 1 ? 'day' : 'days'}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
+                      {r.notes || <span className="text-muted-foreground/40 italic">No notes</span>}
+                    </TableCell>
+
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleOpenEdit(r)} className="cursor-pointer">
+                            <Edit2 className="mr-2 h-3.5 w-3.5" />
+                            Edit Record
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setDeletingRecord(r)}
+                            className="text-rose-600 focus:text-rose-600 dark:text-rose-400 cursor-pointer"
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" />
+                            Delete Record
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Create Usage Record Dialog */}
@@ -355,13 +390,13 @@ export const UsageRecordsPage: React.FC = () => {
           </DialogHeader>
 
           {errorMsg && (
-            <div className="rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
               {errorMsg}
             </div>
           )}
 
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
               <Label>Machine *</Label>
               <Select
                 value={formData.machine_id}
@@ -373,14 +408,14 @@ export const UsageRecordsPage: React.FC = () => {
                 <SelectContent>
                   {machines.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.name}
+                      {m.name} {m.code ? `(${m.code})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Section *</Label>
               <Select
                 value={formData.section_id}
@@ -401,7 +436,7 @@ export const UsageRecordsPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Operator / User</Label>
               <Select
                 value={formData.user_id || ''}
@@ -420,8 +455,8 @@ export const UsageRecordsPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label htmlFor="rec-start">Start Date *</Label>
                 <Input
                   id="rec-start"
@@ -432,7 +467,7 @@ export const UsageRecordsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="rec-end">End Date (Optional)</Label>
                 <Input
                   id="rec-end"
@@ -443,13 +478,14 @@ export const UsageRecordsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="rec-notes">Notes / Observations</Label>
               <Textarea
                 id="rec-notes"
                 value={formData.notes || ''}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Shift details, parts produced, remarks..."
+                placeholder="Shift details, operating parameters, remarks..."
+                className="resize-none h-20"
               />
             </div>
           </div>
@@ -479,13 +515,13 @@ export const UsageRecordsPage: React.FC = () => {
           </DialogHeader>
 
           {errorMsg && (
-            <div className="rounded border border-red-900/60 bg-red-950/30 p-2.5 text-xs text-red-300">
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
               {errorMsg}
             </div>
           )}
 
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
               <Label>Machine *</Label>
               <Select
                 value={formData.machine_id}
@@ -497,14 +533,14 @@ export const UsageRecordsPage: React.FC = () => {
                 <SelectContent>
                   {machines.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.name}
+                      {m.name} {m.code ? `(${m.code})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Section *</Label>
               <Select
                 value={formData.section_id}
@@ -523,8 +559,8 @@ export const UsageRecordsPage: React.FC = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label htmlFor="edit-rec-start">Start Date *</Label>
                 <Input
                   id="edit-rec-start"
@@ -535,7 +571,7 @@ export const UsageRecordsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="edit-rec-end">End Date</Label>
                 <Input
                   id="edit-rec-end"
@@ -546,12 +582,13 @@ export const UsageRecordsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="edit-rec-notes">Notes</Label>
               <Textarea
                 id="edit-rec-notes"
                 value={formData.notes || ''}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="resize-none h-20"
               />
             </div>
           </div>
@@ -586,6 +623,7 @@ export const UsageRecordsPage: React.FC = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
               onClick={() => {
                 if (deletingRecord) {
                   deleteMutation.mutate(deletingRecord.id)

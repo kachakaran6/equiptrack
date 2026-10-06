@@ -5,9 +5,11 @@ import { usersApi } from '@/lib/api/usersApi'
 import { auditApi } from '@/lib/api/auditApi'
 import type { UserRole, UserStatus } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
+import { FormattedDate } from '@/components/ui/formatted-date'
+import { CopyableCode } from '@/components/ui/copyable-code'
 import {
   ArrowLeft,
   Shield,
@@ -17,6 +19,8 @@ import {
   Calendar,
   KeyRound,
   CheckCircle,
+  ShieldCheck,
+  User as UserIcon,
 } from 'lucide-react'
 import {
   Dialog,
@@ -79,9 +83,9 @@ export const UserDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-6 w-24" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     )
   }
@@ -90,38 +94,41 @@ export const UserDetailPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <Link to="/users">
-          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-zinc-400">
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Users
           </Button>
         </Link>
-        <div className="rounded-md border border-red-900/60 bg-red-950/30 p-4 text-xs text-red-300">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-700 dark:text-rose-300">
           User account not found or access denied.
         </div>
       </div>
     )
   }
 
+  const isAdmin = (user.role || '').toUpperCase() === 'ADMIN'
+  const isActive = (user.status || '').toUpperCase() === 'ACTIVE'
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/70 pb-5">
         <div className="flex items-center gap-3">
           <Link to="/users">
-            <Button variant="outline" size="icon" className="h-8 w-8 border-zinc-800 bg-zinc-900/50">
+            <Button variant="outline" size="icon" className="h-9 w-9 border-border/80 bg-card hover:bg-muted/70">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-              <span>{user.name}</span>
-              <Badge variant={(user.role || '').toUpperCase() === 'ADMIN' ? 'default' : 'secondary'}>
-                {(user.role || 'USER').toUpperCase()}
-              </Badge>
-              <Badge variant={(user.status || '').toUpperCase() === 'ACTIVE' ? 'success' : 'destructive'}>
-                {(user.status || 'ACTIVE').toUpperCase()}
-              </Badge>
-            </h1>
-            <p className="font-mono text-xs text-zinc-500">ID: {user.id}</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {user.name}
+              </h1>
+              <StatusPill variant={isAdmin ? 'info' : 'neutral'} label={isAdmin ? 'Admin' : 'User'} />
+              <StatusPill variant={isActive ? 'success' : 'danger'} label={isActive ? 'Active' : 'Suspended'} />
+            </div>
+            <div className="mt-0.5">
+              <CopyableCode value={user.id} truncateLength={16} />
+            </div>
           </div>
         </div>
 
@@ -130,113 +137,114 @@ export const UserDetailPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setResetPassOpen(true)}
-            className="h-8 gap-1.5 text-xs border-zinc-800 bg-zinc-900/50"
+            className="h-9 gap-1.5 text-xs border-border/80 bg-card hover:bg-muted/70 shadow-xs"
           >
-            <KeyRound className="h-3.5 w-3.5" /> Reset Password
+            <KeyRound className="h-3.5 w-3.5 text-primary" />
+            <span>Reset Password</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const isAdmin = (user.role || '').toUpperCase() === 'ADMIN'
               const newRole: UserRole = isAdmin ? 'USER' : 'ADMIN'
               roleMutation.mutate(newRole)
             }}
             disabled={roleMutation.isPending}
-            className="h-8 gap-1.5 text-xs border-zinc-800 bg-zinc-900/50"
+            className="h-9 gap-1.5 text-xs border-border/80 bg-card hover:bg-muted/70 shadow-xs"
           >
-            <Shield className="h-3.5 w-3.5" />
-            Switch to {(user.role || '').toUpperCase() === 'ADMIN' ? 'User' : 'Admin'}
+            <Shield className="h-3.5 w-3.5 text-amber-500" />
+            <span>Switch to {isAdmin ? 'Standard User' : 'Admin'}</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              const isActive = (user.status || '').toUpperCase() === 'ACTIVE'
               const newStatus: UserStatus = isActive ? 'SUSPENDED' : 'ACTIVE'
               statusMutation.mutate(newStatus)
             }}
             disabled={statusMutation.isPending}
-            className="h-8 text-xs border-zinc-800 bg-zinc-900/50"
+            className="h-9 text-xs border-border/80 bg-card hover:bg-muted/70 shadow-xs"
           >
-            {(user.status || '').toUpperCase() === 'ACTIVE' ? 'Suspend' : 'Activate'}
+            {isActive ? 'Suspend Account' : 'Activate Account'}
           </Button>
         </div>
       </div>
 
       {notification && (
-        <div className="flex items-center gap-2 rounded border border-emerald-900/60 bg-emerald-950/30 p-3 text-xs text-emerald-300">
-          <CheckCircle className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-700 dark:text-emerald-300">
+          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
           <span>{notification}</span>
         </div>
       )}
 
       {/* Profile Details Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="border-zinc-800 bg-zinc-950/70">
-          <CardHeader className="pb-3 border-b border-zinc-800">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-              Account Attributes
+        <Card className="border-border/70 bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <UserIcon className="h-4 w-4 text-primary" />
+              <span>Account Information</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 space-y-3 font-mono text-xs">
+          <CardContent className="p-5 space-y-3.5 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" /> Email
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Mail className="h-3.5 w-3.5" /> Email Address
               </span>
-              <span className="text-zinc-200">{user.email}</span>
+              <span className="text-foreground font-medium">{user.email}</span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" /> Phone
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Phone className="h-3.5 w-3.5" /> Phone Number
               </span>
-              <span className="text-zinc-200">{user.phone || 'Not provided'}</span>
+              <span className="text-foreground font-medium">{user.phone || 'Not provided'}</span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 flex items-center gap-1.5">
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
                 <Shield className="h-3.5 w-3.5" /> Privilege Tier
               </span>
-              <span className="text-zinc-200 font-semibold">{user.role}</span>
+              <StatusPill variant={isAdmin ? 'info' : 'neutral'} label={user.role} />
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" /> Registered
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Calendar className="h-3.5 w-3.5" /> Date Registered
               </span>
-              <span className="text-zinc-200">{new Date(user.created_at).toLocaleString()}</span>
+              <FormattedDate value={user.created_at} format="full" />
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" /> Last Login
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Clock className="h-3.5 w-3.5" /> Last Active
               </span>
-              <span className="text-zinc-200">{user.last_login_at ? new Date(user.last_login_at).toLocaleString() : 'Never logged in'}</span>
+              <FormattedDate value={user.last_login_at} format="full" fallback="Never logged in" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-800 bg-zinc-950/70">
-          <CardHeader className="pb-3 border-b border-zinc-800">
-            <CardTitle className="text-xs font-mono font-medium text-zinc-400 uppercase">
-              Security Policy & Status
+        <Card className="border-border/70 bg-card shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/60">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              <span>Security & Access Scope</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 space-y-3 text-xs">
-            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-3">
-              <div className="font-semibold text-zinc-200 mb-1">Session & Authentication</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
-                Authentication tokens are signed using HMAC SHA-256 JWTs. Password hashes are stored securely with bcrypt salt rounds.
+          <CardContent className="p-5 space-y-3 text-xs">
+            <div className="rounded-lg border border-border/70 bg-muted/40 p-3.5">
+              <div className="font-semibold text-foreground mb-1">Session & Authentication</div>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Authentication tokens are signed using HMAC SHA-256 JWTs with automatic rotation. Passwords use salted bcrypt encryption.
               </p>
             </div>
-            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-3">
-              <div className="font-semibold text-zinc-200 mb-1">Access Scope</div>
-              <p className="text-zinc-400 text-[11px] leading-relaxed">
+            <div className="rounded-lg border border-border/70 bg-muted/40 p-3.5">
+              <div className="font-semibold text-foreground mb-1">Authorization Scope</div>
+              <p className="text-muted-foreground text-xs leading-relaxed">
                 {user.role === 'ADMIN'
-                  ? 'Full administrative control over all machines, sections, usage logs, and system operations.'
+                  ? 'Full administrative control over all machines, inventory, usage records, backups, and user credentials.'
                   : 'Standard mobile/operator access to record usage data and inspect assigned equipment.'}
               </p>
             </div>
@@ -245,29 +253,28 @@ export const UserDetailPage: React.FC = () => {
       </div>
 
       {/* Activity Trail for this resource */}
-      <Card className="border-zinc-800 bg-zinc-950/70">
-        <CardHeader className="pb-3 border-b border-zinc-800">
-          <CardTitle className="text-sm text-zinc-200">Related Audit Events</CardTitle>
-          <CardDescription className="text-xs text-zinc-500">
-            Audit trail records involving user management operations
+      <Card className="border-border/70 bg-card shadow-xs">
+        <CardHeader className="pb-3 border-b border-border/60">
+          <CardTitle className="text-base font-semibold text-foreground">Related Audit Trail Events</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground mt-0.5">
+            Audit logs involving administrative operations on this account
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {auditLogs.length === 0 ? (
-            <div className="py-6 text-center text-xs text-zinc-500">
+            <div className="py-10 text-center text-xs text-muted-foreground">
               No audit logs recorded for this entity.
             </div>
           ) : (
-            <div className="divide-y divide-zinc-800/60">
+            <div className="divide-y divide-border/60">
               {auditLogs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px]">{log.action}</Badge>
-                    <span className="font-mono text-[11px] text-zinc-400">{log.resource} ({log.resource_id || 'all'})</span>
+                <div key={log.id} className="flex items-center justify-between p-4 text-xs hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <StatusPill variant="neutral" size="sm" label={log.action} dot={false} />
+                    <span className="font-medium text-foreground">{log.resource}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">({log.resource_id || 'all'})</span>
                   </div>
-                  <div className="font-mono text-[11px] text-zinc-500">
-                    {new Date(log.created_at).toLocaleString()}
-                  </div>
+                  <FormattedDate value={log.created_at} format="full" className="text-xs text-muted-foreground" />
                 </div>
               ))}
             </div>
@@ -279,24 +286,25 @@ export const UserDetailPage: React.FC = () => {
       <Dialog open={resetPassOpen} onOpenChange={setResetPassOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
+            <DialogTitle>Reset User Password</DialogTitle>
             <DialogDescription>
-              Assign a new password for {user.name} ({user.email}).
+              Assign a new password for <span className="font-medium text-foreground">{user.name}</span> ({user.email}).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="detail-reset-pass">New Password</Label>
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="detail-reset-pass" className="text-xs font-medium">New Password</Label>
               <Input
                 id="detail-reset-pass"
                 type="password"
-                placeholder="Enter new password"
+                placeholder="Enter new secure password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setResetPassOpen(false)}>
               Cancel
             </Button>
