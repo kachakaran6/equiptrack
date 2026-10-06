@@ -19,6 +19,7 @@ import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/category_repository.dart';
+import '../../../core/services/package_info_service.dart';
 import '../../app_update/controllers/app_update_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../sections/controllers/categories_controller.dart';
@@ -62,6 +63,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final user = ref.watch(currentUserProvider);
     final categoriesAsync = ref.watch(allCategoriesProvider);
     final updateState = ref.watch(appUpdateControllerProvider);
+    final versionText = ref.watch(appVersionDisplayProvider);
+    final buildDescription = ref.watch(appBuildDescriptionProvider);
 
     return ResponsiveScaffold(
       appBar: const AppAppBar(
@@ -289,14 +292,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'EquipTrack v1.0.0+9',
+                        versionText,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Production release build',
+                        buildDescription,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 12,

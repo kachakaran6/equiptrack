@@ -7,6 +7,7 @@ import 'package:machine_usage_app/data/repositories/category_repository.dart';
 import 'package:machine_usage_app/features/settings/screens/settings_screen.dart';
 import 'package:machine_usage_app/models/app_user.dart';
 import 'package:machine_usage_app/models/category.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -14,6 +15,14 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PackageInfo.setMockInitialValues(
+      appName: 'EquipTrack',
+      packageName: 'com.equiptrack.app',
+      version: '1.0.0',
+      buildNumber: '12',
+      buildSignature: '',
+      installerStore: 'com.android.vending',
+    );
   });
 
   group('SettingsScreen Widget Tests', () {
@@ -65,6 +74,8 @@ void main() {
       expect(find.text('Dark Mode'), findsOneWidget);
       expect(find.byType(Switch), findsOneWidget);
       expect(find.text('App Version & Updates'), findsOneWidget);
+      expect(find.text('EquipTrack v1.0.0+12'), findsOneWidget);
+      expect(find.text('Check Updates'), findsOneWidget);
       expect(find.text('Account'), findsOneWidget);
       expect(find.text('test@equiptrack.com'), findsOneWidget);
     });
