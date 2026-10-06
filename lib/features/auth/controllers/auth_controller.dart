@@ -36,9 +36,7 @@ class AuthController extends Notifier<AuthStateData> {
       final user = repo.currentUser;
 
       if (user != null) {
-        await AnalyticsService.instance.identify(
-          userId: user.id,
-        );
+        await AnalyticsService.instance.identifyUser(user);
       }
 
       await AnalyticsService.instance.track(

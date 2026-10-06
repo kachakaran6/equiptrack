@@ -50,10 +50,10 @@ class AppBootstrap {
       AppLogger.info('Auth session initialized: isAuthenticated=$isAuth (${user?.email ?? "none"})');
 
       if (isAuth && user != null) {
-        // Safely identify restored session without PII
-        await AnalyticsService.instance.identify(
-          userId: user.id,
-          properties: {
+        // Safely identify restored session with person properties and without sensitive PII
+        await AnalyticsService.instance.identifyUser(
+          user,
+          additionalProperties: {
             'restored_session': true,
           },
         );

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
+import '../../models/app_user.dart';
 import '../utils/app_logger.dart';
 import 'analytics_consent.dart';
 import 'analytics_event.dart';
@@ -95,7 +96,7 @@ class AnalyticsService {
     }
   }
 
-  /// Identifies the user in PostHog with the application's stable backend ID.
+  /// Identifies the user in PostHog with the application's stable backend ID and safe person properties.
   /// Never accepts passwords, tokens, full database records, or sensitive personal data.
   Future<void> identify({
     required String userId,
@@ -114,10 +115,39 @@ class AnalyticsService {
         userId: userId,
         userProperties: sanitized,
       );
-      AppLogger.debug('PostHog: Identified user $userId');
+      AppLogger.debug('PostHog: Identified user $userId with properties $sanitized');
     } catch (e) {
       AppLogger.warning('PostHog identify failed: $e');
     }
+  }
+
+  /// Type-safe helper to identify user with sanitized person properties from AppUser.
+  Future<void> identifyUser(
+    AppUser user, {
+    Map<String, dynamic>? additionalProperties,
+  }) async {
+    await identify(
+      userId: user.id,
+      properties: {
+        ...user.toAnalyticsProperties(),
+        ...?additionalProperties,
+      },
+    );
+  }
+
+  /// Updates PostHog person properties (e.g. when username or display name changes)
+  /// without resetting or changing distinct_id.
+  Future<void> updateUserProperties(Map<String, dynamic> properties) async {
+    if (_identifiedUserId == null) return;
+    await identify(
+      userId: _identifiedUserId!,
+      properties: properties,
+    );
+  }
+
+  /// Updates PostHog person properties from an updated AppUser model.
+  Future<void> updateUserProfile(AppUser user) async {
+    await identifyUser(user);
   }
 
   /// Clears the current user identity on logout to prevent session crossover.

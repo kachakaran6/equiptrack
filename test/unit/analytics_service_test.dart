@@ -4,6 +4,7 @@ import 'package:machine_usage_app/core/analytics/analytics_event.dart';
 import 'package:machine_usage_app/core/analytics/analytics_properties.dart';
 import 'package:machine_usage_app/core/analytics/analytics_screen.dart';
 import 'package:machine_usage_app/core/analytics/analytics_service.dart';
+import 'package:machine_usage_app/models/app_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -171,6 +172,54 @@ void main() {
       await expectLater(service.telegramBackupTested(success: true, durationMs: 200), completes);
     });
 
+    test('User identity lifecycle and person properties separation', () async {
+      final service = AnalyticsService.instance;
+
+      const userA = AppUser(
+        id: 'user-a-1234',
+        email: 'operator_a@equiptrack.com',
+        role: 'user',
+        status: 'active',
+        username: 'operator_alpha',
+        displayName: 'Operator Alpha',
+      );
+
+      // 1. Identify User A
+      await expectLater(
+        service.identifyUser(userA),
+        completes,
+      );
+      expect(service.identifiedUserId, equals('user-a-1234'));
+
+      // 2. Profile update for User A (username change)
+      final userAUpdated = userA.copyWith(username: 'operator_prime');
+      await expectLater(
+        service.updateUserProfile(userAUpdated),
+        completes,
+      );
+      expect(service.identifiedUserId, equals('user-a-1234'));
+
+      // 3. Reset on logout
+      await expectLater(
+        service.reset(),
+        completes,
+      );
+      expect(service.identifiedUserId, isNull);
+
+      // 4. Identify User B
+      const userB = AppUser(
+        id: 'user-b-5678',
+        email: 'manager_b@equiptrack.com',
+        role: 'admin',
+        status: 'active',
+      );
+      await expectLater(
+        service.identifyUser(userB, additionalProperties: {'restored_session': true}),
+        completes,
+      );
+      expect(service.identifiedUserId, equals('user-b-5678'));
+    });
+
     test('Global context attaches version and platform metadata', () {
       final props = AnalyticsProperties.withGlobalContext({'key': 'val'});
       expect(props['app_version'], equals('1.0.0'));
@@ -181,3 +230,4 @@ void main() {
     });
   });
 }
+

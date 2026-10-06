@@ -67,14 +67,43 @@ void main() {
       expect(fromJson.usageDate.day, 2);
     });
 
-    test('AppUser serialization and equality', () {
-      const user = AppUser(id: 'u1', email: 'test@example.com');
+    test('AppUser serialization, copyWith, and equality', () {
+      const user = AppUser(
+        id: 'u1',
+        email: 'test@example.com',
+        role: 'admin',
+        status: 'active',
+        username: 'custom_user',
+        displayName: 'Custom User',
+      );
       final json = user.toJson();
       final fromJson = AppUser.fromJson(json);
 
       expect(fromJson.id, 'u1');
       expect(fromJson.email, 'test@example.com');
+      expect(fromJson.role, 'admin');
+      expect(fromJson.status, 'active');
+      expect(fromJson.username, 'custom_user');
+      expect(fromJson.displayName, 'Custom User');
+      expect(fromJson.effectiveUsername, 'custom_user');
+      expect(fromJson.effectiveDisplayName, 'Custom User');
       expect(fromJson, equals(user));
+
+      final updated = user.copyWith(username: 'new_name');
+      expect(updated.username, 'new_name');
+      expect(updated.effectiveUsername, 'new_name');
+    });
+
+    test('AppUser effective fallbacks and toAnalyticsProperties', () {
+      const userNoNames = AppUser(id: 'u2', email: 'karan@equiptrack.com');
+      expect(userNoNames.effectiveUsername, 'karan');
+      expect(userNoNames.effectiveDisplayName, 'karan');
+
+      final props = userNoNames.toAnalyticsProperties();
+      expect(props['username'], 'karan');
+      expect(props['display_name'], 'karan');
+      expect(props['role'], 'user');
+      expect(props['account_status'], 'active');
     });
   });
 }

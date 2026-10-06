@@ -63,6 +63,10 @@ class ApiAuthRepository implements AuthRepository {
           user = AppUser(
             id: payload['id'].toString(),
             email: payload['email'].toString(),
+            role: payload['role']?.toString() ?? 'user',
+            status: (payload['status'] ?? payload['account_status'])?.toString() ?? 'active',
+            username: payload['username']?.toString(),
+            displayName: (payload['display_name'] ?? payload['displayName'] ?? payload['name'])?.toString(),
           );
           await _apiClient.saveUser(user);
         }
