@@ -201,6 +201,41 @@ void main() {
       );
       expect(exportBtn.onPressed, isNull);
     });
+
+    testWidgets('Cancel button dismisses dialog', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => PdfExportDialog.showSingle(
+                    context,
+                    machine: testMachine,
+                    section: testSection1,
+                    records: sampleRecords,
+                  ),
+                  child: const Text('Open Dialog'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Export PDF Report'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Export PDF Report'), findsNothing);
+    });
   });
 }
+
 

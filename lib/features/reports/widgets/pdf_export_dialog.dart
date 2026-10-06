@@ -10,7 +10,6 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/services/pdf_service.dart';
-import '../../../core/services/report_service.dart';
 import '../../../core/services/usage_calculation_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_logger.dart';
