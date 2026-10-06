@@ -29,9 +29,8 @@ class ReportsController extends AsyncNotifier<void> {
       {
         'format': 'pdf',
         'export_type': 'single_section',
-        'machine_id': machine.id,
-        'section_id': section.id,
-        'records_count': records.length,
+        'component_count': 1,
+        'record_count': records.length,
       },
     );
 
@@ -51,9 +50,8 @@ class ReportsController extends AsyncNotifier<void> {
         {
           'format': 'pdf',
           'export_type': 'single_section',
-          'machine_id': machine.id,
-          'section_id': section.id,
-          'records_count': records.length,
+          'component_count': 1,
+          'record_count': records.length,
           'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
@@ -63,8 +61,8 @@ class ReportsController extends AsyncNotifier<void> {
         {
           'format': 'pdf',
           'export_type': 'single_section',
-          'machine_id': machine.id,
           'duration_ms': stopwatch.elapsedMilliseconds,
+          'error_type': e.runtimeType.toString(),
         },
       );
       state = AsyncValue.error(e, st);
@@ -79,13 +77,16 @@ class ReportsController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncValue.loading();
     final stopwatch = Stopwatch()..start();
+    final totalRecords =
+        components.fold<int>(0, (sum, c) => sum + c.rows.length);
+
     await AnalyticsService.instance.track(
       AnalyticsEvent.reportExportStarted,
       {
         'format': 'pdf',
         'export_type': 'multi_component',
-        'machine_id': machine.id,
-        'components_count': components.length,
+        'component_count': components.length,
+        'record_count': totalRecords,
       },
     );
 
@@ -103,8 +104,8 @@ class ReportsController extends AsyncNotifier<void> {
         {
           'format': 'pdf',
           'export_type': 'multi_component',
-          'machine_id': machine.id,
-          'components_count': components.length,
+          'component_count': components.length,
+          'record_count': totalRecords,
           'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
@@ -114,8 +115,8 @@ class ReportsController extends AsyncNotifier<void> {
         {
           'format': 'pdf',
           'export_type': 'multi_component',
-          'machine_id': machine.id,
           'duration_ms': stopwatch.elapsedMilliseconds,
+          'error_type': e.runtimeType.toString(),
         },
       );
       state = AsyncValue.error(e, st);
@@ -134,9 +135,9 @@ class ReportsController extends AsyncNotifier<void> {
       AnalyticsEvent.reportExportStarted,
       {
         'format': 'excel',
-        'machine_id': machine.id,
-        'section_id': section.id,
-        'records_count': records.length,
+        'export_type': 'single_section',
+        'component_count': 1,
+        'record_count': records.length,
       },
     );
 
@@ -153,9 +154,9 @@ class ReportsController extends AsyncNotifier<void> {
         AnalyticsEvent.reportExportCompleted,
         {
           'format': 'excel',
-          'machine_id': machine.id,
-          'section_id': section.id,
-          'records_count': records.length,
+          'export_type': 'single_section',
+          'component_count': 1,
+          'record_count': records.length,
           'duration_ms': stopwatch.elapsedMilliseconds,
         },
       );
@@ -164,8 +165,9 @@ class ReportsController extends AsyncNotifier<void> {
         AnalyticsEvent.reportExportFailed,
         {
           'format': 'excel',
-          'machine_id': machine.id,
+          'export_type': 'single_section',
           'duration_ms': stopwatch.elapsedMilliseconds,
+          'error_type': e.runtimeType.toString(),
         },
       );
       state = AsyncValue.error(e, st);
