@@ -6,17 +6,16 @@ import { CategoriesService } from './categories.service.js';
 export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('preHandler', authenticate);
 
-  // GET /api/categories — Return all categories for the user, or categories used in a machine
+  // GET /api/categories — Return all categories across the organization (or filtered for a machine)
   fastify.get<{ Querystring: { machine_id?: string; include_unused?: string } }>(
     '/categories',
     async (request, reply) => {
-      const user = (request as any).user;
       const machineId = request.query?.machine_id;
       if (machineId) {
         const includeUnused = request.query?.include_unused === 'true';
         const categories = await CategoriesService.listCategoriesByMachine(
           machineId,
-          user?.id,
+          undefined,
           { includeUnused }
         );
         if (categories === null) {
@@ -31,7 +30,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const categories = await CategoriesService.listUserCategories(user.id);
+      const categories = await CategoriesService.listAllCategories();
       return reply.status(200).send({
         success: true,
         data: categories,
@@ -39,7 +38,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // POST /api/categories — Create a new user-wide category
+  // POST /api/categories — Create a new global category
   fastify.post('/categories', async (request, reply) => {
     const user = (request as any).user;
     const parsed = createCategorySchema.safeParse(request.body);
@@ -69,11 +68,10 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { machineId: string }; Querystring: { include_unused?: string } }>(
     '/machines/:machineId/categories',
     async (request, reply) => {
-      const user = (request as any).user;
       const includeUnused = request.query?.include_unused === 'true';
       const categories = await CategoriesService.listCategoriesByMachine(
         request.params.machineId,
-        user?.id,
+        undefined,
         { includeUnused }
       );
       if (categories === null) {
@@ -126,8 +124,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /api/categories/:id
   fastify.get<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    const user = (request as any).user;
-    const category = await CategoriesService.getCategoryById(request.params.id, user?.id);
+    const category = await CategoriesService.getCategoryById(request.params.id);
     if (!category) {
       return reply.status(404).send({
         success: false,
@@ -143,7 +140,6 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // PATCH /api/categories/:id
   fastify.patch<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    const user = (request as any).user;
     const parsed = updateCategorySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -155,8 +151,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
     const res = await CategoriesService.updateCategory(
       request.params.id,
-      parsed.data,
-      user?.id
+      parsed.data
     );
 
     if (res.error) {
@@ -174,8 +169,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // DELETE /api/categories/:id
   fastify.delete<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    const user = (request as any).user;
-    await CategoriesService.deleteCategory(request.params.id, user?.id);
+    await CategoriesService.deleteCategory(request.params.id);
     return reply.status(200).send({
       success: true,
       message: 'Category deleted successfully',

@@ -61,6 +61,18 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
       }
 
       // Categories
+      if (clean.includes('FROM categories WHERE LOWER(name) = LOWER($1) AND id != $2')) {
+        const rows = state.categories.filter(
+          (c) => c.name.toLowerCase() === params[0].toLowerCase() && c.id !== params[1]
+        );
+        return { rows, rowCount: rows.length };
+      }
+      if (clean.includes('FROM categories WHERE LOWER(name) = LOWER($1)')) {
+        const rows = state.categories.filter(
+          (c) => c.name.toLowerCase() === params[0].toLowerCase()
+        );
+        return { rows, rowCount: rows.length };
+      }
       if (clean.includes('FROM categories WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND id != $3')) {
         const rows = state.categories.filter(
           (c) => (c.user_id === params[0] || c.machine_id === params[0]) && c.name.toLowerCase() === params[1].toLowerCase() && c.id !== params[2]
@@ -98,7 +110,7 @@ describe('EquipTrack Categories & Component Association Test Suite', () => {
           .sort((a, b) => a.name.localeCompare(b.name));
         return { rows, rowCount: rows.length };
       }
-      if (clean.includes('FROM categories WHERE machine_id = $1 OR user_id IS NOT NULL ORDER BY name ASC') || clean.includes('FROM categories WHERE machine_id = $1 ORDER BY name ASC') || clean.includes('FROM categories WHERE user_id = $1 ORDER BY name ASC')) {
+      if (clean.includes('FROM categories ORDER BY name ASC') || clean.includes('FROM categories WHERE machine_id = $1 OR user_id IS NOT NULL ORDER BY name ASC') || clean.includes('FROM categories WHERE machine_id = $1 ORDER BY name ASC') || clean.includes('FROM categories WHERE user_id = $1 ORDER BY name ASC')) {
         const rows = state.categories
           .slice()
           .sort((a, b) => a.name.localeCompare(b.name));
