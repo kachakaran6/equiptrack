@@ -51,7 +51,6 @@ import {
   User,
   Copy,
   Check,
-  AlertTriangle,
   CheckCircle2,
 } from 'lucide-react'
 

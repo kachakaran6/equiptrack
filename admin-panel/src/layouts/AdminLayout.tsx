@@ -24,7 +24,6 @@ import {
   Boxes,
   ClipboardList,
   ChevronRight,
-  Shield,
   Sun,
   Moon,
   Laptop,

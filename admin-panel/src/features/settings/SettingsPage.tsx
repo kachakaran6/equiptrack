@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { CopyableCode } from '@/components/ui/copyable-code'
 import {
-  Settings as SettingsIcon,
   Shield,
   Globe,
   LogOut,

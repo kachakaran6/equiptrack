@@ -26,7 +26,6 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import { CopyableCode } from '@/components/ui/copyable-code'
 import {
-  History,
   ArrowLeft,
   Search,
   RefreshCw,

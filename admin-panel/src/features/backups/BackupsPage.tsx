@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { backupApi, type TriggerBackupInput } from '@/lib/api/backupApi'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -35,7 +35,6 @@ import {
   CheckCircle,
   Database,
   ArrowRight,
-  ShieldCheck,
 } from 'lucide-react'
 
 export const BackupsPage: FC = () => {

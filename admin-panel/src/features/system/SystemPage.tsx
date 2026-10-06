@@ -1,22 +1,17 @@
 import type { FC } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { systemApi } from '@/lib/api/systemApi'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { FormattedDate } from '@/components/ui/formatted-date'
 import {
-  Activity,
   Database,
   Server,
   Cpu,
   RefreshCw,
-  CheckCircle2,
-  XCircle,
   Zap,
-  Clock,
-  Layers,
 } from 'lucide-react'
 
 export const SystemPage: FC = () => {
