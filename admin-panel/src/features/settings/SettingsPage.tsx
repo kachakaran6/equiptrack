@@ -37,11 +37,11 @@ export const SettingsPage: FC = () => {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Theme & Visual Preferences */}
-        <Card className="border-border bg-card shadow-xs">
+        <Card className="border-border/80 bg-card shadow-xs">
           <CardHeader className="pb-3 border-b border-border/80">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Palette className="h-4 w-4" />
+              <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Palette className="h-4 w-4 text-primary" />
                 <span>Appearance &amp; Theme</span>
               </CardTitle>
             </div>
@@ -56,13 +56,13 @@ export const SettingsPage: FC = () => {
                 onClick={() => setTheme('light')}
                 className={`flex flex-col items-center justify-center gap-2.5 rounded-xl border p-4 transition-all cursor-pointer ${
                   theme === 'light'
-                    ? 'border-indigo-600 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs ring-1 ring-indigo-600'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary'
+                    : 'border-border/80 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
-                <Sun className="h-5 w-5" />
+                <Sun className="h-5 w-5 text-amber-500" />
                 <span className="text-xs">Light</span>
-                {theme === 'light' && <Check className="h-3.5 w-3.5" />}
+                {theme === 'light' && <Check className="h-3.5 w-3.5 text-primary" />}
               </button>
 
               <button
@@ -70,13 +70,13 @@ export const SettingsPage: FC = () => {
                 onClick={() => setTheme('dark')}
                 className={`flex flex-col items-center justify-center gap-2.5 rounded-xl border p-4 transition-all cursor-pointer ${
                   theme === 'dark'
-                    ? 'border-indigo-600 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs ring-1 ring-indigo-600'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary'
+                    : 'border-border/80 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
-                <Moon className="h-5 w-5" />
+                <Moon className="h-5 w-5 text-indigo-400" />
                 <span className="text-xs">Dark</span>
-                {theme === 'dark' && <Check className="h-3.5 w-3.5" />}
+                {theme === 'dark' && <Check className="h-3.5 w-3.5 text-primary" />}
               </button>
 
               <button
@@ -84,18 +84,18 @@ export const SettingsPage: FC = () => {
                 onClick={() => setTheme('system')}
                 className={`flex flex-col items-center justify-center gap-2.5 rounded-xl border p-4 transition-all cursor-pointer ${
                   theme === 'system'
-                    ? 'border-indigo-600 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold shadow-xs ring-1 ring-indigo-600'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary'
+                    : 'border-border/80 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
-                <Laptop className="h-5 w-5" />
-                <span className="text-xs">System</span>
-                {theme === 'system' && <Check className="h-3.5 w-3.5" />}
+                <Laptop className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs">System (Auto)</span>
+                {theme === 'system' && <Check className="h-3.5 w-3.5 text-primary" />}
               </button>
             </div>
 
             <div className="pt-2 text-xs text-muted-foreground leading-relaxed">
-              Theme preference is persisted to browser storage with instantaneous zero-flash loading.
+              Theme preference is persisted to browser local storage with zero flash.
             </div>
           </CardContent>
         </Card>

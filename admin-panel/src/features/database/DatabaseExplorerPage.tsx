@@ -15,6 +15,7 @@ import {
   Columns,
   Rows,
   ArrowRight,
+  ShieldAlert,
 } from 'lucide-react'
 
 export const DatabaseExplorerPage: FC = () => {
@@ -32,12 +33,15 @@ export const DatabaseExplorerPage: FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary shadow-xs">
+              <Database className="h-4.5 w-4.5" />
+            </div>
             <span>Database Schema Explorer</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-1">
             Inspect real-time table schemas, record counts, and explore datasets safely through backend metadata
           </p>
         </div>
@@ -48,9 +52,9 @@ export const DatabaseExplorerPage: FC = () => {
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-9 gap-2 shadow-xs"
+            className="h-9 gap-2 shadow-xs border-border/80 bg-card hover:bg-muted/70 text-xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin text-primary' : 'text-muted-foreground'}`} />
             <span>Refresh Schema</span>
           </Button>
         </div>
@@ -64,12 +68,13 @@ export const DatabaseExplorerPage: FC = () => {
             placeholder="Filter database tables..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9 text-sm"
+            className="pl-9 h-9 text-xs border-border/80 bg-card/60 focus:bg-card"
           />
         </div>
 
-        <div className="text-xs font-medium text-muted-foreground">
-          {tables.length} managed {tables.length === 1 ? 'table' : 'tables'} discovered
+        <div className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>{tables.length} managed {tables.length === 1 ? 'table' : 'tables'} discovered</span>
         </div>
       </div>
 
@@ -77,7 +82,7 @@ export const DatabaseExplorerPage: FC = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           Array.from({ length: 6 }).map((_, idx) => (
-            <Card key={idx} className="border-border bg-card">
+            <Card key={idx} className="border-border/80 bg-card">
               <CardHeader className="pb-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-20" />
@@ -89,9 +94,9 @@ export const DatabaseExplorerPage: FC = () => {
             </Card>
           ))
         ) : filteredTables.length === 0 ? (
-          <div className="col-span-full py-16 text-center rounded-xl border border-dashed border-border bg-card">
+          <div className="col-span-full py-16 text-center rounded-2xl border border-dashed border-border/80 bg-card/40">
             <Database className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground">No tables found</p>
+            <p className="text-sm font-semibold text-foreground">No tables found</p>
             <p className="text-xs text-muted-foreground mt-1">
               {searchTerm ? 'No tables match your search query.' : 'No database tables available to explore.'}
             </p>
@@ -103,18 +108,18 @@ export const DatabaseExplorerPage: FC = () => {
               to={`/database/${tbl.name}`}
               className="group block"
             >
-              <Card className="h-full border-border bg-card transition-all duration-150 hover:border-indigo-500/50 hover:shadow-xs">
+              <Card className="h-full border-border/80 bg-card transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-mono font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center gap-2 transition-colors">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    <CardTitle className="text-sm font-mono font-bold text-foreground group-hover:text-primary flex items-center gap-2 transition-colors">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 group-hover:bg-primary/20 transition-colors">
                         <TableIcon className="h-3.5 w-3.5" />
                       </div>
-                      <span>{tbl.name}</span>
+                      <span className="truncate">{tbl.name}</span>
                     </CardTitle>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-primary" />
                   </div>
-                  <CardDescription className="text-xs text-muted-foreground">
+                  <CardDescription className="text-[11px] text-muted-foreground">
                     PostgreSQL System Table
                   </CardDescription>
                 </CardHeader>
@@ -125,7 +130,7 @@ export const DatabaseExplorerPage: FC = () => {
                       <Rows className="h-3.5 w-3.5" />
                       <span>Rows:</span>
                     </span>
-                    <span className="font-mono font-semibold tabular-nums px-2 py-0.5 rounded-full bg-muted border border-border text-foreground text-[11px]">
+                    <span className="font-mono font-bold tabular-nums px-2 py-0.5 rounded-md bg-muted/80 border border-border/80 text-foreground text-[11px]">
                       {tbl.rowCount.toLocaleString()}
                     </span>
                   </div>
@@ -140,17 +145,17 @@ export const DatabaseExplorerPage: FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1 pt-1.5 border-t border-border/60">
+                  <div className="flex flex-wrap gap-1 pt-2 border-t border-border/60">
                     {(tbl.columns || []).slice(0, 4).map((col) => (
                       <span
                         key={col.column_name}
-                        className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/60"
+                        className="rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/60"
                       >
                         {col.column_name}
                       </span>
                     ))}
                     {(tbl.columns || []).length > 4 && (
-                      <span className="font-mono text-[10px] text-muted-foreground/60 px-1 py-0.5">
+                      <span className="font-mono text-[10px] text-muted-foreground/70 px-1 py-0.5">
                         +{(tbl.columns || []).length - 4} more
                       </span>
                     )}
@@ -164,3 +169,4 @@ export const DatabaseExplorerPage: FC = () => {
     </div>
   )
 }
+
