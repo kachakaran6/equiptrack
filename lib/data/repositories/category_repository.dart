@@ -4,6 +4,8 @@ import '../../core/network/api_client.dart';
 import '../../core/utils/app_logger.dart';
 import '../../models/category.dart';
 
+import 'auth_repository.dart';
+
 abstract class CategoryRepository {
   Future<List<Category>> getCategories([String? machineId]);
   Future<Category?> getCategoryById(String id);
@@ -146,12 +148,14 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
 /// Stream/Future family of categories for any machine or global
 final categoriesStreamFamily =
     FutureProvider.family<List<Category>, String>((ref, machineId) async {
+  ref.watch(currentUserProvider);
   final repo = ref.watch(categoryRepositoryProvider);
   return repo.getCategories(machineId);
 });
 
 /// Global user categories provider
 final allCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+  ref.watch(currentUserProvider);
   final repo = ref.watch(categoryRepositoryProvider);
   return repo.getCategories();
 });

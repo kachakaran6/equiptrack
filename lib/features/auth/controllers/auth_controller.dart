@@ -4,6 +4,7 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/category_repository.dart';
 
 class AuthStateData {
   final bool isLoading;
@@ -43,6 +44,8 @@ class AuthController extends Notifier<AuthStateData> {
         AnalyticsEvent.loginCompleted,
         {'duration_ms': stopwatch.elapsedMilliseconds},
       );
+      ref.invalidate(allCategoriesProvider);
+      ref.invalidate(currentUserProvider);
       state = state.copyWith(isLoading: false, errorMessage: null);
       return true;
     } on AppFailure catch (e) {
@@ -84,6 +87,7 @@ class AuthController extends Notifier<AuthStateData> {
     } finally {
       ref.invalidate(currentUserProvider);
       ref.invalidate(authStateStreamProvider);
+      ref.invalidate(allCategoriesProvider);
       state = const AuthStateData();
     }
   }

@@ -70,34 +70,17 @@ export class MachinesService {
     );
     const newMachine = machineRes.rows[0];
 
-    // 2. Fetch and duplicate all categories for the source machine
-    const categoriesRes = await query<{ id: string; name: string }>(
-      'SELECT id, name FROM categories WHERE machine_id = $1 ORDER BY created_at ASC',
-      [machineId]
-    );
-    const categoryMap = new Map<string, string>(); // oldId -> newId
-    for (const cat of categoriesRes.rows) {
-      const newCatRes = await query<{ id: string }>(
-        'INSERT INTO categories (machine_id, name) VALUES ($1, $2) RETURNING id',
-        [newMachine.id, cat.name]
-      );
-      if (newCatRes.rows[0]) {
-        categoryMap.set(cat.id, newCatRes.rows[0].id);
-      }
-    }
-
-    // 3. Fetch all sections for the source machine
+    // 2. Fetch all sections for the source machine
     const sectionsRes = await query<{ name: string; category_id: string | null }>(
       'SELECT name, category_id FROM sections WHERE machine_id = $1 ORDER BY created_at ASC',
       [machineId]
     );
 
-    // 4. Duplicate each section/component for the new machine (without copying usage records)
+    // 3. Duplicate each section/component for the new machine with its global category (without copying usage records)
     for (const section of sectionsRes.rows) {
-      const newCategoryId = section.category_id ? categoryMap.get(section.category_id) ?? null : null;
       await query(
         'INSERT INTO sections (machine_id, user_id, name, category_id) VALUES ($1, $2, $3, $4)',
-        [newMachine.id, userId, section.name, newCategoryId]
+        [newMachine.id, userId, section.name, section.category_id]
       );
     }
 

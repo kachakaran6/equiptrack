@@ -12,6 +12,7 @@ import '../../../core/widgets/unsaved_changes_scope.dart';
 import '../../../data/repositories/category_repository.dart';
 import '../../../models/section.dart';
 import '../controllers/sections_controller.dart';
+import 'add_edit_category_dialog.dart';
 
 class AddEditSectionDialog extends ConsumerStatefulWidget {
   final String machineId;
@@ -140,12 +141,40 @@ class _AddEditSectionDialogState extends ConsumerState<AddEditSectionDialog> {
                 ),
                 const SizedBox(height: 14),
                 // Category Selector
-                Text(
-                  'Category',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Category',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: () async {
+                        final newCat = await AddEditCategoryDialog.show(context);
+                        if (newCat != null && mounted) {
+                          setState(() {
+                            _selectedCategoryId = newCat.id;
+                            _isDirty = true;
+                          });
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text(
+                          '+ New Category',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 5),
                 categoriesAsync.when(

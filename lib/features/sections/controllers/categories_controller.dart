@@ -38,7 +38,7 @@ class CategoriesController extends AsyncNotifier<void> {
         AnalyticsEvent.categoryCreated,
         {
           'category_id': category.id,
-          'machine_id': ?machineId,
+          'machine_id': machineId,
         },
       );
       return category;
@@ -72,7 +72,7 @@ class CategoriesController extends AsyncNotifier<void> {
         AnalyticsEvent.categoryUpdated,
         {
           'category_id': category.id,
-          'machine_id': ?machineId,
+          'machine_id': machineId,
         },
       );
       return category;
@@ -104,7 +104,7 @@ class CategoriesController extends AsyncNotifier<void> {
         AnalyticsEvent.categoryDeleted,
         {
           'category_id': id,
-          'machine_id': ?machineId,
+          'machine_id': machineId,
         },
       );
       return true;
@@ -119,3 +119,4 @@ class CategoriesController extends AsyncNotifier<void> {
 
 final categoriesControllerProvider =
     AsyncNotifierProvider<CategoriesController, void>(CategoriesController.new);
+

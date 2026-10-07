@@ -104,9 +104,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Center(child: CircularProgressIndicator.adaptive()),
             ),
             error: (err, _) => AppCard(
-              child: Text(
-                'Unable to load categories: $err',
-                style: TextStyle(color: theme.colorScheme.error),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unable to load categories: $err',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  const SizedBox(height: 8),
+                  AppButton(
+                    text: 'Retry',
+                    size: AppButtonSize.small,
+                    onPressed: () => ref.invalidate(allCategoriesProvider),
+                  ),
+                ],
               ),
             ),
             data: (categories) {
@@ -130,7 +141,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: AppCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       child: Row(
                         children: [
                           Container(
