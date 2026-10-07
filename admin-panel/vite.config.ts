@@ -9,8 +9,12 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(import.meta.dirname || __dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
+  },
+  build: {
+    outDir: path.resolve(import.meta.dirname, '../backend/public/admin'),
+    emptyOutDir: true,
   },
   server: {
     port: 5173,
@@ -22,3 +26,4 @@ export default defineConfig({
     },
   },
 })
+
