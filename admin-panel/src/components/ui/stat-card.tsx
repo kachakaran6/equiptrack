@@ -23,29 +23,29 @@ export const StatCard: React.FC<StatCardProps> = ({
   className,
 }) => {
   const colorMap = {
-    indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-    sky: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-    purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-    zinc: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20',
+    indigo: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
+    emerald: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
+    amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25',
+    rose: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/25',
+    sky: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/25',
+    purple: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/25',
+    zinc: 'bg-muted text-muted-foreground border-border/80',
   }
 
   return (
     <Card
       className={cn(
-        'group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:border-border/90 bg-card border-border/70',
+        'group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/40 bg-card border-border/80',
         className
       )}
     >
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="space-y-1 flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider">
               {title}
             </p>
-            <div className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+            <div className="text-2xl font-extrabold tracking-tight text-foreground tabular-nums">
               {value}
             </div>
             {description && (
@@ -54,15 +54,16 @@ export const StatCard: React.FC<StatCardProps> = ({
           </div>
           <div
             className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-transform duration-200 group-hover:scale-105',
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 group-hover:scale-110 shadow-xs',
               colorMap[iconColor]
             )}
           >
             <Icon className="h-5 w-5" />
           </div>
         </div>
-        {action && <div className="mt-3 pt-3 border-t border-border/50">{action}</div>}
+        {action && <div className="mt-3 pt-3 border-t border-border/60">{action}</div>}
       </CardContent>
     </Card>
   )
 }
+
