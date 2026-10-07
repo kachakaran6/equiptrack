@@ -103,7 +103,10 @@ export const BackupSchedulePage: FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: (input: UpdateBackupConfigInput) => backupApi.updateConfig(input),
-    onSuccess: () => {
+    onSuccess: (updatedConfig) => {
+      if (updatedConfig) {
+        queryClient.setQueryData(['backupConfig'], updatedConfig)
+      }
       queryClient.invalidateQueries({ queryKey: ['backupConfig'] })
       setSuccessMsg('Backup schedule and retention policies successfully updated and active.')
       setTimeout(() => setSuccessMsg(null), 4500)

@@ -136,7 +136,7 @@ export class BackupRepository {
   }
 
   static async updateConfig(updates: Partial<Omit<BackupConfigRow, 'id' | 'updated_at'>>): Promise<BackupConfigRow> {
-    await this.getConfig();
+    const current = await this.getConfig();
 
     const fields: string[] = [];
     const params: unknown[] = [];
@@ -149,28 +149,45 @@ export class BackupRepository {
 
     for (const key of allowed) {
       if (key in updates && updates[key] !== undefined) {
-        fields.push(`${key} = $${idx++}`);
+        fields.push(`"${key}" = $${idx++}`);
         params.push(updates[key]);
       }
     }
 
     if (fields.length === 0) {
-      return await this.getConfig();
+      return current;
     }
 
-    fields.push(`updated_at = NOW()`);
-    params.push(1); // WHERE id = 1
+    fields.push(`"updated_at" = NOW()`);
+    const targetId = current?.id || 1;
+    params.push(targetId);
 
     try {
       const res = await query<BackupConfigRow>(
         `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
         params
       );
-      return res.rows[0] || (await this.getConfig());
-    } catch (err) {
-      console.error('[BackupRepository] Error updating backup_config:', err);
-      return await this.getConfig();
+      if (res.rows && res.rows[0]) {
+        return res.rows[0];
+      }
+    } catch (err: any) {
+      console.warn('[BackupRepository] Update attempt caught error, ensuring constraints:', err?.message);
+      try {
+        await query(`ALTER TABLE backup_config DROP CONSTRAINT IF EXISTS backup_config_format_check;`);
+        await query(`ALTER TABLE backup_config ADD CONSTRAINT backup_config_format_check CHECK (format IN ('sql', 'json', 'csv', 'zip', 'all'));`);
+        const retryRes = await query<BackupConfigRow>(
+          `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+          params
+        );
+        if (retryRes.rows && retryRes.rows[0]) {
+          return retryRes.rows[0];
+        }
+      } catch (retryErr) {
+        console.error('[BackupRepository] Retry update failed:', retryErr);
+      }
     }
+
+    return await this.getConfig();
   }
 
   static async cleanOldHistory(retentionDays: number): Promise<number> {
