@@ -326,18 +326,19 @@ export const BackupsPage: FC = () => {
               <Label className="text-xs font-medium">Export Format</Label>
               <Select
                 value={runParams.format}
-                onValueChange={(val: 'SQL' | 'JSON' | 'CSV' | 'ZIP') =>
+                onValueChange={(val: 'SQL' | 'JSON' | 'CSV' | 'ZIP' | 'ALL') =>
                   setRunParams({ ...runParams, format: val })
                 }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue placeholder="Select format..." />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">⭐️ Complete All-in-One Multi-Format Bundle (.zip)</SelectItem>
                   <SelectItem value="SQL">PostgreSQL SQL Dump (.sql)</SelectItem>
                   <SelectItem value="JSON">Structured JSON Dataset (.json)</SelectItem>
                   <SelectItem value="CSV">Comma-Separated Values (.csv)</SelectItem>
-                  <SelectItem value="ZIP">Compressed Archive (.zip)</SelectItem>
+                  <SelectItem value="ZIP">Per-Table CSV Archive (.zip)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
