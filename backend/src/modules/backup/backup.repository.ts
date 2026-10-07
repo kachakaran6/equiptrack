@@ -105,12 +105,39 @@ export class BackupRepository {
     return res.rows[0] ?? null;
   }
 
-  static async getConfig(): Promise<BackupConfigRow | null> {
-    const res = await query<BackupConfigRow>('SELECT * FROM backup_config WHERE id = 1');
-    return res.rows[0] ?? null;
+  static async getConfig(): Promise<BackupConfigRow> {
+    try {
+      let res = await query<BackupConfigRow>('SELECT * FROM backup_config WHERE id = 1');
+      if (!res.rows[0]) {
+        await query(
+          `INSERT INTO backup_config (id, enabled, cron_expression, timezone, format, compression, retention_days, telegram_enabled)
+           VALUES (1, false, '0 2 * * *', 'Asia/Kolkata', 'sql', 'gzip', 30, false)
+           ON CONFLICT (id) DO NOTHING`
+        );
+        res = await query<BackupConfigRow>('SELECT * FROM backup_config WHERE id = 1');
+      }
+      return res.rows[0];
+    } catch (err) {
+      console.error('[BackupRepository] Error in getConfig, returning default config:', err);
+      return {
+        id: 1,
+        enabled: false,
+        cron_expression: '0 2 * * *',
+        timezone: 'Asia/Kolkata',
+        format: 'sql',
+        compression: 'gzip',
+        retention_days: 30,
+        telegram_chat_id: null,
+        telegram_bot_token: null,
+        telegram_enabled: false,
+        updated_at: new Date().toISOString(),
+      };
+    }
   }
 
   static async updateConfig(updates: Partial<Omit<BackupConfigRow, 'id' | 'updated_at'>>): Promise<BackupConfigRow> {
+    await this.getConfig();
+
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -128,18 +155,22 @@ export class BackupRepository {
     }
 
     if (fields.length === 0) {
-      const current = await this.getConfig();
-      return current!;
+      return await this.getConfig();
     }
 
     fields.push(`updated_at = NOW()`);
     params.push(1); // WHERE id = 1
 
-    const res = await query<BackupConfigRow>(
-      `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
-      params
-    );
-    return res.rows[0];
+    try {
+      const res = await query<BackupConfigRow>(
+        `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        params
+      );
+      return res.rows[0] || (await this.getConfig());
+    } catch (err) {
+      console.error('[BackupRepository] Error updating backup_config:', err);
+      return await this.getConfig();
+    }
   }
 
   static async cleanOldHistory(retentionDays: number): Promise<number> {
