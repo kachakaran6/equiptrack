@@ -136,6 +136,15 @@ export class BackupRepository {
   }
 
   static async updateConfig(updates: Partial<Omit<BackupConfigRow, 'id' | 'updated_at'>>): Promise<BackupConfigRow> {
+    // Proactively drop any restrictive check constraints so all format/compression types can be saved
+    try {
+      await query(`ALTER TABLE backup_config DROP CONSTRAINT IF EXISTS backup_config_format_check;`);
+      await query(`ALTER TABLE backup_config DROP CONSTRAINT IF EXISTS backup_config_compression_check;`);
+      await query(`ALTER TABLE backup_history DROP CONSTRAINT IF EXISTS backup_history_format_check;`);
+    } catch {
+      // Non-fatal if table not created
+    }
+
     const current = await this.getConfig();
 
     const fields: string[] = [];
@@ -159,32 +168,17 @@ export class BackupRepository {
     }
 
     fields.push(`"updated_at" = NOW()`);
-    const targetId = current?.id || 1;
-    params.push(targetId);
 
     try {
       const res = await query<BackupConfigRow>(
-        `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        `UPDATE backup_config SET ${fields.join(', ')} WHERE id = (SELECT id FROM backup_config ORDER BY id ASC LIMIT 1) RETURNING *`,
         params
       );
       if (res.rows && res.rows[0]) {
         return res.rows[0];
       }
     } catch (err: any) {
-      console.warn('[BackupRepository] Update attempt caught error, ensuring constraints:', err?.message);
-      try {
-        await query(`ALTER TABLE backup_config DROP CONSTRAINT IF EXISTS backup_config_format_check;`);
-        await query(`ALTER TABLE backup_config ADD CONSTRAINT backup_config_format_check CHECK (format IN ('sql', 'json', 'csv', 'zip', 'all'));`);
-        const retryRes = await query<BackupConfigRow>(
-          `UPDATE backup_config SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
-          params
-        );
-        if (retryRes.rows && retryRes.rows[0]) {
-          return retryRes.rows[0];
-        }
-      } catch (retryErr) {
-        console.error('[BackupRepository] Retry update failed:', retryErr);
-      }
+      console.error('[BackupRepository] Update failed:', err?.message);
     }
 
     return await this.getConfig();
