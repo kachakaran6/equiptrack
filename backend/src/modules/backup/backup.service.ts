@@ -150,10 +150,19 @@ export async function runBackupTest(): Promise<{
   telegramError?: string;
   overallStatus: 'ok' | 'partial' | 'error';
 }> {
-  const result: Awaited<ReturnType<typeof runBackupTest>> = {
+  const result: {
+    database: 'ok' | 'error';
+    databaseError?: string;
+    backupGeneration: 'ok' | 'error';
+    backupError?: string;
+    telegramConfig: 'configured' | 'not_configured';
+    telegramTest: 'ok' | 'skipped' | 'error';
+    telegramError?: string;
+    overallStatus: 'ok' | 'partial' | 'error';
+  } = {
     database: 'ok',
     backupGeneration: 'ok',
-    telegramConfig: env.TELEGRAM_BOT_TOKEN ? 'configured' : 'not_configured',
+    telegramConfig: 'not_configured',
     telegramTest: 'skipped',
     overallStatus: 'ok',
   };
@@ -186,7 +195,9 @@ export async function runBackupTest(): Promise<{
   }
 
   // Test Telegram if configured
-  if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+  const tgConfig = await (await import('./telegram.service.js')).getEffectiveTelegramConfig();
+  if (tgConfig) {
+    result.telegramConfig = 'configured';
     const { sendTelegramTestMessage } = await import('./telegram.service.js');
     const tgRes = await sendTelegramTestMessage();
     result.telegramTest = tgRes.success ? 'ok' : 'error';
@@ -194,6 +205,8 @@ export async function runBackupTest(): Promise<{
     if (!tgRes.success) {
       result.overallStatus = result.overallStatus === 'ok' ? 'partial' : result.overallStatus;
     }
+  } else {
+    result.telegramConfig = 'not_configured';
   }
 
   return result;

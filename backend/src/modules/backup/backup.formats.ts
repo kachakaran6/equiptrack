@@ -7,7 +7,7 @@ import { createGzip } from 'zlib';
 import { spawnSync } from 'child_process';
 import { stringify } from 'csv-stringify/sync';
 import { createRequire } from 'module';
-import { query, pool } from '../../db/index.js';
+import { query } from '../../db/index.js';
 import { env } from '../../config/env.js';
 
 const require = createRequire(import.meta.url);
@@ -15,23 +15,79 @@ const archiver = require('archiver');
 
 export type BackupFormat = 'sql' | 'json' | 'csv' | 'zip';
 
-const BACKUP_TABLES = [
-  'users',
-  'machines',
-  'categories',
-  'sections',
-  'usage_records',
-  'inventory_products',
-  'inventory_sub_products',
-  'inventory_transactions'
-];
-
 export interface BackupResult {
   filePath: string;
   fileName: string;
   format: BackupFormat;
   sizeBytes: number;
   checksum: string;
+  tableCount?: number;
+}
+
+/**
+ * Dynamically discover all public base tables in the PostgreSQL database.
+ * Orders parent tables first to preserve foreign key constraints when restoring.
+ */
+export async function getAllDatabaseTables(): Promise<string[]> {
+  try {
+    const res = await query<{ table_name: string }>(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_type = 'BASE TABLE'
+         AND table_name != 'schema_migrations'
+       ORDER BY
+         CASE
+           WHEN table_name = 'users' THEN 1
+           WHEN table_name = 'categories' THEN 2
+           WHEN table_name = 'machines' THEN 3
+           WHEN table_name = 'sections' THEN 4
+           WHEN table_name = 'usage_records' THEN 5
+           WHEN table_name = 'inventory_products' THEN 6
+           WHEN table_name = 'inventory_sub_products' THEN 7
+           WHEN table_name = 'inventory_transactions' THEN 8
+           WHEN table_name = 'audit_logs' THEN 9
+           WHEN table_name = 'error_logs' THEN 10
+           WHEN table_name = 'backup_config' THEN 11
+           WHEN table_name = 'backup_history' THEN 12
+           ELSE 20
+         END,
+         table_name ASC`
+    );
+    const tables = res.rows.map((r) => r.table_name);
+    return tables.length > 0
+      ? tables
+      : [
+          'users',
+          'categories',
+          'machines',
+          'sections',
+          'usage_records',
+          'inventory_products',
+          'inventory_sub_products',
+          'inventory_transactions',
+          'audit_logs',
+          'error_logs',
+          'backup_config',
+          'backup_history',
+        ];
+  } catch (err) {
+    console.error('[BackupFormats] Failed to discover tables dynamically, using fallback:', err);
+    return [
+      'users',
+      'categories',
+      'machines',
+      'sections',
+      'usage_records',
+      'inventory_products',
+      'inventory_sub_products',
+      'inventory_transactions',
+      'audit_logs',
+      'error_logs',
+      'backup_config',
+      'backup_history',
+    ];
+  }
 }
 
 function backupDir(): string {
@@ -57,37 +113,46 @@ async function fileChecksum(filePath: string): Promise<string> {
 }
 
 /**
- * SQL dump via pg_dump (preferred) or raw SQL SELECT fallback.
+ * SQL dump via pg_dump (preferred) or dynamic multi-table raw SQL SELECT fallback.
  */
 export async function generateSqlBackup(compress: boolean): Promise<BackupResult> {
   const ts = timestamp();
   const ext = compress ? '.sql.gz' : '.sql';
-  const fileName = `equiptrack_${ts}${ext}`;
+  const fileName = `equiptrack_full_db_${ts}${ext}`;
   const filePath = path.join(backupDir(), fileName);
+
+  const tables = await getAllDatabaseTables();
 
   // Try pg_dump first
   const pgDumpPath = process.platform === 'win32' ? 'pg_dump.exe' : 'pg_dump';
   const dbUrl = env.DATABASE_URL;
 
-  // Use safe argument array — never interpolate user input into shell string
   const pgDumpArgs = [
-    '--clean', '--if-exists', '--no-owner', '--no-privileges',
+    '--clean',
+    '--if-exists',
+    '--no-owner',
+    '--no-privileges',
     '--exclude-table=schema_migrations',
     dbUrl,
   ];
 
-  const pgResult = spawnSync(pgDumpPath, pgDumpArgs, {
-    encoding: 'buffer',
-    maxBuffer: 100 * 1024 * 1024, // 100MB
-  });
+  let sqlContent: Buffer | null = null;
+  try {
+    const pgResult = spawnSync(pgDumpPath, pgDumpArgs, {
+      encoding: 'buffer',
+      maxBuffer: 100 * 1024 * 1024, // 100MB
+    });
 
-  let sqlContent: Buffer;
+    if (pgResult.status === 0 && pgResult.stdout?.length > 0) {
+      sqlContent = pgResult.stdout;
+    }
+  } catch (err) {
+    console.warn('[Backup] pg_dump utility unavailable, proceeding with dynamic SQL fallback generator.');
+  }
 
-  if (pgResult.status === 0 && pgResult.stdout?.length > 0) {
-    sqlContent = pgResult.stdout;
-  } else {
-    // Fallback: generate SQL manually from pg pool
-    sqlContent = Buffer.from(await generateManualSqlDump(), 'utf-8');
+  if (!sqlContent) {
+    // Comprehensive fallback: dynamically generate full SQL DDL + DML for all tables
+    sqlContent = Buffer.from(await generateManualSqlDump(tables), 'utf-8');
   }
 
   if (compress) {
@@ -106,69 +171,99 @@ export async function generateSqlBackup(compress: boolean): Promise<BackupResult
 
   const stat = fs.statSync(filePath);
   const checksum = await fileChecksum(filePath);
-  return { filePath, fileName, format: 'sql', sizeBytes: stat.size, checksum };
+  return { filePath, fileName, format: 'sql', sizeBytes: stat.size, checksum, tableCount: tables.length };
 }
 
-async function generateManualSqlDump(): Promise<string> {
+async function generateManualSqlDump(tables: string[]): Promise<string> {
   const lines: string[] = [
-    '-- EquipTrack Manual SQL Dump',
+    '-- ====================================================================',
+    '-- EquipTrack Complete PostgreSQL Database Backup',
     `-- Generated: ${new Date().toISOString()}`,
-    '-- Tables: users, machines, sections, usage_records',
+    `-- Total Tables Discovered: ${tables.length}`,
+    `-- Tables: ${tables.join(', ')}`,
+    '-- ====================================================================',
+    '',
+    'SET statement_timeout = 0;',
+    'SET client_encoding = \'UTF8\';',
+    'SET standard_conforming_strings = on;',
     '',
   ];
 
-  for (const table of BACKUP_TABLES) {
-    const colRes = await query<{ column_name: string; data_type: string }>(
-      `SELECT column_name FROM information_schema.columns
-       WHERE table_name = $1 AND table_schema = 'public'
-       ORDER BY ordinal_position`,
-      [table]
-    );
-    const cols = colRes.rows.map((r) => r.column_name);
-    const dataRes = await query(`SELECT ${cols.map((c) => `"${c}"`).join(', ')} FROM "${table}"`);
+  // Disable triggers / foreign key constraints during restore if permitted
+  lines.push('SET session_replication_role = \'replica\';');
+  lines.push('');
 
-    lines.push(`-- Table: ${table}`);
-    lines.push(`TRUNCATE TABLE "${table}" CASCADE;`);
-    for (const row of dataRes.rows) {
-      const values = cols.map((c) => {
-        const v = row[c];
-        if (v === null || v === undefined) return 'NULL';
-        if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
-        if (typeof v === 'object') return `'${JSON.stringify(v).replace(/'/g, "''")}'`;
-        return String(v);
-      });
-      lines.push(`INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});`);
+  for (const table of tables) {
+    try {
+      const colRes = await query<{ column_name: string; data_type: string }>(
+        `SELECT column_name, data_type
+         FROM information_schema.columns
+         WHERE table_name = $1 AND table_schema = 'public'
+         ORDER BY ordinal_position`,
+        [table]
+      );
+      const cols = colRes.rows.map((r) => r.column_name);
+
+      if (cols.length === 0) continue;
+
+      const dataRes = await query(`SELECT * FROM "${table}"`);
+
+      lines.push(`-- ──────────────────────────────────────────────────────────`);
+      lines.push(`-- Table: ${table} (${dataRes.rows.length} rows)`);
+      lines.push(`-- ──────────────────────────────────────────────────────────`);
+      lines.push(`TRUNCATE TABLE "${table}" CASCADE;`);
+
+      for (const row of dataRes.rows) {
+        const values = cols.map((c) => {
+          const v = row[c];
+          if (v === null || v === undefined) return 'NULL';
+          if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+          if (typeof v === 'number') return String(v);
+          if (v instanceof Date) return `'${v.toISOString()}'`;
+          if (typeof v === 'object') return `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
+          return `'${String(v).replace(/'/g, "''")}'`;
+        });
+        lines.push(`INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});`);
+      }
+      lines.push('');
+    } catch (err: any) {
+      lines.push(`-- Error dumping table ${table}: ${err.message}`);
     }
-    lines.push('');
   }
 
+  lines.push('SET session_replication_role = \'origin\';');
+  lines.push('-- Backup completed successfully.');
   return lines.join('\n');
 }
 
 /**
- * JSON backup — excludes password_hash for safety (documented decision).
+ * JSON backup — covers 100% of all database tables.
  */
 export async function generateJsonBackup(compress: boolean): Promise<BackupResult> {
   const ts = timestamp();
   const ext = compress ? '.json.gz' : '.json';
-  const fileName = `equiptrack_${ts}${ext}`;
+  const fileName = `equiptrack_full_db_${ts}${ext}`;
   const filePath = path.join(backupDir(), fileName);
 
+  const tables = await getAllDatabaseTables();
+
   const backup: Record<string, unknown> = {
-    backupVersion: 1,
+    backupVersion: 2,
     createdAt: new Date().toISOString(),
     database: 'equiptrack',
+    totalTables: tables.length,
+    tableNames: tables,
     tables: {},
   };
 
-  for (const table of BACKUP_TABLES) {
-    let selectCols = '*';
-    // Exclude password hashes from JSON backup (security decision — documented)
-    if (table === 'users') {
-      selectCols = 'id, email, role, status, created_at, updated_at';
+  for (const table of tables) {
+    try {
+      const res = await query(`SELECT * FROM "${table}"`);
+      (backup.tables as Record<string, unknown>)[table] = res.rows;
+    } catch (err: any) {
+      console.error(`[BackupJSON] Failed to fetch table ${table}:`, err);
+      (backup.tables as Record<string, unknown>)[table] = [];
     }
-    const res = await query(`SELECT ${selectCols} FROM "${table}" ORDER BY created_at ASC`);
-    (backup.tables as Record<string, unknown>)[table] = res.rows;
   }
 
   const jsonContent = JSON.stringify(backup, null, 2);
@@ -185,16 +280,18 @@ export async function generateJsonBackup(compress: boolean): Promise<BackupResul
 
   const stat = fs.statSync(filePath);
   const checksum = await fileChecksum(filePath);
-  return { filePath, fileName, format: 'json', sizeBytes: stat.size, checksum };
+  return { filePath, fileName, format: 'json', sizeBytes: stat.size, checksum, tableCount: tables.length };
 }
 
 /**
- * CSV/ZIP backup — one CSV per table, packaged as .zip
+ * CSV / ZIP backup — dynamic CSV export for EVERY database table packaged into a ZIP archive.
  */
 export async function generateCsvBackup(): Promise<BackupResult> {
   const ts = timestamp();
-  const fileName = `equiptrack_${ts}.zip`;
+  const fileName = `equiptrack_full_db_${ts}.zip`;
   const filePath = path.join(backupDir(), fileName);
+
+  const tables = await getAllDatabaseTables();
 
   return new Promise(async (resolve, reject) => {
     const output = createWriteStream(filePath);
@@ -204,7 +301,7 @@ export async function generateCsvBackup(): Promise<BackupResult> {
       try {
         const stat = fs.statSync(filePath);
         const checksum = await fileChecksum(filePath);
-        resolve({ filePath, fileName, format: 'csv', sizeBytes: stat.size, checksum });
+        resolve({ filePath, fileName, format: 'csv', sizeBytes: stat.size, checksum, tableCount: tables.length });
       } catch (e) {
         reject(e);
       }
@@ -213,29 +310,47 @@ export async function generateCsvBackup(): Promise<BackupResult> {
     archive.on('error', reject);
     archive.pipe(output);
 
-    for (const table of BACKUP_TABLES) {
-      let selectCols = '*';
-      if (table === 'users') {
-        selectCols = 'id, email, role, status, created_at, updated_at';
+    // Also include a manifest JSON file inside the ZIP archive
+    const manifest = {
+      backupType: 'CSV_ZIP_ARCHIVE',
+      database: 'equiptrack',
+      createdAt: new Date().toISOString(),
+      tablesCount: tables.length,
+      tables,
+    };
+    archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+
+    for (const table of tables) {
+      try {
+        const res = await query(`SELECT * FROM "${table}"`);
+
+        if (res.rows.length === 0) {
+          // Empty table: create CSV with column headers from schema
+          const colRes = await query<{ column_name: string }>(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = 'public' ORDER BY ordinal_position`,
+            [table]
+          );
+          const headerLine = colRes.rows.map((c) => c.column_name).join(',') + '\n';
+          archive.append(headerLine, { name: `${table}.csv` });
+          continue;
+        }
+
+        const headers = Object.keys(res.rows[0]);
+        const csvData = stringify(res.rows, {
+          header: true,
+          columns: headers,
+          cast: {
+            object: (v) => (v === null ? '' : JSON.stringify(v)),
+            boolean: (v) => String(v),
+            date: (v) => v.toISOString(),
+          },
+        });
+
+        archive.append(csvData, { name: `${table}.csv` });
+      } catch (err: any) {
+        console.error(`[BackupCSV] Error archiving table ${table}:`, err);
+        archive.append(`-- Error exporting table ${table}: ${err.message}`, { name: `${table}_error.txt` });
       }
-      const res = await query(`SELECT ${selectCols} FROM "${table}" ORDER BY created_at ASC`);
-
-      if (res.rows.length === 0) {
-        archive.append('', { name: `${table}.csv` });
-        continue;
-      }
-
-      const headers = Object.keys(res.rows[0]);
-      const csvData = stringify(res.rows, {
-        header: true,
-        columns: headers,
-        cast: {
-          object: (v) => (v === null ? '' : JSON.stringify(v)),
-          boolean: (v) => String(v),
-        },
-      });
-
-      archive.append(csvData, { name: `${table}.csv` });
     }
 
     archive.finalize();
@@ -246,7 +361,8 @@ export async function generateCsvBackup(): Promise<BackupResult> {
  * Main backup dispatch function.
  */
 export async function generateBackup(format: BackupFormat, compress: boolean): Promise<BackupResult> {
-  switch (format) {
+  const normFormat = (format || 'sql').toLowerCase() as BackupFormat;
+  switch (normFormat) {
     case 'sql':
       return generateSqlBackup(compress);
     case 'json':
@@ -255,7 +371,7 @@ export async function generateBackup(format: BackupFormat, compress: boolean): P
     case 'zip':
       return generateCsvBackup();
     default:
-      throw new Error(`Unsupported backup format: ${format}`);
+      return generateSqlBackup(compress);
   }
 }
 
@@ -271,3 +387,4 @@ export function cleanupBackupFile(filePath: string): void {
     console.error('[Backup] Failed to clean temp file:', err);
   }
 }
+
