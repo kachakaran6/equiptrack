@@ -14,8 +14,18 @@ export interface UpdateBackupConfigInput {
   format?: 'SQL' | 'JSON' | 'CSV' | 'ZIP'
   compression?: 'GZIP' | 'NONE'
   retention_days?: number
+  telegram_enabled?: boolean
   telegram_bot_token?: string
   telegram_chat_id?: string
+}
+
+export interface UpdateTelegramInput {
+  telegram_bot_token?: string
+  bot_token?: string
+  telegram_chat_id?: string
+  chat_id?: string
+  telegram_enabled?: boolean
+  enabled?: boolean
 }
 
 export const backupApi = {
@@ -26,6 +36,14 @@ export const backupApi = {
 
   async updateConfig(input: UpdateBackupConfigInput): Promise<BackupConfig> {
     const res = await apiRequest<{ success: boolean; data: BackupConfig }>('/api/admin/backup/config', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    return res.data
+  },
+
+  async updateTelegram(input: UpdateTelegramInput): Promise<any> {
+    const res = await apiRequest<{ success: boolean; data: any }>('/api/admin/backup/telegram', {
       method: 'POST',
       body: JSON.stringify(input),
     })

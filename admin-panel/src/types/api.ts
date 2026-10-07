@@ -116,6 +116,8 @@ export interface BackupConfig {
   retention_days: number
   telegram_configured: boolean
   telegram_chat_id_masked?: string | null
+  telegram_enabled?: boolean
+  bot_token_configured?: boolean
 }
 
 export interface SystemHealth {

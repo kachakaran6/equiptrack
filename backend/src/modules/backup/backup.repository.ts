@@ -23,6 +23,7 @@ export interface BackupConfigRow {
   compression: string;
   retention_days: number;
   telegram_chat_id: string | null;
+  telegram_bot_token: string | null;
   telegram_enabled: boolean;
   updated_at: string;
 }
@@ -116,7 +117,7 @@ export class BackupRepository {
 
     const allowed: (keyof typeof updates)[] = [
       'enabled', 'cron_expression', 'timezone', 'format', 'compression',
-      'retention_days', 'telegram_chat_id', 'telegram_enabled',
+      'retention_days', 'telegram_chat_id', 'telegram_bot_token', 'telegram_enabled',
     ];
 
     for (const key of allowed) {

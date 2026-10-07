@@ -35,24 +35,43 @@ const updateStatusSchema = z.object({
 });
 
 const runBackupSchema = z.object({
-  format: z.enum(['sql', 'json', 'csv', 'zip']).default('sql'),
-  sendToTelegram: z.boolean().default(true),
+  format: z
+    .enum(['sql', 'json', 'csv', 'zip', 'SQL', 'JSON', 'CSV', 'ZIP'])
+    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip')
+    .default('sql'),
+  compression: z
+    .enum(['gzip', 'none', 'GZIP', 'NONE'])
+    .transform((c) => c.toLowerCase() as 'gzip' | 'none')
+    .default('gzip'),
+  sendToTelegram: z.boolean().optional(),
+  send_to_telegram: z.boolean().optional(),
 });
 
 const updateBackupConfigSchema = z.object({
   enabled: z.boolean().optional(),
   cron_expression: z.string().optional(),
   timezone: z.string().optional(),
-  format: z.enum(['sql', 'json', 'csv', 'zip']).optional(),
-  compression: z.enum(['none', 'gzip']).optional(),
+  format: z
+    .enum(['sql', 'json', 'csv', 'zip', 'SQL', 'JSON', 'CSV', 'ZIP'])
+    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip')
+    .optional(),
+  compression: z
+    .enum(['none', 'gzip', 'NONE', 'GZIP'])
+    .transform((c) => c.toLowerCase() as 'none' | 'gzip')
+    .optional(),
   retention_days: z.number().int().min(1).max(365).optional(),
   telegram_enabled: z.boolean().optional(),
+  telegram_chat_id: z.string().optional(),
+  telegram_bot_token: z.string().optional(),
 });
 
 const updateTelegramSchema = z.object({
   bot_token: z.string().optional(),
+  telegram_bot_token: z.string().optional(),
   chat_id: z.string().optional(),
+  telegram_chat_id: z.string().optional(),
   enabled: z.boolean().optional(),
+  telegram_enabled: z.boolean().optional(),
 });
 
 // ─── Route Plugin ────────────────────────────────────────────────────────────
@@ -996,6 +1015,10 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // BACKUP CONFIG
   // ──────────────────────────────────────────────────────────────────
 
+  // ──────────────────────────────────────────────────────────────────
+  // BACKUP CONFIG
+  // ──────────────────────────────────────────────────────────────────
+
   // GET /api/admin/backup/config
   fastify.get('/backup/config', async (request, reply) => {
     const config = await BackupRepository.getConfig();
@@ -1005,25 +1028,33 @@ export async function adminRoutes(fastify: FastifyInstance) {
         error: { code: 'CONFIG_NOT_FOUND', message: 'Backup config not initialized' },
       });
     }
+
+    const hasBotToken = !!(config.telegram_bot_token || env.TELEGRAM_BOT_TOKEN);
+    const effectiveChatId = config.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+
     return reply.send({
       success: true,
       data: {
         enabled: config.enabled,
         cron: config.cron_expression,
+        cron_expression: config.cron_expression,
         timezone: config.timezone,
         format: config.format,
         compression: config.compression,
         retentionDays: config.retention_days,
-        // Safely mask Telegram config
+        retention_days: config.retention_days,
         telegramEnabled: config.telegram_enabled,
-        telegramChatId: config.telegram_chat_id ? maskChatId(config.telegram_chat_id) : null,
-        botTokenConfigured: !!env.TELEGRAM_BOT_TOKEN,
+        telegram_enabled: config.telegram_enabled,
+        telegram_configured: hasBotToken && !!effectiveChatId,
+        telegramChatId: effectiveChatId ? maskChatId(effectiveChatId) : null,
+        telegram_chat_id_masked: effectiveChatId ? maskChatId(effectiveChatId) : null,
+        botTokenConfigured: hasBotToken,
+        bot_token_configured: hasBotToken,
       },
     });
   });
 
-  // PATCH /api/admin/backup/config
-  fastify.patch('/backup/config', async (request, reply) => {
+  const handleUpdateBackupConfig = async (request: any, reply: any) => {
     const parsed = updateBackupConfigSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -1040,7 +1071,12 @@ export async function adminRoutes(fastify: FastifyInstance) {
       });
     }
 
-    const updated = await BackupRepository.updateConfig(parsed.data);
+    const updates: Record<string, any> = { ...parsed.data };
+    if (updates.telegram_bot_token || updates.telegram_chat_id) {
+      updates.telegram_enabled = true;
+    }
+
+    const updated = await BackupRepository.updateConfig(updates);
 
     await AuditService.log({
       userId: request.user.id,
@@ -1053,20 +1089,33 @@ export async function adminRoutes(fastify: FastifyInstance) {
     // Restart scheduler to pick up new config
     restartBackupScheduler().catch(console.error);
 
+    const hasBotToken = !!(updated.telegram_bot_token || env.TELEGRAM_BOT_TOKEN);
+    const effectiveChatId = updated.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+
     return reply.send({
       success: true,
-      message: 'Backup configuration updated. Scheduler restarted.',
+      message: 'Backup configuration updated successfully. Scheduler restarted.',
       data: {
         enabled: updated.enabled,
         cron: updated.cron_expression,
+        cron_expression: updated.cron_expression,
         timezone: updated.timezone,
         format: updated.format,
         compression: updated.compression,
         retentionDays: updated.retention_days,
+        retention_days: updated.retention_days,
         telegramEnabled: updated.telegram_enabled,
+        telegram_enabled: updated.telegram_enabled,
+        telegram_configured: hasBotToken && !!effectiveChatId,
+        telegram_chat_id_masked: effectiveChatId ? maskChatId(effectiveChatId) : null,
+        bot_token_configured: hasBotToken,
       },
     });
-  });
+  };
+
+  // PATCH & POST /api/admin/backup/config
+  fastify.patch('/backup/config', handleUpdateBackupConfig);
+  fastify.post('/backup/config', handleUpdateBackupConfig);
 
   // ──────────────────────────────────────────────────────────────────
   // TELEGRAM CONFIG
@@ -1084,12 +1133,11 @@ export async function adminRoutes(fastify: FastifyInstance) {
     });
     return reply.send({
       success: res.success,
-      message: res.success ? 'Test message sent to Telegram' : `Failed: ${res.error}`,
+      message: res.success ? 'Test message sent to Telegram channel' : `Failed: ${res.error}`,
     });
   });
 
-  // PATCH /api/admin/backup/telegram
-  fastify.patch('/backup/telegram', async (request, reply) => {
+  const handleUpdateTelegram = async (request: any, reply: any) => {
     const parsed = updateTelegramSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -1098,47 +1146,60 @@ export async function adminRoutes(fastify: FastifyInstance) {
       });
     }
 
-    // Validate token if provided
-    if (parsed.data.bot_token) {
-      const validation = await validateTelegramToken(parsed.data.bot_token);
+    const token = parsed.data.telegram_bot_token || parsed.data.bot_token;
+    const chatId = parsed.data.telegram_chat_id || parsed.data.chat_id;
+    const enabled = parsed.data.telegram_enabled ?? parsed.data.enabled ?? true;
+
+    // Validate token with Telegram getMe if provided
+    if (token) {
+      const validation = await validateTelegramToken(token);
       if (!validation.valid) {
         return reply.status(400).send({
           success: false,
-          error: { code: 'INVALID_TOKEN', message: `Invalid bot token: ${validation.error}` },
+          error: { code: 'INVALID_TOKEN', message: `Invalid Telegram bot token: ${validation.error}` },
         });
       }
-      // Note: We do NOT store the token in DB — it lives in TELEGRAM_BOT_TOKEN env var.
-      // Inform the admin they must update their env var.
-      await AuditService.log({
-        userId: request.user.id,
-        userEmail: request.user.email,
-        action: 'admin.backup.telegram_credentials_changed',
-        metadata: { botName: validation.botName, chatIdProvided: !!parsed.data.chat_id },
-        ipAddress: request.ip,
-      });
     }
 
-    // Update chat_id and enabled in DB
+    // Persist bot_token, chat_id, and enabled directly in backup_config table
     const updates: Record<string, unknown> = {};
-    if (parsed.data.chat_id !== undefined) updates.telegram_chat_id = parsed.data.chat_id;
-    if (parsed.data.enabled !== undefined) updates.telegram_enabled = parsed.data.enabled;
+    if (token !== undefined) updates.telegram_bot_token = token;
+    if (chatId !== undefined) updates.telegram_chat_id = chatId;
+    if (enabled !== undefined) updates.telegram_enabled = enabled;
 
     const updated = Object.keys(updates).length > 0
       ? await BackupRepository.updateConfig(updates)
       : await BackupRepository.getConfig();
 
+    await AuditService.log({
+      userId: request.user.id,
+      userEmail: request.user.email,
+      action: 'admin.backup.telegram_credentials_changed',
+      metadata: { chatIdProvided: !!chatId, tokenProvided: !!token },
+      ipAddress: request.ip,
+    });
+
+    const hasBotToken = !!(updated?.telegram_bot_token || env.TELEGRAM_BOT_TOKEN);
+    const effectiveChatId = updated?.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+
     return reply.send({
       success: true,
-      message: parsed.data.bot_token
-        ? 'Token validated successfully. Update TELEGRAM_BOT_TOKEN in your environment/Coolify config to persist it.'
-        : 'Telegram settings updated.',
+      message: 'Telegram credentials saved and active.',
       data: {
         telegramEnabled: updated?.telegram_enabled,
-        telegramChatId: updated?.telegram_chat_id ? maskChatId(updated.telegram_chat_id) : null,
-        botTokenConfigured: !!env.TELEGRAM_BOT_TOKEN,
+        telegram_enabled: updated?.telegram_enabled,
+        telegram_configured: hasBotToken && !!effectiveChatId,
+        telegramChatId: effectiveChatId ? maskChatId(effectiveChatId) : null,
+        telegram_chat_id_masked: effectiveChatId ? maskChatId(effectiveChatId) : null,
+        botTokenConfigured: hasBotToken,
+        bot_token_configured: hasBotToken,
       },
     });
-  });
+  };
+
+  // PATCH & POST /api/admin/backup/telegram
+  fastify.patch('/backup/telegram', handleUpdateTelegram);
+  fastify.post('/backup/telegram', handleUpdateTelegram);
 
   // ──────────────────────────────────────────────────────────────────
   // MANUAL BACKUP
@@ -1162,10 +1223,13 @@ export async function adminRoutes(fastify: FastifyInstance) {
     }
 
     try {
+      const sendToTelegram = parsed.data.send_to_telegram ?? parsed.data.sendToTelegram ?? true;
+      const compress = parsed.data.compression === 'gzip';
+
       const result = await runBackup({
         format: parsed.data.format,
-        compress: true,
-        sendToTelegram: parsed.data.sendToTelegram,
+        compress,
+        sendToTelegram,
         triggeredBy: 'manual',
         adminUserId: request.user.id,
         adminEmail: request.user.email,

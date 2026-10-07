@@ -1,21 +1,43 @@
 import fs from 'fs';
 import path from 'path';
 import { env } from '../../config/env.js';
+import { BackupRepository } from './backup.repository.js';
 
 interface TelegramConfig {
   botToken: string;
   chatId: string;
 }
 
-function getEffectiveConfig(overrideChatId?: string): TelegramConfig | null {
-  const botToken = env.TELEGRAM_BOT_TOKEN;
-  const chatId = overrideChatId || env.TELEGRAM_CHAT_ID;
-
-  if (!botToken || !chatId) {
-    return null;
+export async function getEffectiveTelegramConfig(
+  overrideChatId?: string,
+  overrideToken?: string
+): Promise<TelegramConfig | null> {
+  if (overrideToken && overrideChatId) {
+    return { botToken: overrideToken, chatId: overrideChatId };
   }
 
-  return { botToken, chatId };
+  // 1. Check database configuration first
+  try {
+    const config = await BackupRepository.getConfig();
+    const botToken = overrideToken || config?.telegram_bot_token || env.TELEGRAM_BOT_TOKEN;
+    const chatId = overrideChatId || config?.telegram_chat_id || env.TELEGRAM_CHAT_ID;
+
+    if (botToken && chatId) {
+      return { botToken, chatId };
+    }
+  } catch (err) {
+    console.error('[TelegramService] Error fetching DB config:', err);
+  }
+
+  // 2. Fall back to environment variables
+  const botToken = overrideToken || env.TELEGRAM_BOT_TOKEN;
+  const chatId = overrideChatId || env.TELEGRAM_CHAT_ID;
+
+  if (botToken && chatId) {
+    return { botToken, chatId };
+  }
+
+  return null;
 }
 
 /**
@@ -34,12 +56,13 @@ export async function sendTelegramTestMessage(
   overrideChatId?: string,
   overrideToken?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const botToken = overrideToken || env.TELEGRAM_BOT_TOKEN;
-  const chatId = overrideChatId || env.TELEGRAM_CHAT_ID;
+  const config = await getEffectiveTelegramConfig(overrideChatId, overrideToken);
 
-  if (!botToken || !chatId) {
+  if (!config) {
     return { success: false, error: 'Telegram bot token or chat ID not configured' };
   }
+
+  const { botToken, chatId } = config;
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -69,9 +92,10 @@ export async function sendTelegramTestMessage(
 export async function sendBackupToTelegram(
   filePath: string,
   caption: string,
-  overrideChatId?: string
+  overrideChatId?: string,
+  overrideToken?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const config = getEffectiveConfig(overrideChatId);
+  const config = await getEffectiveTelegramConfig(overrideChatId, overrideToken);
   if (!config) {
     return { success: false, error: 'Telegram credentials not configured' };
   }

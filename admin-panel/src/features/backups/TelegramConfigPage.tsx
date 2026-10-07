@@ -44,16 +44,16 @@ export const TelegramConfigPage: FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      backupApi.updateConfig({
-        telegram_bot_token: botToken || undefined,
-        telegram_chat_id: chatId || undefined,
+      backupApi.updateTelegram({
+        telegram_bot_token: botToken.trim() || undefined,
+        telegram_chat_id: chatId.trim() || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backupConfig'] })
       setIsUpdateOpen(false)
       setBotToken('')
       setChatId('')
-      setSuccessMsg('Telegram credentials updated successfully.')
+      setSuccessMsg('Telegram credentials updated and verified successfully.')
       setTimeout(() => setSuccessMsg(null), 4000)
     },
     onError: (err: Error) => setErrorMsg(err.message),
