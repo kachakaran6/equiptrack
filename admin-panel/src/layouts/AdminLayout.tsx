@@ -27,6 +27,11 @@ import {
   Sun,
   Moon,
   Laptop,
+  CheckCircle2,
+  Sparkles,
+  Command,
+  ChevronsUpDown,
+  Radio,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -68,14 +73,14 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'INVENTORY',
+    title: 'INVENTORY & ASSETS',
     items: [
       { label: 'Products & Stock', to: '/inventory/products', icon: Boxes },
       { label: 'Stock Reports', to: '/inventory/reports', icon: ClipboardList },
     ],
   },
   {
-    title: 'DATABASE',
+    title: 'DATABASE & DATASETS',
     items: [
       { label: 'Tables Explorer', to: '/database', icon: Database },
       { label: 'Users', to: '/users', icon: Users },
@@ -87,13 +92,13 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'SYSTEM',
+    title: 'SYSTEM & CLOUD',
     items: [
       { label: 'System Health', to: '/system', icon: Activity },
     ],
   },
   {
-    title: 'BACKUPS',
+    title: 'DATA BACKUPS',
     items: [
       { label: 'Overview & Run', to: '/backups', icon: HardDriveDownload },
       { label: 'Telegram Config', to: '/backups/telegram', icon: Send },
@@ -102,7 +107,7 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'PREFERENCES',
+    title: 'CONFIGURATION',
     items: [
       { label: 'Settings', to: '/settings', icon: Settings },
     ],
@@ -111,7 +116,7 @@ const navSections: NavSection[] = [
 
 export const AdminLayout: React.FC = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
-  const { setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const navigate = useNavigate()
@@ -159,11 +164,11 @@ export const AdminLayout: React.FC = () => {
       {navSections.map((section, idx) => (
         <div key={idx} className="space-y-1">
           {section.title && (
-            <div className="px-3 py-1 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+            <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-muted-foreground/70 uppercase">
               {section.title}
             </div>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {section.items.map((item) => {
               const Icon = item.icon
               const isActive =
@@ -177,23 +182,38 @@ export const AdminLayout: React.FC = () => {
                   to={item.to}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all select-none',
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 select-none',
                     isActive
-                      ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                      ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/20 dark:bg-primary/15'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground border border-transparent'
                   )}
                 >
-                  <Icon
+                  {/* Left Active Glow Pill */}
+                  {isActive && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary shadow-xs" />
+                  )}
+
+                  <div
                     className={cn(
-                      'h-4 w-4 shrink-0 transition-colors',
-                      isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all duration-150',
+                      isActive
+                        ? 'bg-primary/15 text-primary shadow-xs'
+                        : 'text-muted-foreground group-hover:text-foreground group-hover:bg-muted'
                     )}
-                  />
-                  <span className="truncate">{item.label}</span>
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  <span className="truncate flex-1">{item.label}</span>
+
                   {item.badge && (
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/80">
                       {item.badge}
                     </span>
+                  )}
+
+                  {isActive && (
+                    <ChevronRight className="h-3 w-3 text-primary/70 shrink-0" />
                   )}
                 </NavLink>
               )
@@ -216,52 +236,107 @@ export const AdminLayout: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans antialiased">
       {/* Desktop Sidebar (Fixed Full Height) */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col h-full border-r border-border/70 bg-card select-none z-20 transition-colors">
+      <aside className="hidden md:flex w-64 shrink-0 flex-col h-full border-r border-border/80 bg-sidebar select-none z-20 transition-colors">
         {/* Brand Header */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/70 px-4">
-          <NavLink to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow-xs transition-transform group-hover:scale-105">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/80 px-4">
+          <NavLink to="/" className="flex items-center gap-3 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md shadow-indigo-500/25 transition-transform group-hover:scale-105">
               ET
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
-                EquipTrack
-                <span className="rounded bg-primary/15 px-1.5 py-0.2 text-[10px] font-semibold text-primary uppercase">
-                  ADMIN
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold tracking-tight text-foreground">
+                  EquipTrack
                 </span>
-              </span>
-              <span className="text-[11px] text-muted-foreground">Control Console</span>
+                <span className="rounded-full bg-primary/15 px-1.5 py-0.2 text-[9px] font-bold text-primary tracking-wider uppercase border border-primary/20">
+                  PRO
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Control Console</span>
+              </div>
             </div>
           </NavLink>
         </div>
 
-        {/* Navigation list */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4">
-          {renderNavLinks()}
+        {/* Quick Search trigger in Sidebar */}
+        <div className="px-3 pt-3 pb-1">
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/50 hover:bg-muted/70 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">Quick search...</span>
+            </div>
+            <kbd className="pointer-events-none rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground border border-border/70">
+              ⌘K
+            </kbd>
+          </button>
         </div>
 
-        {/* User Footer with Profile & Theme Controls */}
-        <div className="shrink-0 border-t border-border/70 p-3 bg-muted/20">
+        {/* Navigation list */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
+          {renderNavLinks()}
+
+          {/* Mini System Health Widget in Sidebar */}
+          <div className="mt-6 mb-2 rounded-xl border border-border/80 bg-card/60 p-3 shadow-xs">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase flex items-center gap-1">
+                <Radio className="h-3 w-3 text-emerald-500" />
+                Node Service
+              </span>
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground text-[11px]">
+                {healthData?.database === 'connected' ? 'PostgreSQL Active' : 'Connecting...'}
+              </span>
+              <NavLink
+                to="/system"
+                className="text-[10px] text-primary hover:underline font-medium"
+              >
+                Health &rarr;
+              </NavLink>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Footer with Theme Switcher & User Profile */}
+        <div className="shrink-0 border-t border-border/80 p-3 bg-muted/20 space-y-2.5">
+          {/* Quick 1-Click Segmented Theme Toggle */}
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold tracking-wider text-muted-foreground/70 uppercase px-1">
+              Appearance
+            </div>
+            <ThemeToggle variant="segmented" />
+          </div>
+
+          {/* User Profile Button */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-lg p-2 text-left text-sm transition-all hover:bg-muted/80 cursor-pointer border border-transparent hover:border-border/60">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold shrink-0">
+              <button className="flex w-full items-center gap-2.5 rounded-lg p-2 text-left text-sm transition-all hover:bg-muted/80 cursor-pointer border border-transparent hover:border-border/80 group">
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 text-white text-xs font-bold shadow-xs shrink-0 ring-1 ring-border">
                   {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>
                 <div className="flex-1 min-w-0 truncate">
-                  <div className="truncate font-medium text-foreground text-xs leading-tight">
+                  <div className="truncate font-semibold text-foreground text-xs leading-tight group-hover:text-primary transition-colors">
                     {user?.name || 'Administrator'}
                   </div>
                   <div className="truncate font-mono text-[10px] text-muted-foreground">
                     {user?.email || 'admin@equiptrack'}
                   </div>
                 </div>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1.5">
+            <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-lg border-border">
               <DropdownMenuLabel className="font-normal px-2 py-1.5">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-xs font-semibold leading-none">{user?.name || 'Administrator'}</p>
+                  <p className="text-xs font-bold leading-none text-foreground">{user?.name || 'Administrator'}</p>
                   <p className="text-[11px] font-mono leading-none text-muted-foreground truncate">{user?.email}</p>
                   <div className="pt-1">
                     <StatusPill variant="info" size="sm" label={`Role: ${user?.role || 'admin'}`} />
@@ -269,42 +344,19 @@ export const AdminLayout: React.FC = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
+              <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer text-xs">
+                <Settings className="mr-2 h-4 w-4 text-primary" />
+                Settings &amp; Preferences
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/system')} className="cursor-pointer text-xs">
+                <Activity className="mr-2 h-4 w-4 text-emerald-500" />
+                System Health
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1 uppercase">
-                Theme
-              </DropdownMenuLabel>
-              <div className="grid grid-cols-3 gap-1 px-1 py-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTheme('light')}
-                  className="h-7 text-xs justify-center gap-1 px-2 hover:bg-muted"
-                >
-                  <Sun className="h-3.5 w-3.5 text-amber-500" /> Light
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTheme('dark')}
-                  className="h-7 text-xs justify-center gap-1 px-2 hover:bg-muted"
-                >
-                  <Moon className="h-3.5 w-3.5 text-indigo-400" /> Dark
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTheme('system')}
-                  className="h-7 text-xs justify-center gap-1 px-2 hover:bg-muted"
-                >
-                  <Laptop className="h-3.5 w-3.5 text-muted-foreground" /> Auto
-                </Button>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-rose-500 focus:text-rose-600 focus:bg-rose-500/10 cursor-pointer">
+              <DropdownMenuItem
+                onClick={logout}
+                className="text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10 cursor-pointer text-xs font-medium"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -316,7 +368,7 @@ export const AdminLayout: React.FC = () => {
       {/* Main Column */}
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         {/* Top Navbar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/70 bg-card/80 backdrop-blur-md px-4 md:px-6 z-10 transition-colors">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/80 bg-card/85 backdrop-blur-md px-4 md:px-6 z-10 transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             {/* Mobile Sheet Trigger */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -325,29 +377,46 @@ export const AdminLayout: React.FC = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border">
-                <div className="mb-6 flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
-                    ET
+              <SheetContent side="left" className="w-72 p-4 bg-sidebar border-r border-border flex flex-col justify-between">
+                <div>
+                  <div className="mb-6 flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md">
+                      ET
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold">EquipTrack</div>
+                      <div className="text-[11px] text-muted-foreground">Admin Console</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-semibold">EquipTrack</div>
-                    <div className="text-[11px] text-muted-foreground">Admin Console</div>
+                  <div className="overflow-y-auto max-h-[calc(100vh-14rem)]">
+                    {renderNavLinks()}
                   </div>
                 </div>
-                <div className="overflow-y-auto max-h-[calc(100vh-6rem)]">
-                  {renderNavLinks()}
+
+                <div className="pt-4 border-t border-border space-y-3">
+                  <ThemeToggle variant="segmented" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={logout}
+                    className="w-full text-rose-600 border-rose-500/20 hover:bg-rose-500/10 text-xs"
+                  >
+                    <LogOut className="mr-2 h-3.5 w-3.5" /> Sign Out
+                  </Button>
                 </div>
               </SheetContent>
             </Sheet>
 
             {/* Clean Breadcrumb Navigation */}
-            <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-              <span className="hover:text-foreground transition-colors cursor-pointer" onClick={() => navigate('/')}>
+            <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground truncate">
+              <span
+                className="hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 font-medium"
+                onClick={() => navigate('/')}
+              >
                 Console
               </span>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-              <span className="font-semibold text-foreground truncate">
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+              <span className="font-bold text-foreground truncate">
                 {currentTitle}
               </span>
             </nav>
@@ -359,7 +428,7 @@ export const AdminLayout: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => setCommandOpen(true)}
-              className="h-8.5 gap-2 px-3 text-xs text-muted-foreground hover:text-foreground border-border/80 bg-background/50 hover:bg-muted/50 rounded-lg shadow-xs"
+              className="h-8.5 gap-2 px-3 text-xs text-muted-foreground hover:text-foreground border-border/80 bg-background/60 hover:bg-muted/70 rounded-lg shadow-xs"
             >
               <Search className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="hidden sm:inline">Search console...</span>
@@ -379,7 +448,7 @@ export const AdminLayout: React.FC = () => {
               )}
             </div>
 
-            {/* Quick Theme Switcher */}
+            {/* Quick Theme Switcher Button */}
             <ThemeToggle variant="button" />
           </div>
         </header>
@@ -404,7 +473,7 @@ export const AdminLayout: React.FC = () => {
               <LayoutDashboard className="mr-2 h-4 w-4 text-primary" /> Overview Dashboard
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/inventory/products'); setCommandOpen(false) }} className="cursor-pointer">
-              <Boxes className="mr-2 h-4 w-4 text-primary" /> Inventory Products & Stock
+              <Boxes className="mr-2 h-4 w-4 text-primary" /> Inventory Products &amp; Stock
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/inventory/reports'); setCommandOpen(false) }} className="cursor-pointer">
               <ClipboardList className="mr-2 h-4 w-4 text-primary" /> Stock Audit Reports
@@ -419,16 +488,16 @@ export const AdminLayout: React.FC = () => {
               <Cpu className="mr-2 h-4 w-4 text-primary" /> Machinery Catalog
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/sections'); setCommandOpen(false) }} className="cursor-pointer">
-              <Layers className="mr-2 h-4 w-4 text-primary" /> Machine Sections & Components
+              <Layers className="mr-2 h-4 w-4 text-primary" /> Machine Sections &amp; Components
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/usage-records'); setCommandOpen(false) }} className="cursor-pointer">
               <FileSpreadsheet className="mr-2 h-4 w-4 text-primary" /> Usage Records
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/errors'); setCommandOpen(false) }} className="cursor-pointer">
-              <AlertOctagon className="mr-2 h-4 w-4 text-rose-500" /> Error Logs & Observability
+              <AlertOctagon className="mr-2 h-4 w-4 text-rose-500" /> Error Logs &amp; Observability
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/audit-logs'); setCommandOpen(false) }} className="cursor-pointer">
-              <ShieldCheck className="mr-2 h-4 w-4 text-primary" /> Audit Trail & System Logs
+              <ShieldCheck className="mr-2 h-4 w-4 text-primary" /> Audit Trail &amp; System Logs
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/backups'); setCommandOpen(false) }} className="cursor-pointer">
               <HardDriveDownload className="mr-2 h-4 w-4 text-primary" /> Database Backups
@@ -437,7 +506,7 @@ export const AdminLayout: React.FC = () => {
               <Activity className="mr-2 h-4 w-4 text-primary" /> System Health Diagnostics
             </CommandItem>
             <CommandItem onSelect={() => { navigate('/settings'); setCommandOpen(false) }} className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4 text-primary" /> Admin Preferences & Settings
+              <Settings className="mr-2 h-4 w-4 text-primary" /> Admin Preferences &amp; Settings
             </CommandItem>
           </CommandGroup>
         </CommandList>
@@ -445,3 +514,4 @@ export const AdminLayout: React.FC = () => {
     </div>
   )
 }
+
