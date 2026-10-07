@@ -29,9 +29,6 @@ export const SettingsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <span>Console Preferences &amp; Session</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Environment bindings, active security session, and theme appearance preferences
-          </p>
         </div>
       </div>
 

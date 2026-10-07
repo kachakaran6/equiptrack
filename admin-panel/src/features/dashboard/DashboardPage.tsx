@@ -36,9 +36,6 @@ export const DashboardPage: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             System Overview
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time operational health, core entities, and administrative activity
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button

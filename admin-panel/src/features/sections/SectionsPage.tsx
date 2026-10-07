@@ -173,9 +173,6 @@ export const SectionsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Machine Sections
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage sub-assemblies and modular sections assigned to production equipment
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

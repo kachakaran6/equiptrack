@@ -145,9 +145,6 @@ export const MachinesPage: React.FC = () => {
             <Cpu className="h-6 w-6 text-primary" />
             <span>Machines & Equipment</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage primary machine assets, identifier codes, and equipment metadata
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

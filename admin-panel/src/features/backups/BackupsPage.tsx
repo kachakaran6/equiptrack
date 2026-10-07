@@ -80,9 +80,6 @@ export const BackupsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <span>Backup &amp; Disaster Recovery</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Database snapshots, scheduled automated exports, and Telegram cloud delivery
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

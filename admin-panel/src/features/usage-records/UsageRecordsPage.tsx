@@ -191,9 +191,6 @@ export const UsageRecordsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Equipment Usage Records
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Log, inspect, and audit equipment operating days, active dates, and operator assignments
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -80,9 +80,6 @@ export const BackupHistoryPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <span>Backup Execution History</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Complete historical log of all database snapshots, checksums, and delivery statuses
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -198,9 +198,6 @@ export const UsersPage: React.FC = () => {
             <UsersIcon className="h-6 w-6 text-primary" />
             <span>User Accounts & Roles</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage administrative privileges, credentials, and account statuses
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

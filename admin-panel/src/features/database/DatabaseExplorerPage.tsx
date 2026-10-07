@@ -41,9 +41,6 @@ export const DatabaseExplorerPage: FC = () => {
             </div>
             <span>Database Schema Explorer</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Inspect real-time table schemas, record counts, and explore datasets safely through backend metadata
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

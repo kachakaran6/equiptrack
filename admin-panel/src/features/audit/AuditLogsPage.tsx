@@ -60,9 +60,6 @@ export const AuditLogsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             System Audit Trail
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Immutable audit log of administrative operations, security policy adjustments, and system events
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -61,9 +61,6 @@ export const SystemPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <span>System &amp; Database Diagnostics</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Real-time server telemetry, process memory heap, and PostgreSQL engine health
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

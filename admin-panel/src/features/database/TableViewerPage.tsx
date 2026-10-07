@@ -259,9 +259,6 @@ export const TableViewerPage: FC = () => {
               {totalRows.toLocaleString()} rows
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            PostgreSQL Table View &amp; Schema Metadata Inspector
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -276,9 +276,6 @@ export const InventoryProductsPage: FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Products & Stock</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage inventory categories, dynamic attributes, stock counts, and instant IN / OUT adjustments
-          </p>
         </div>
         <div className="flex items-center gap-2.5">
           <Button

@@ -87,9 +87,6 @@ export const TelegramConfigPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <span>Telegram Channel Configuration</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Connect a Telegram Bot to deliver database snapshots directly to your channel or chat
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

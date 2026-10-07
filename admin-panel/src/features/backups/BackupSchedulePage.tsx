@@ -165,9 +165,6 @@ export const BackupSchedulePage: FC = () => {
             <CalendarClock className="h-6 w-6 text-indigo-500" />
             <span>Automated Backup Schedule &amp; Retention</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Configure background database snapshot routines, multi-format presets, and lifecycle retention policies
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

@@ -93,8 +93,8 @@ export const ErrorsPage: FC = () => {
       .replace(/bot[0-9]+:[A-Za-z0-9_-]+/gi, 'bot[REDACTED]')
   }
 
-  const getSeverityVariant = (severity: string) => {
-    const upper = severity.toUpperCase()
+  const getSeverityVariant = (severity?: string | null) => {
+    const upper = (severity || '').toUpperCase()
     if (upper === 'FATAL' || upper === 'ERROR') return 'danger'
     if (upper === 'WARN' || upper === 'WARNING') return 'warning'
     if (upper === 'INFO') return 'info'
@@ -109,9 +109,6 @@ export const ErrorsPage: FC = () => {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             System Error Logs
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Inspect backend exceptions, API runtime faults, and sanitized server diagnostics
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
