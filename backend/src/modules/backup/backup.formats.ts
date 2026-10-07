@@ -13,7 +13,7 @@ import { env } from '../../config/env.js';
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
 
-export type BackupFormat = 'sql' | 'json' | 'csv' | 'zip';
+export type BackupFormat = 'sql' | 'json' | 'csv' | 'zip' | 'all';
 
 export interface BackupResult {
   filePath: string;
@@ -358,6 +358,122 @@ export async function generateCsvBackup(): Promise<BackupResult> {
 }
 
 /**
+ * Complete Multi-Format Archive (SQL DDL + JSON Datasets + Per-Table CSV Files + Manifest).
+ */
+export async function generateAllFormatsBackup(): Promise<BackupResult> {
+  const ts = timestamp();
+  const fileName = `equiptrack_complete_bundle_${ts}.zip`;
+  const filePath = path.join(backupDir(), fileName);
+
+  const tables = await getAllDatabaseTables();
+
+  return new Promise(async (resolve, reject) => {
+    const output = createWriteStream(filePath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', async () => {
+      try {
+        const stat = fs.statSync(filePath);
+        const checksum = await fileChecksum(filePath);
+        resolve({
+          filePath,
+          fileName,
+          format: 'all',
+          sizeBytes: stat.size,
+          checksum,
+          tableCount: tables.length,
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+    archive.on('error', reject);
+    archive.pipe(output);
+
+    // 1. Full SQL Dump
+    try {
+      const sqlContent = await generateManualSqlDump(tables);
+      archive.append(sqlContent, { name: 'database/equiptrack_full_dump.sql' });
+    } catch (err: any) {
+      archive.append(`-- Error generating SQL dump: ${err.message}`, { name: 'database/sql_error.txt' });
+    }
+
+    // 2. Full JSON dataset structure
+    const fullJson: Record<string, unknown> = {
+      backupVersion: 2,
+      backupType: 'COMPLETE_MULTI_FORMAT_BUNDLE',
+      createdAt: new Date().toISOString(),
+      database: 'equiptrack',
+      totalTables: tables.length,
+      tableNames: tables,
+      tables: {},
+    };
+
+    const tableStats: Record<string, number> = {};
+
+    for (const table of tables) {
+      try {
+        const res = await query(`SELECT * FROM "${table}"`);
+        (fullJson.tables as Record<string, unknown>)[table] = res.rows;
+        tableStats[table] = res.rows.length;
+
+        // 3. Per-table CSV export
+        if (res.rows.length === 0) {
+          const colRes = await query<{ column_name: string }>(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = 'public' ORDER BY ordinal_position`,
+            [table]
+          );
+          const headerLine = colRes.rows.map((c) => c.column_name).join(',') + '\n';
+          archive.append(headerLine, { name: `csv/${table}.csv` });
+        } else {
+          const headers = Object.keys(res.rows[0]);
+          const csvData = stringify(res.rows, {
+            header: true,
+            columns: headers,
+            cast: {
+              object: (v) => (v === null ? '' : JSON.stringify(v)),
+              boolean: (v) => String(v),
+              date: (v) => v.toISOString(),
+            },
+          });
+          archive.append(csvData, { name: `csv/${table}.csv` });
+        }
+      } catch (err: any) {
+        console.error(`[BackupBundle] Error exporting table ${table}:`, err);
+        (fullJson.tables as Record<string, unknown>)[table] = [];
+        tableStats[table] = 0;
+        archive.append(`-- Error exporting table ${table}: ${err.message}`, { name: `csv/${table}_error.txt` });
+      }
+    }
+
+    archive.append(JSON.stringify(fullJson, null, 2), { name: 'data/equiptrack_full_dataset.json' });
+
+    // 4. Manifest metadata
+    const manifest = {
+      bundle: 'EquipTrack Complete Multi-Format Snapshot',
+      createdAt: new Date().toISOString(),
+      database: 'equiptrack',
+      tablesDiscovered: tables.length,
+      tableRecordCounts: tableStats,
+      includedComponents: [
+        'PostgreSQL SQL Dump (database/equiptrack_full_dump.sql)',
+        'Structured JSON Dataset (data/equiptrack_full_dataset.json)',
+        'Per-Table CSV Files (csv/*.csv)',
+        'Manifest Metadata (manifest.json)',
+      ],
+      system: {
+        platform: process.platform,
+        nodeVersion: process.version,
+      },
+    };
+    archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+
+    archive.finalize();
+  });
+}
+
+/**
  * Main backup dispatch function.
  */
 export async function generateBackup(format: BackupFormat, compress: boolean): Promise<BackupResult> {
@@ -370,6 +486,8 @@ export async function generateBackup(format: BackupFormat, compress: boolean): P
     case 'csv':
     case 'zip':
       return generateCsvBackup();
+    case 'all':
+      return generateAllFormatsBackup();
     default:
       return generateSqlBackup(compress);
   }

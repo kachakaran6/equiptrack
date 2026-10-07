@@ -36,8 +36,8 @@ const updateStatusSchema = z.object({
 
 const runBackupSchema = z.object({
   format: z
-    .enum(['sql', 'json', 'csv', 'zip', 'SQL', 'JSON', 'CSV', 'ZIP'])
-    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip')
+    .enum(['sql', 'json', 'csv', 'zip', 'all', 'SQL', 'JSON', 'CSV', 'ZIP', 'ALL'])
+    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip' | 'all')
     .default('sql'),
   compression: z
     .enum(['gzip', 'none', 'GZIP', 'NONE'])
@@ -52,8 +52,8 @@ const updateBackupConfigSchema = z.object({
   cron_expression: z.string().optional(),
   timezone: z.string().optional(),
   format: z
-    .enum(['sql', 'json', 'csv', 'zip', 'SQL', 'JSON', 'CSV', 'ZIP'])
-    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip')
+    .enum(['sql', 'json', 'csv', 'zip', 'all', 'SQL', 'JSON', 'CSV', 'ZIP', 'ALL'])
+    .transform((f) => f.toLowerCase() as 'sql' | 'json' | 'csv' | 'zip' | 'all')
     .optional(),
   compression: z
     .enum(['none', 'gzip', 'NONE', 'GZIP'])

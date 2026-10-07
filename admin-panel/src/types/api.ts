@@ -98,7 +98,7 @@ export interface BackupHistoryItem {
   started_at: string
   completed_at?: string | null
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
-  format: 'SQL' | 'JSON' | 'CSV' | 'ZIP'
+  format: 'SQL' | 'JSON' | 'CSV' | 'ZIP' | 'ALL'
   size_bytes?: number | null
   checksum?: string | null
   destination: string
@@ -111,7 +111,7 @@ export interface BackupConfig {
   enabled: boolean
   cron_expression: string
   timezone: string
-  format: 'SQL' | 'JSON' | 'CSV' | 'ZIP'
+  format: 'SQL' | 'JSON' | 'CSV' | 'ZIP' | 'ALL'
   compression: 'GZIP' | 'NONE'
   retention_days: number
   telegram_configured: boolean

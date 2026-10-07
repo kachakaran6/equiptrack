@@ -2,7 +2,7 @@ import { apiRequest } from './apiClient'
 import type { BackupConfig, BackupHistoryItem } from '@/types/api'
 
 export interface TriggerBackupInput {
-  format?: 'SQL' | 'JSON' | 'CSV' | 'ZIP'
+  format?: 'SQL' | 'JSON' | 'CSV' | 'ZIP' | 'ALL'
   compression?: 'GZIP' | 'NONE'
   send_to_telegram?: boolean
 }
@@ -11,7 +11,7 @@ export interface UpdateBackupConfigInput {
   enabled?: boolean
   cron_expression?: string
   timezone?: string
-  format?: 'SQL' | 'JSON' | 'CSV' | 'ZIP'
+  format?: 'SQL' | 'JSON' | 'CSV' | 'ZIP' | 'ALL'
   compression?: 'GZIP' | 'NONE'
   retention_days?: number
   telegram_enabled?: boolean
