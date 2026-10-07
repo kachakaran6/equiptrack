@@ -15,7 +15,16 @@ const archiver = require('archiver');
 
 export type BackupFormat = 'sql' | 'json' | 'csv' | 'zip';
 
-const BACKUP_TABLES = ['users', 'machines', 'sections', 'usage_records'];
+const BACKUP_TABLES = [
+  'users',
+  'machines',
+  'categories',
+  'sections',
+  'usage_records',
+  'inventory_products',
+  'inventory_sub_products',
+  'inventory_transactions'
+];
 
 export interface BackupResult {
   filePath: string;

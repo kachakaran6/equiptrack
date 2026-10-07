@@ -808,24 +808,25 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // RAW DATABASE TABLES EXPLORER & METADATA
   // ──────────────────────────────────────────────────────────────────
 
+  const ALLOWED_ADMIN_TABLES = [
+    'users',
+    'machines',
+    'categories',
+    'sections',
+    'usage_records',
+    'inventory_products',
+    'inventory_sub_products',
+    'inventory_transactions',
+    'error_logs',
+    'audit_logs',
+    'backup_history',
+    'backup_config'
+  ];
+
   // GET /api/admin/database/tables (List all safe tables with row counts and column metadata)
   fastify.get('/database/tables', async (request, reply) => {
-    const allowedTables = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
-    
     const tablesInfo = await Promise.all(
-      allowedTables.map(async (table) => {
+      ALLOWED_ADMIN_TABLES.map(async (table) => {
         const [countRes, sizeRes, columnsRes] = await Promise.all([
           query<{ count: string }>(`SELECT COUNT(*) FROM ${table}`).catch(() => ({ rows: [{ count: '0' }] })),
           query<{ total_size: string }>(`SELECT pg_size_pretty(pg_total_relation_size($1)) AS total_size`, [table]).catch(() => ({ rows: [{ total_size: 'N/A' }] })),
@@ -848,21 +849,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/database/tables/:table/schema
   fastify.get<{ Params: { table: string } }>('/database/tables/:table/schema', async (request, reply) => {
-    const allowed = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
     const tableName = request.params.table.toLowerCase();
-    if (!allowed.includes(tableName)) {
+    if (!ALLOWED_ADMIN_TABLES.includes(tableName)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
     }
 
@@ -879,21 +867,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/admin/tables/:table
   fastify.get<{ Params: { table: string } }>('/tables/:table', async (request, reply) => {
-    const allowed = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
     const tableName = request.params.table.toLowerCase();
-    if (!allowed.includes(tableName)) {
+    if (!ALLOWED_ADMIN_TABLES.includes(tableName)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
     }
 
@@ -931,21 +906,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/admin/tables/:table (Insert Record)
   fastify.post<{ Params: { table: string } }>('/tables/:table', async (request, reply) => {
-    const allowed = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
     const tableName = request.params.table.toLowerCase();
-    if (!allowed.includes(tableName)) {
+    if (!ALLOWED_ADMIN_TABLES.includes(tableName)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
     }
 
@@ -968,21 +930,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/admin/tables/:table/:id (Update Record)
   fastify.patch<{ Params: { table: string; id: string } }>('/tables/:table/:id', async (request, reply) => {
-    const allowed = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
     const tableName = request.params.table.toLowerCase();
-    if (!allowed.includes(tableName)) {
+    if (!ALLOWED_ADMIN_TABLES.includes(tableName)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
     }
 
@@ -1014,21 +963,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/admin/tables/:table/:id (Delete Record)
   fastify.delete<{ Params: { table: string; id: string } }>('/tables/:table/:id', async (request, reply) => {
-    const allowed = [
-      'users',
-      'machines',
-      'sections',
-      'usage_records',
-      'inventory_products',
-      'inventory_sub_products',
-      'inventory_transactions',
-      'error_logs',
-      'audit_logs',
-      'backup_history',
-      'backup_config'
-    ];
     const tableName = request.params.table.toLowerCase();
-    if (!allowed.includes(tableName)) {
+    if (!ALLOWED_ADMIN_TABLES.includes(tableName)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TABLE', message: 'Table not accessible' } });
     }
 
