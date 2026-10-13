@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/global_app_header.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
 import '../widgets/stock_in_out_dialog.dart';
@@ -116,23 +117,15 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
-      appBar: AppBar(
-        title: const Text(
-          'Products',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              context.push(AppRoutes.settings);
-            },
-          ),
+      appBar: GlobalAppHeader(
+        title: 'EquipTrack',
+        subtitle: 'Inventory Management',
+        icon: Icons.inventory_2_rounded,
+        additionalActions: [
           IconButton(
             tooltip: 'Stock Reports',
-            icon: const Icon(Icons.assessment_outlined),
+            icon: const Icon(Icons.assessment_outlined, size: 20),
+            splashRadius: 20,
             onPressed: () {
               context.push(AppRoutes.inventoryReports);
             },

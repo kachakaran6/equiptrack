@@ -5,9 +5,8 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/constants/app_keys.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/app_app_bar.dart';
+import '../../../core/widgets/global_app_header.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_empty_state.dart';
@@ -18,14 +17,9 @@ import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_shimmer.dart';
 import '../../../core/widgets/responsive_scaffold.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../../core/widgets/theme_toggle_button.dart';
-import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/machine_repository.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../models/machine.dart';
-import 'package:flutter/services.dart';
-import '../../../core/widgets/exit_confirm_dialog.dart';
-import '../../auth/controllers/auth_controller.dart';
 import '../controllers/machines_controller.dart';
 import '../widgets/add_edit_machine_dialog.dart';
 import '../widgets/duplicate_machine_dialog.dart';
@@ -36,59 +30,15 @@ class MachineListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final machinesAsync = ref.watch(filteredMachinesProvider);
-    final user = ref.watch(currentUserProvider);
     final query = ref.watch(searchQueryProvider);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldExit = await ExitConfirmDialog.show(context);
-        if (shouldExit && context.mounted) {
-          SystemNavigator.pop();
-        }
-      },
-      child: ResponsiveScaffold(
-        appBar: AppAppBar(
+    return ResponsiveScaffold(
+      appBar: const GlobalAppHeader(
           title: 'EquipTrack',
-          subtitle: 'Machine Lifecycle & Maintenance',
-          showBackButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 20),
-            tooltip: 'Settings',
-            splashRadius: 20,
-            onPressed: () => context.push(AppRoutes.settings),
-          ),
-          const ThemeToggleButton(),
-          IconButton(
-            key: const Key(AppKeys.signOutButton),
-            icon: const Icon(Icons.logout_rounded, size: 20),
-            tooltip: 'Sign Out (${user?.email ?? ""})',
-            splashRadius: 20,
-            onPressed: () async {
-              final confirm = await AppConfirmDialog.show(
-                context: context,
-                title: 'Sign out?',
-                message: 'Are you sure you want to sign out from ${user?.email ?? "EquipTrack"}?',
-                confirmLabel: 'Sign Out',
-                isDestructive: true,
-              );
-              if (confirm == true) {
-                if (context.mounted) {
-                  context.showInfoSnackBar('Signing out...');
-                }
-                await ref.read(authControllerProvider.notifier).signOut();
-                if (context.mounted) {
-                  context.go(AppRoutes.login);
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 6),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+          subtitle: 'Equipment Tracking',
+          icon: Icons.precision_manufacturing_rounded,
+        ),
+        floatingActionButton: FloatingActionButton.extended(
         key: const Key(AppKeys.addMachineFab),
         onPressed: () => AddEditMachineDialog.show(context),
         icon: const Icon(Icons.add_rounded, size: 20),
@@ -185,8 +135,7 @@ class MachineListScreen extends ConsumerWidget {
           ],
         ),
       ),
-    ),
-  );
+    );
   }
 }
 

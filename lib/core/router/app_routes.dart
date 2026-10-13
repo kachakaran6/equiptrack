@@ -18,8 +18,10 @@ class AppRoutes {
   static const String inventoryEditSubProductRoute = '/inventory/sub-products/:subProductId/edit';
   static const String inventoryReports = '/inventory/reports';
   static const String settings = '/settings';
+  static const String analytics = '/analytics';
 
   // Helper route generators
+  static String analyticsPath() => '/analytics';
   static String machineDetailsPath(String machineId) => '/machines/$machineId';
   static String sectionUsagePath(String machineId, String sectionId) =>
       '/machines/$machineId/sections/$sectionId';

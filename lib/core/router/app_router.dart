@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../features/analytics/screens/analytics_screen.dart';
 import '../../features/app_update/widgets/app_update_listener.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/inventory/controllers/inventory_controller.dart';
@@ -23,6 +24,7 @@ import 'app_routes.dart';
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _machinesNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'machinesTab');
 final GlobalKey<NavigatorState> _inventoryNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'inventoryTab');
+final GlobalKey<NavigatorState> _analyticsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'analyticsTab');
 
 /// Listenable adapter that triggers GoRouter redirects whenever the stream emits
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -174,6 +176,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const StockReportScreen(),
                   ),
                 ],
+              ),
+            ],
+          ),
+
+          // ================= TAB 3: Analytics =================
+          StatefulShellBranch(
+            navigatorKey: _analyticsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoutes.analytics,
+                name: 'analytics',
+                builder: (context, state) => const AnalyticsScreen(),
               ),
             ],
           ),
