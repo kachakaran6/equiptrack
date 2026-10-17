@@ -17,6 +17,7 @@ import '../../features/sections/screens/machine_detail_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/main_shell_screen.dart';
 import '../../features/usage_records/screens/section_usage_screen.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import '../../models/inventory_models.dart';
 import '../analytics/analytics_observer.dart';
 import 'app_routes.dart';
@@ -53,6 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshNotifier,
     observers: [
       AnalyticsNavigationObserver(),
+      PosthogObserver(),
     ],
     routes: [
       GoRoute(

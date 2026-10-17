@@ -65,7 +65,7 @@ if (envFile != null && envFile.exists()) {
 }
 val posthogToken = envProperties.getProperty("POSTHOG_PROJECT_TOKEN")
     ?: System.getenv("POSTHOG_PROJECT_TOKEN")
-    ?: "phc_zmTxSBA9eBG8XNy53n3B4SbwU9dWQEiL9eKxoqjWjGVL"
+    ?: "phc_qpTmSYFMJbyhzutygTQsjbdaJmcsenjdqHuQkbvpiJhQ"
 val posthogHost = envProperties.getProperty("POSTHOG_HOST")
     ?: System.getenv("POSTHOG_HOST")
     ?: "https://eu.i.posthog.com"

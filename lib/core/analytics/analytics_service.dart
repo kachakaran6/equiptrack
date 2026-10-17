@@ -97,6 +97,11 @@ class AnalyticsService {
         await Posthog().disable();
       } else {
         await Posthog().enable();
+        try {
+          await Posthog().startSessionRecording();
+        } catch (e) {
+          AppLogger.warning('PostHog startSessionRecording warning: $e');
+        }
       }
 
       AppLogger.info('PostHog analytics initialized with Session Replay enabled (host: $host, consent: ${_consent.name}).');
@@ -482,9 +487,15 @@ class AnalyticsService {
       try {
         if (consent == AnalyticsConsent.granted) {
           await Posthog().enable();
+          try {
+            await Posthog().startSessionRecording();
+          } catch (_) {}
           await track(AnalyticsEvent.analyticsPreferenceChanged, {'consent': 'granted'});
         } else {
           await track(AnalyticsEvent.analyticsPreferenceChanged, {'consent': 'denied'});
+          try {
+            await Posthog().stopSessionRecording();
+          } catch (_) {}
           await Posthog().disable();
         }
       } catch (e) {
