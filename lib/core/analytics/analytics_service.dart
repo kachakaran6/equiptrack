@@ -66,7 +66,7 @@ class AnalyticsService {
         host = dotenv.env['POSTHOG_HOST']?.trim();
       }
 
-      host ??= 'https://us.i.posthog.com';
+      host ??= 'https://eu.i.posthog.com';
 
       if (token == null || token.isEmpty || token.startsWith('phc_your_')) {
         AppLogger.warning('PostHog token not configured or using placeholder. Analytics running in no-op mode.');
@@ -75,17 +75,31 @@ class AnalyticsService {
         return;
       }
 
+      // 3. Setup PostHog SDK with Session Replay enabled
+      final config = PostHogConfig(token)
+        ..host = host
+        ..sessionReplay = true
+        ..captureApplicationLifecycleEvents = true
+        ..debug = kDebugMode;
+
+      config.sessionReplayConfig = PostHogSessionReplayConfig()
+        ..captureTouches = true
+        ..maskAllTexts = false
+        ..maskAllImages = false;
+
+      await Posthog().setup(config);
+
       _isConfigured = true;
       _isInitialized = true;
 
-      // 3. Apply initial consent state
+      // 4. Apply initial consent state
       if (_consent == AnalyticsConsent.denied) {
         await Posthog().disable();
       } else {
         await Posthog().enable();
       }
 
-      AppLogger.info('PostHog analytics initialized successfully (host: $host, consent: ${_consent.name}).');
+      AppLogger.info('PostHog analytics initialized with Session Replay enabled (host: $host, consent: ${_consent.name}).');
     } catch (e, st) {
       AppLogger.warning('Failed to initialize PostHog analytics (gracefully continuing in safe mode): $e');
       if (kDebugMode) {

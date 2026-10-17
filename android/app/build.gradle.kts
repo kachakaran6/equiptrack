@@ -49,6 +49,7 @@ android {
     }
 
 val envFile = rootProject.file(".env").takeIf { it.exists() }
+    ?: rootProject.file("../.env").takeIf { it.exists() }
     ?: project.file("../../.env").takeIf { it.exists() }
 val envProperties = Properties()
 if (envFile != null && envFile.exists()) {
@@ -64,10 +65,10 @@ if (envFile != null && envFile.exists()) {
 }
 val posthogToken = envProperties.getProperty("POSTHOG_PROJECT_TOKEN")
     ?: System.getenv("POSTHOG_PROJECT_TOKEN")
-    ?: ""
+    ?: "phc_zmTxSBA9eBG8XNy53n3B4SbwU9dWQEiL9eKxoqjWjGVL"
 val posthogHost = envProperties.getProperty("POSTHOG_HOST")
     ?: System.getenv("POSTHOG_HOST")
-    ?: "https://us.i.posthog.com"
+    ?: "https://eu.i.posthog.com"
 
     defaultConfig {
         applicationId = "com.equiptrack.com"

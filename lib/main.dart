@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:posthog_flutter/posthog_flutter.dart';
 import 'app/app.dart';
 import 'app/app_bootstrap.dart';
 
@@ -9,7 +10,9 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: const MachineUsageApp(),
+      child: const PostHogWidget(
+        child: MachineUsageApp(),
+      ),
     ),
   );
 }
