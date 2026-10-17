@@ -5,6 +5,7 @@ import '../../../core/services/pdf_service.dart';
 import '../../../data/repositories/inventory_repository.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
+import '../widgets/inventory_pdf_export_dialog.dart';
 
 class StockReportScreen extends ConsumerStatefulWidget {
   final String? initialProductId;
@@ -68,30 +69,20 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
     );
   }
 
-  Future<void> _exportPdf(List<InventoryTransaction> transactions) async {
-    if (transactions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transactions to export in current view')),
-      );
-      return;
-    }
-    try {
-      final name = _selectedProductName ?? (transactions.isNotEmpty ? transactions.first.productName : 'Inventory');
-      final filter = ref.read(reportFilterProvider);
-      await PdfService().printOrPreviewInventoryStockReportPdf(
-        productName: name,
-        transactions: transactions,
-        filterType: filter.type,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to export PDF: ${e.toString().replaceAll("Exception:", "").trim()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  void _openPdfExportDialog({List<InventoryTransaction>? transactions}) {
+    final raw = transactions ?? ref.read(stockReportsProvider).asData?.value ?? [];
+    final filter = ref.read(reportFilterProvider);
+    InventoryPdfExportDialog.show(
+      context,
+      productName: _selectedProductName,
+      productId: _selectedProductId,
+      initialTransactions: raw.isNotEmpty ? raw : null,
+      initialType: filter.type,
+    );
+  }
+
+  void _exportPdf(List<InventoryTransaction> transactions) {
+    _openPdfExportDialog(transactions: transactions);
   }
 
   Future<void> _sharePdf(List<InventoryTransaction> transactions) async {
@@ -203,7 +194,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
             onPressed: () {
               final raw = reportsAsync.asData?.value ?? [];
               final filtered = _filterTransactions(raw);
-              _exportPdf(filtered);
+              _exportPdf(filtered.isNotEmpty ? filtered : raw);
             },
           ),
           IconButton(

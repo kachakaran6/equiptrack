@@ -5,6 +5,7 @@ import '../../../data/repositories/inventory_repository.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
 import '../widgets/stock_in_out_dialog.dart';
+import '../widgets/inventory_pdf_export_dialog.dart';
 import 'add_edit_sub_product_screen.dart';
 
 class SubProductDetailScreen extends ConsumerStatefulWidget {
@@ -22,6 +23,21 @@ class SubProductDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen> {
+  void _openExportPdf(InventorySubProduct sub, String summaryStr) {
+    final txAsync = ref.read(subProductTransactionsProvider(widget.subProductId));
+    final txs = txAsync.asData?.value;
+    final cleanSummary = summaryStr.replaceAll('•', '|').replaceAll(RegExp(r'\s+\|\s+'), ' | ');
+
+    InventoryPdfExportDialog.show(
+      context,
+      productId: sub.productId,
+      productName: widget.productName.isNotEmpty ? widget.productName : null,
+      subProductId: sub.id,
+      subProductSummary: cleanSummary,
+      initialTransactions: txs,
+    );
+  }
+
   Future<void> _confirmDeleteSubProduct(InventorySubProduct sub, String summaryStr) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -288,6 +304,11 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                         }
                       }
                     },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    tooltip: 'Export Stock PDF',
+                    onPressed: () => _openExportPdf(sub, summaryStr),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
@@ -657,28 +678,7 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                 },
               ),
 
-              const SizedBox(height: 28),
-
-              // Delete Sub Product Destructive Button
-              OutlinedButton.icon(
-                onPressed: () => _confirmDeleteSubProduct(sub, summaryStr),
-                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
-                label: const Text(
-                  'Delete Sub Product',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.redAccent, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
             ],
           );
         },

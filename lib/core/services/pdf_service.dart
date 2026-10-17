@@ -455,11 +455,27 @@ class PdfService {
     );
   }
 
-  /// Generates a structured A4 PDF report for inventory transactions of a main product
+  static String _sanitizePdfText(String? input) {
+    if (input == null) return '';
+    return input
+        .replaceAll('•', ' | ')
+        .replaceAll('·', ' | ')
+        .replaceAll('—', '-')
+        .replaceAll('–', '-')
+        .replaceAll('’', "'")
+        .replaceAll('‘', "'")
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .trim();
+  }
+
+  /// Generates a structured A4 PDF report for inventory transactions of a main product or sub-product
   Future<Uint8List> generateInventoryStockReportPdf({
     required String productName,
     required List<InventoryTransaction> transactions,
+    String? subProductSummary,
     String? filterType,
+    String? dateRangeText,
     DateTime? generatedAt,
   }) async {
     if (transactions.isEmpty) {
@@ -467,15 +483,27 @@ class PdfService {
     }
 
     final timestamp = generatedAt ?? DateTime.now();
-    final title = 'Stock Report - $productName';
+    final title = subProductSummary != null && subProductSummary.isNotEmpty
+        ? 'Stock Report - ${_sanitizePdfText(productName)} - ${_sanitizePdfText(subProductSummary)}'
+        : 'Stock Report - ${_sanitizePdfText(productName)}';
 
     final pdf = pw.Document(
       title: title,
       author: AppConstants.appName,
     );
 
-    final totalIn = transactions.where((t) => t.type == 'IN').fold<int>(0, (s, t) => s + t.quantity);
-    final totalOut = transactions.where((t) => t.type == 'OUT').fold<int>(0, (s, t) => s + t.quantity);
+    // Sort transactions date-wise (newest/most recent first)
+    final sortedTransactions = List<InventoryTransaction>.from(transactions)
+      ..sort((a, b) {
+        final dateA = DateTime.tryParse(a.date) ?? a.createdAt;
+        final dateB = DateTime.tryParse(b.date) ?? b.createdAt;
+        final cmp = dateB.compareTo(dateA);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    final totalIn = sortedTransactions.where((t) => t.type == 'IN').fold<int>(0, (s, t) => s + t.quantity);
+    final totalOut = sortedTransactions.where((t) => t.type == 'OUT').fold<int>(0, (s, t) => s + t.quantity);
     final netChange = totalIn - totalOut;
 
     pdf.addPage(
@@ -538,6 +566,11 @@ class PdfService {
           );
         },
         build: (pw.Context context) {
+          final isSubProductReport = subProductSummary != null && subProductSummary.trim().isNotEmpty;
+          final sanitizedProdName = _sanitizePdfText(productName);
+          final sanitizedSubSummary = _sanitizePdfText(subProductSummary);
+          final sanitizedDateFilter = _sanitizePdfText(dateRangeText);
+
           return [
             // Top Summary Card
             pw.Container(
@@ -549,25 +582,63 @@ class PdfService {
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'MAIN PRODUCT: ${productName.toUpperCase()}',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                          color: textDarkColor,
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'MAIN PRODUCT: ${sanitizedProdName.toUpperCase()}',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: textDarkColor,
+                          ),
                         ),
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'Filter: ${filterType ?? "ALL"} • Total Transactions: ${transactions.length}',
-                        style: const pw.TextStyle(fontSize: 10, color: textMutedColor),
-                      ),
-                    ],
+                        if (isSubProductReport) ...[
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            'SUB-PRODUCT: $sanitizedSubSummary',
+                            style: pw.TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: pw.FontWeight.bold,
+                              color: primaryPdfColor,
+                            ),
+                          ),
+                        ],
+                        pw.SizedBox(height: 5),
+                        pw.Text(
+                          'Filter: ${filterType ?? "ALL"}  |  Total Transactions: ${sortedTransactions.length}',
+                          style: const pw.TextStyle(fontSize: 8.5, color: textMutedColor),
+                        ),
+                        if (sanitizedDateFilter.isNotEmpty) ...[
+                          pw.SizedBox(height: 3),
+                          pw.Row(
+                            children: [
+                              pw.Text(
+                                'Date Filter: ',
+                                style: pw.TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: textMutedColor,
+                                ),
+                              ),
+                              pw.Text(
+                                sanitizedDateFilter,
+                                style: pw.TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: textDarkColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
+                  pw.SizedBox(width: 12),
                   pw.Row(
                     children: [
                       pw.Container(
@@ -575,38 +646,44 @@ class PdfService {
                         decoration: pw.BoxDecoration(
                           color: const PdfColor(0.85, 0.95, 0.88),
                           borderRadius: pw.BorderRadius.circular(4),
+                          border: pw.Border.all(color: const PdfColor(0.7, 0.9, 0.75), width: 0.5),
                         ),
                         child: pw.Column(
                           children: [
-                            pw.Text('TOTAL IN', style: const pw.TextStyle(fontSize: 8, color: PdfColors.green900)),
+                            pw.Text('TOTAL IN', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.green900)),
+                            pw.SizedBox(height: 2),
                             pw.Text('+$totalIn', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.green900)),
                           ],
                         ),
                       ),
-                      pw.SizedBox(width: 8),
+                      pw.SizedBox(width: 6),
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: pw.BoxDecoration(
                           color: const PdfColor(0.98, 0.88, 0.88),
                           borderRadius: pw.BorderRadius.circular(4),
+                          border: pw.Border.all(color: const PdfColor(0.95, 0.75, 0.75), width: 0.5),
                         ),
                         child: pw.Column(
                           children: [
-                            pw.Text('TOTAL OUT', style: const pw.TextStyle(fontSize: 8, color: PdfColors.red900)),
+                            pw.Text('TOTAL OUT', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.red900)),
+                            pw.SizedBox(height: 2),
                             pw.Text('-$totalOut', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
                           ],
                         ),
                       ),
-                      pw.SizedBox(width: 8),
+                      pw.SizedBox(width: 6),
                       pw.Container(
                         padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: pw.BoxDecoration(
-                          color: const PdfColor(0.9, 0.92, 0.98),
+                          color: const PdfColor(0.9, 0.93, 0.98),
                           borderRadius: pw.BorderRadius.circular(4),
+                          border: pw.Border.all(color: const PdfColor(0.75, 0.82, 0.95), width: 0.5),
                         ),
                         child: pw.Column(
                           children: [
-                            pw.Text('NET STOCK', style: const pw.TextStyle(fontSize: 8, color: primaryPdfColor)),
+                            pw.Text('NET STOCK', style: const pw.TextStyle(fontSize: 7.5, color: primaryPdfColor)),
+                            pw.SizedBox(height: 2),
                             pw.Text('$netChange', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: primaryPdfColor)),
                           ],
                         ),
@@ -618,38 +695,98 @@ class PdfService {
             ),
             pw.SizedBox(height: 16),
 
-            // Table
-            pw.TableHelper.fromTextArray(
-              border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
-              headerStyle: pw.TextStyle(
-                color: textDarkColor,
-                fontWeight: pw.FontWeight.bold,
-                fontSize: 9,
+            // Date-wise Transactions Table
+            if (isSubProductReport)
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
+                headerStyle: pw.TextStyle(
+                  color: textDarkColor,
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 9,
+                ),
+                headerDecoration: const pw.BoxDecoration(color: headerBgColor),
+                headerPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
+                cellAlignments: {
+                  0: pw.Alignment.center,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.center,
+                  3: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerLeft,
+                },
+                headers: ['#', 'Date', 'Type', 'Quantity', 'Remarks'],
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(28),
+                  1: const pw.FixedColumnWidth(85),
+                  2: const pw.FixedColumnWidth(55),
+                  3: const pw.FixedColumnWidth(70),
+                  4: const pw.FlexColumnWidth(1),
+                },
+                data: sortedTransactions.asMap().entries.map((entry) {
+                  final idx = entry.key + 1;
+                  final t = entry.value;
+                  final qtyDisplay = t.isIn ? '+${t.quantity}' : '-${t.quantity}';
+                  final remarks = t.remarks?.trim().isNotEmpty == true ? _sanitizePdfText(t.remarks) : '-';
+                  return [
+                    '$idx',
+                    t.displayDate,
+                    t.type.toUpperCase(),
+                    qtyDisplay,
+                    remarks,
+                  ];
+                }).toList(),
+              )
+            else
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
+                headerStyle: pw.TextStyle(
+                  color: textDarkColor,
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 9,
+                ),
+                headerDecoration: const pw.BoxDecoration(color: headerBgColor),
+                headerPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
+                cellAlignments: {
+                  0: pw.Alignment.center,
+                  1: pw.Alignment.centerLeft,
+                  2: pw.Alignment.center,
+                  3: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerLeft,
+                  5: pw.Alignment.centerLeft,
+                },
+                headers: ['#', 'Date', 'Type', 'Quantity', 'Sub-Product / Attributes', 'Remarks'],
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(28),
+                  1: const pw.FixedColumnWidth(80),
+                  2: const pw.FixedColumnWidth(50),
+                  3: const pw.FixedColumnWidth(65),
+                  4: const pw.FlexColumnWidth(2.5),
+                  5: const pw.FlexColumnWidth(1.5),
+                },
+                data: sortedTransactions.asMap().entries.map((entry) {
+                  final idx = entry.key + 1;
+                  final t = entry.value;
+                  final subStr = t.subProductValues.entries
+                      .map((e) => '${e.key}: ${e.value}')
+                      .join(' | ');
+                  final qtyDisplay = t.isIn ? '+${t.quantity}' : '-${t.quantity}';
+                  final itemDisplay = subStr.isNotEmpty
+                      ? _sanitizePdfText(subStr)
+                      : (t.productName.isNotEmpty ? _sanitizePdfText(t.productName) : '-');
+                  final remarks = t.remarks?.trim().isNotEmpty == true ? _sanitizePdfText(t.remarks) : '-';
+                  return [
+                    '$idx',
+                    t.displayDate,
+                    t.type.toUpperCase(),
+                    qtyDisplay,
+                    itemDisplay,
+                    remarks,
+                  ];
+                }).toList(),
               ),
-              headerDecoration: const pw.BoxDecoration(color: headerBgColor),
-              headerHeight: 24,
-              cellHeight: 22,
-              cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
-              cellAlignment: pw.Alignment.centerLeft,
-              headers: ['Date', 'Type', 'Sub-Product Attributes', 'Quantity', 'Remarks'],
-              columnWidths: {
-                0: const pw.FixedColumnWidth(65),
-                1: const pw.FixedColumnWidth(40),
-                2: const pw.FlexColumnWidth(3),
-                3: const pw.FixedColumnWidth(35),
-                4: const pw.FlexColumnWidth(2),
-              },
-              data: transactions.map((t) {
-                final subStr = t.subProductValues.entries.map((e) => '${e.key}: ${e.value}').join(' • ');
-                return [
-                  t.displayDate,
-                  t.type,
-                  subStr.isNotEmpty ? subStr : t.productName,
-                  t.quantity.toString(),
-                  t.remarks?.isNotEmpty == true ? t.remarks! : '-',
-                ];
-              }).toList(),
-            ),
           ];
         },
       ),
@@ -658,21 +795,50 @@ class PdfService {
     return pdf.save();
   }
 
-  /// Print or preview inventory stock report PDF via native dialog
-  Future<void> printOrPreviewInventoryStockReportPdf({
+  /// Generates and writes inventory PDF to temporary storage
+  Future<File> saveInventoryStockReportPdfFile({
     required String productName,
     required List<InventoryTransaction> transactions,
+    String? subProductSummary,
     String? filterType,
+    String? dateRangeText,
+    DateTime? generatedAt,
   }) async {
     final pdfBytes = await generateInventoryStockReportPdf(
       productName: productName,
       transactions: transactions,
+      subProductSummary: subProductSummary,
       filterType: filterType,
+      dateRangeText: dateRangeText,
+      generatedAt: generatedAt,
+    );
+    final tempDir = await getTemporaryDirectory();
+    final sanitizedProduct = productName.replaceAll(RegExp(r'[^\w\s]+'), '_').trim();
+    final fileName = 'EquipTrack_${sanitizedProduct}_Stock_Report_${DateTime.now().toFileTimestamp()}.pdf';
+    final file = File('${tempDir.path}/$fileName');
+    await file.writeAsBytes(pdfBytes, flush: true);
+    return file;
+  }
+
+  /// Print or preview inventory stock report PDF via native dialog
+  Future<void> printOrPreviewInventoryStockReportPdf({
+    required String productName,
+    required List<InventoryTransaction> transactions,
+    String? subProductSummary,
+    String? filterType,
+    String? dateRangeText,
+  }) async {
+    final pdfBytes = await generateInventoryStockReportPdf(
+      productName: productName,
+      transactions: transactions,
+      subProductSummary: subProductSummary,
+      filterType: filterType,
+      dateRangeText: dateRangeText,
     );
 
     await Printing.layoutPdf(
       onLayout: (format) async => pdfBytes,
-      name: 'Stock_Report_${productName.replaceAll(RegExp(r"[^\w\s]+"), "_")}',
+      name: 'EquipTrack_${productName.replaceAll(RegExp(r"[^\w\s]+"), "_")}_Stock_Report',
     );
   }
 
@@ -680,20 +846,18 @@ class PdfService {
   Future<void> shareInventoryStockReportPdf({
     required String productName,
     required List<InventoryTransaction> transactions,
+    String? subProductSummary,
     String? filterType,
+    String? dateRangeText,
   }) async {
     try {
-      final pdfBytes = await generateInventoryStockReportPdf(
+      final file = await saveInventoryStockReportPdfFile(
         productName: productName,
         transactions: transactions,
+        subProductSummary: subProductSummary,
         filterType: filterType,
+        dateRangeText: dateRangeText,
       );
-
-      final tempDir = await getTemporaryDirectory();
-      final sanitizedProduct = productName.replaceAll(RegExp(r'[^\w\s]+'), '_');
-      final fileName = 'Stock_Report_${sanitizedProduct}_${DateTime.now().toFileTimestamp()}.pdf';
-      final file = File('${tempDir.path}/$fileName');
-      await file.writeAsBytes(pdfBytes, flush: true);
 
       await SharePlus.instance.share(
         ShareParams(

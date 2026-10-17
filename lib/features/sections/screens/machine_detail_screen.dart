@@ -157,6 +157,53 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
     );
   }
 
+  void _exportFullMachinePdf({
+    required BuildContext context,
+    required dynamic machine,
+    required List<Category> categories,
+    required List<Section> allSections,
+  }) async {
+    List<Section> sections = allSections;
+    List<Category> cats = categories;
+
+    if (sections.isEmpty) {
+      try {
+        sections = await ref.read(sectionRepositoryProvider).getSections(widget.machineId);
+      } catch (_) {}
+    }
+    if (cats.isEmpty) {
+      try {
+        cats = await ref.read(categoryRepositoryProvider).getCategories(widget.machineId);
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return;
+    if (sections.isEmpty) {
+      context.showInfoSnackBar('No components found in "${machine.name}" to export.');
+      return;
+    }
+
+    final categoryMap = {for (final c in cats) c.id: c.name};
+
+    // Sort components by Category order -> Component order
+    final List<Section> sortedSections = [];
+    for (final cat in cats) {
+      final inCat = sections.where((s) => s.categoryId == cat.id).toList();
+      sortedSections.addAll(inCat);
+    }
+    final uncategorized = sections
+        .where((s) => s.categoryId == null || !categoryMap.containsKey(s.categoryId))
+        .toList();
+    sortedSections.addAll(uncategorized);
+
+    PdfExportDialog.showMulti(
+      context,
+      machine: machine,
+      selectedSections: sortedSections,
+      categoryNames: categoryMap,
+    );
+  }
+
   void _exportCategoryPdf({
     required BuildContext context,
     required dynamic machine,
@@ -222,6 +269,16 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                             ],
                           ),
                         ),
+                        const PopupMenuItem(
+                          value: 'export_pdf',
+                          child: Row(
+                            children: [
+                              Icon(Icons.picture_as_pdf_outlined, size: 18),
+                              SizedBox(width: 12),
+                              Text('Export PDF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
                         const PopupMenuDivider(),
                         const PopupMenuItem(
                           value: 'edit_machine',
@@ -249,6 +306,15 @@ class _MachineDetailScreenState extends ConsumerState<MachineDetailScreen> {
                           AddEditCategoryDialog.show(
                             context,
                             machineId: widget.machineId,
+                          );
+                        } else if (action == 'export_pdf') {
+                          final allSections = sectionsAsync.value ?? [];
+                          final allCats = categoriesAsync.value ?? [];
+                          _exportFullMachinePdf(
+                            context: context,
+                            machine: machine,
+                            categories: allCats,
+                            allSections: allSections,
                           );
                         } else if (action == 'edit_machine') {
                           final updated = await AddEditMachineDialog.show(

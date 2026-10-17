@@ -7,8 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/global_app_header.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
-import '../../../core/services/pdf_service.dart';
-import '../../../data/repositories/inventory_repository.dart';
+import '../widgets/inventory_pdf_export_dialog.dart';
 import '../widgets/stock_in_out_dialog.dart';
 
 class InventoryHomeScreen extends ConsumerStatefulWidget {
@@ -94,51 +93,11 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
     }
   }
 
-  Future<void> _exportProductStockPdf(InventoryProduct product) async {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Text('Generating PDF report for ${product.name}...'),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
-      final transactions = await ref.read(inventoryRepositoryProvider).getTransactions(
-        productId: product.id,
-        limit: 1000,
-      );
-
-      if (!mounted) return;
-      if (transactions.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No stock transactions found for ${product.name}')),
-        );
-        return;
-      }
-
-      await PdfService().printOrPreviewInventoryStockReportPdf(
-        productName: product.name,
-        transactions: transactions,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate PDF: ${e.toString().replaceAll("Exception:", "").trim()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  void _exportProductStockPdf(InventoryProduct product) {
+    InventoryPdfExportDialog.show(
+      context,
+      product: product,
+    );
   }
 
   Future<void> _showStockModal(BuildContext context, InventorySubProduct subProduct, String type) async {
