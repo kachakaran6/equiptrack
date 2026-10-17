@@ -17,6 +17,7 @@ import '../../../data/repositories/inventory_repository.dart';
 import '../../../models/inventory_models.dart';
 import '../../reports/models/report_filter_options.dart';
 import '../../reports/widgets/report_date_filter_selector.dart';
+import '../controllers/inventory_controller.dart';
 
 enum InventoryPdfExportStatus {
   ready,
@@ -252,10 +253,28 @@ class _InventoryPdfExportDialogState extends ConsumerState<InventoryPdfExportDia
           ? null
           : ReportFilterHelper.getDisplayText(_datePreset, _dateRange);
 
+      final products = ref.read(inventoryProductsProvider).asData?.value ?? [];
+      final subProductNamesMap = <String, String>{};
+      for (final p in products) {
+        for (final sub in p.subProducts) {
+          if (sub.values.isNotEmpty) {
+            subProductNamesMap[sub.id] = sub.values.entries.map((e) => '${e.key}: ${e.value}').join(' | ');
+          }
+        }
+      }
+      if (widget.product != null) {
+        for (final sub in widget.product!.subProducts) {
+          if (sub.values.isNotEmpty) {
+            subProductNamesMap[sub.id] = sub.values.entries.map((e) => '${e.key}: ${e.value}').join(' | ');
+          }
+        }
+      }
+
       const pdfService = PdfService();
       final pdfBytes = await pdfService.generateInventoryStockReportPdf(
         productName: effectiveProductName,
         subProductSummary: widget.subProductSummary,
+        subProductNamesMap: subProductNamesMap,
         transactions: filtered,
         filterType: _selectedType,
         dateRangeText: dateRangeText,
@@ -270,6 +289,7 @@ class _InventoryPdfExportDialogState extends ConsumerState<InventoryPdfExportDia
       final file = await pdfService.saveInventoryStockReportPdfFile(
         productName: effectiveProductName,
         subProductSummary: widget.subProductSummary,
+        subProductNamesMap: subProductNamesMap,
         transactions: filtered,
         filterType: _selectedType,
         dateRangeText: dateRangeText,
@@ -715,7 +735,7 @@ class _InventoryPdfExportDialogState extends ConsumerState<InventoryPdfExportDia
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'A4 document layout ready for printing, archiving, or sharing',
+                      'Per sub-product dedicated pages with 4-column table (Date, Notes, Type, Amount)',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 12,

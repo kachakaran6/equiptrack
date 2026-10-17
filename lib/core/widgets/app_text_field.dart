@@ -21,6 +21,9 @@ class AppTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final String? keyString;
   final bool autofocus;
+  final Iterable<String>? autofillHints;
+  final bool enableSuggestions;
+  final bool autocorrect;
 
   const AppTextField({
     super.key,
@@ -41,6 +44,9 @@ class AppTextField extends StatefulWidget {
     this.focusNode,
     this.keyString,
     this.autofocus = false,
+    this.autofillHints,
+    this.enableSuggestions = true,
+    this.autocorrect = true,
   });
 
   @override
@@ -100,6 +106,9 @@ class _AppTextFieldState extends State<AppTextField> {
           enabled: widget.enabled,
           focusNode: widget.focusNode,
           autofocus: widget.autofocus,
+          autofillHints: widget.autofillHints,
+          enableSuggestions: widget.enableSuggestions,
+          autocorrect: widget.autocorrect,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w500,

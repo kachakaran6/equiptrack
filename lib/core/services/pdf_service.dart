@@ -469,11 +469,18 @@ class PdfService {
         .trim();
   }
 
-  /// Generates a structured A4 PDF report for inventory transactions of a main product or sub-product
+  /// Generates a structured A4 PDF report with a separate page per sub-product.
+  /// Each sub-product page has a 4-column tabular structure:
+  /// 1. Date
+  /// 2. Notes
+  /// 3. Type
+  /// 4. Amount
+  /// Every sub-product begins on a new page, and only sub-products with transactions are included.
   Future<Uint8List> generateInventoryStockReportPdf({
     required String productName,
     required List<InventoryTransaction> transactions,
     String? subProductSummary,
+    Map<String, String>? subProductNamesMap,
     String? filterType,
     String? dateRangeText,
     DateTime? generatedAt,
@@ -483,7 +490,7 @@ class PdfService {
     }
 
     final timestamp = generatedAt ?? DateTime.now();
-    final title = subProductSummary != null && subProductSummary.isNotEmpty
+    final title = subProductSummary != null && subProductSummary.trim().isNotEmpty
         ? 'Stock Report - ${_sanitizePdfText(productName)} - ${_sanitizePdfText(subProductSummary)}'
         : 'Stock Report - ${_sanitizePdfText(productName)}';
 
@@ -492,305 +499,320 @@ class PdfService {
       author: AppConstants.appName,
     );
 
-    // Sort transactions date-wise (newest/most recent first)
-    final sortedTransactions = List<InventoryTransaction>.from(transactions)
-      ..sort((a, b) {
-        final dateA = DateTime.tryParse(a.date) ?? a.createdAt;
-        final dateB = DateTime.tryParse(b.date) ?? b.createdAt;
-        final cmp = dateB.compareTo(dateA);
-        if (cmp != 0) return cmp;
-        return b.createdAt.compareTo(a.createdAt);
+    int sortTransactions(InventoryTransaction a, InventoryTransaction b) {
+      final dateA = DateTime.tryParse(a.date) ?? a.createdAt;
+      final dateB = DateTime.tryParse(b.date) ?? b.createdAt;
+      final cmp = dateB.compareTo(dateA);
+      if (cmp != 0) return cmp;
+      return b.createdAt.compareTo(a.createdAt);
+    }
+
+    // Build sub-product groups. Only sub-products with at least 1 transaction get a page.
+    final List<_SubProductReportGroup> groups = [];
+
+    if (subProductSummary != null && subProductSummary.trim().isNotEmpty) {
+      final sorted = List<InventoryTransaction>.from(transactions)..sort(sortTransactions);
+      groups.add(_SubProductReportGroup(
+        subProductId: sorted.first.subProductId,
+        productName: productName.trim().isNotEmpty
+            ? productName.trim()
+            : (sorted.first.productName.trim().isNotEmpty ? sorted.first.productName.trim() : 'Product'),
+        subProductSummary: subProductSummary.trim(),
+        transactions: sorted,
+      ));
+    } else {
+      final Map<String, List<InventoryTransaction>> grouped = {};
+      for (final t in transactions) {
+        final key = t.subProductId.trim().isNotEmpty
+            ? t.subProductId.trim()
+            : (t.subProductValues.isNotEmpty
+                ? t.subProductValues.entries.map((e) => '${e.key}:${e.value}').join('|')
+                : 'prod_${t.productId}');
+        grouped.putIfAbsent(key, () => []).add(t);
+      }
+
+      for (final entry in grouped.entries) {
+        final groupTxs = entry.value;
+        if (groupTxs.isEmpty) continue; // Only sub-products with IN or OUT transactions
+
+        final sorted = List<InventoryTransaction>.from(groupTxs)..sort(sortTransactions);
+
+        // Determine human-readable summary
+        String summary = '';
+        if (subProductNamesMap != null && subProductNamesMap.containsKey(entry.key)) {
+          summary = subProductNamesMap[entry.key]!;
+        } else {
+          final txWithValues = sorted.where((t) => t.subProductValues.isNotEmpty).firstOrNull;
+          if (txWithValues != null) {
+            summary = txWithValues.subProductValues.entries
+                .map((e) => '${e.key}: ${e.value}')
+                .join(' | ');
+          }
+        }
+
+        if (summary.isEmpty) {
+          summary = 'Default / Main Item';
+        }
+
+        final txWithProdName = sorted.where((t) => t.productName.trim().isNotEmpty).firstOrNull;
+        final effectiveProd = txWithProdName != null && txWithProdName.productName.trim().isNotEmpty
+            ? txWithProdName.productName.trim()
+            : (productName.trim().isNotEmpty && productName != 'All Products' ? productName.trim() : 'Product');
+
+        groups.add(_SubProductReportGroup(
+          subProductId: entry.key,
+          productName: effectiveProd,
+          subProductSummary: summary,
+          transactions: sorted,
+        ));
+      }
+
+      // Sort groups alphabetically by product name then sub-product summary
+      groups.sort((a, b) {
+        final pCmp = a.productName.compareTo(b.productName);
+        if (pCmp != 0) return pCmp;
+        return a.subProductSummary.compareTo(b.subProductSummary);
       });
+    }
 
-    final totalIn = sortedTransactions.where((t) => t.type == 'IN').fold<int>(0, (s, t) => s + t.quantity);
-    final totalOut = sortedTransactions.where((t) => t.type == 'OUT').fold<int>(0, (s, t) => s + t.quantity);
-    final netChange = totalIn - totalOut;
+    if (groups.isEmpty) {
+      throw const ValidationFailure('Cannot generate PDF: No inventory transactions found to export.');
+    }
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
-        header: (pw.Context context) {
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(bottom: 16),
-            padding: const pw.EdgeInsets.only(bottom: 8),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(
-                bottom: pw.BorderSide(color: borderRowColor, width: 1),
-              ),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'EQUIPTRACK INVENTORY STOCK REPORT',
-                  style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                    color: primaryPdfColor,
-                  ),
-                ),
-                pw.Text(
-                  'Page ${context.pageNumber} of ${context.pagesCount}',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: textMutedColor,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-        footer: (pw.Context context) {
-          return pw.Container(
-            margin: const pw.EdgeInsets.only(top: 16),
-            padding: const pw.EdgeInsets.only(top: 8),
-            decoration: const pw.BoxDecoration(
-              border: pw.Border(
-                top: pw.BorderSide(color: borderRowColor, width: 1),
-              ),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'EquipTrack - Confidential Inventory Record',
-                  style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
-                ),
-                pw.Text(
-                  'Generated on ${timestamp.toReadableDateTime()}',
-                  style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
-                ),
-              ],
-            ),
-          );
-        },
-        build: (pw.Context context) {
-          final isSubProductReport = subProductSummary != null && subProductSummary.trim().isNotEmpty;
-          final sanitizedProdName = _sanitizePdfText(productName);
-          final sanitizedSubSummary = _sanitizePdfText(subProductSummary);
-          final sanitizedDateFilter = _sanitizePdfText(dateRangeText);
+    // Generate a dedicated page (pw.MultiPage) for every sub-product
+    for (final group in groups) {
+      final subTransactions = group.transactions;
+      final totalIn = subTransactions.where((t) => t.type == 'IN').fold<int>(0, (s, t) => s + t.quantity);
+      final totalOut = subTransactions.where((t) => t.type == 'OUT').fold<int>(0, (s, t) => s + t.quantity);
+      final netChange = totalIn - totalOut;
 
-          return [
-            // Top Summary Card
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                color: headerBgColor,
-                borderRadius: pw.BorderRadius.circular(6),
-                border: pw.Border.all(color: borderRowColor),
+      final sanitizedProdName = _sanitizePdfText(group.productName);
+      final sanitizedSubSummary = _sanitizePdfText(group.subProductSummary);
+      final sanitizedDateFilter = _sanitizePdfText(dateRangeText);
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(36),
+          header: (pw.Context context) {
+            return pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 14),
+              padding: const pw.EdgeInsets.only(bottom: 8),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: borderRowColor, width: 1),
+                ),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'MAIN PRODUCT: ${sanitizedProdName.toUpperCase()}',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                            color: textDarkColor,
+                  pw.Text(
+                    'EQUIPTRACK INVENTORY STOCK REPORT',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: primaryPdfColor,
+                    ),
+                  ),
+                  pw.Text(
+                    'Page ${context.pageNumber} of ${context.pagesCount}',
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: textMutedColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          footer: (pw.Context context) {
+            return pw.Container(
+              margin: const pw.EdgeInsets.only(top: 14),
+              padding: const pw.EdgeInsets.only(top: 8),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  top: pw.BorderSide(color: borderRowColor, width: 1),
+                ),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'EquipTrack - Confidential Inventory Record',
+                    style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
+                  ),
+                  pw.Text(
+                    'Generated on ${timestamp.toReadableDateTime()}',
+                    style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
+                  ),
+                ],
+              ),
+            );
+          },
+          build: (pw.Context context) {
+            return [
+              // Top Summary Card for this Sub-Product
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: headerBgColor,
+                  borderRadius: pw.BorderRadius.circular(6),
+                  border: pw.Border.all(color: borderRowColor),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'PRODUCT: ${sanitizedProdName.toUpperCase()}',
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              fontWeight: pw.FontWeight.bold,
+                              color: textDarkColor,
+                            ),
                           ),
-                        ),
-                        if (isSubProductReport) ...[
-                          pw.SizedBox(height: 4),
+                          pw.SizedBox(height: 3),
                           pw.Text(
                             'SUB-PRODUCT: $sanitizedSubSummary',
                             style: pw.TextStyle(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: pw.FontWeight.bold,
                               color: primaryPdfColor,
                             ),
                           ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            'Filter: ${filterType ?? "ALL"}  |  Transactions: ${subTransactions.length}',
+                            style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
+                          ),
+                          if (sanitizedDateFilter.isNotEmpty) ...[
+                            pw.SizedBox(height: 2),
+                            pw.Row(
+                              children: [
+                                pw.Text(
+                                  'Date Filter: ',
+                                  style: pw.TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: textMutedColor,
+                                  ),
+                                ),
+                                pw.Text(
+                                  sanitizedDateFilter,
+                                  style: pw.TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: textDarkColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                        pw.SizedBox(height: 5),
-                        pw.Text(
-                          'Filter: ${filterType ?? "ALL"}  |  Total Transactions: ${sortedTransactions.length}',
-                          style: const pw.TextStyle(fontSize: 8.5, color: textMutedColor),
-                        ),
-                        if (sanitizedDateFilter.isNotEmpty) ...[
-                          pw.SizedBox(height: 3),
-                          pw.Row(
+                      ),
+                    ),
+                    pw.SizedBox(width: 12),
+                    pw.Row(
+                      children: [
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: pw.BoxDecoration(
+                            color: const PdfColor(0.85, 0.95, 0.88),
+                            borderRadius: pw.BorderRadius.circular(4),
+                            border: pw.Border.all(color: const PdfColor(0.7, 0.9, 0.75), width: 0.5),
+                          ),
+                          child: pw.Column(
                             children: [
-                              pw.Text(
-                                'Date Filter: ',
-                                style: pw.TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: textMutedColor,
-                                ),
-                              ),
-                              pw.Text(
-                                sanitizedDateFilter,
-                                style: pw.TextStyle(
-                                  fontSize: 8.5,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: textDarkColor,
-                                ),
-                              ),
+                              pw.Text('TOTAL IN', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.green900)),
+                              pw.SizedBox(height: 2),
+                              pw.Text('+$totalIn', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.green900)),
                             ],
                           ),
-                        ],
+                        ),
+                        pw.SizedBox(width: 6),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: pw.BoxDecoration(
+                            color: const PdfColor(0.98, 0.88, 0.88),
+                            borderRadius: pw.BorderRadius.circular(4),
+                            border: pw.Border.all(color: const PdfColor(0.95, 0.75, 0.75), width: 0.5),
+                          ),
+                          child: pw.Column(
+                            children: [
+                              pw.Text('TOTAL OUT', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.red900)),
+                              pw.SizedBox(height: 2),
+                              pw.Text('-$totalOut', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                            ],
+                          ),
+                        ),
+                        pw.SizedBox(width: 6),
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: pw.BoxDecoration(
+                            color: const PdfColor(0.9, 0.93, 0.98),
+                            borderRadius: pw.BorderRadius.circular(4),
+                            border: pw.Border.all(color: const PdfColor(0.75, 0.82, 0.95), width: 0.5),
+                          ),
+                          child: pw.Column(
+                            children: [
+                              pw.Text('NET STOCK', style: const pw.TextStyle(fontSize: 7.5, color: primaryPdfColor)),
+                              pw.SizedBox(height: 2),
+                              pw.Text('$netChange', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: primaryPdfColor)),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  pw.SizedBox(width: 12),
-                  pw.Row(
-                    children: [
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: pw.BoxDecoration(
-                          color: const PdfColor(0.85, 0.95, 0.88),
-                          borderRadius: pw.BorderRadius.circular(4),
-                          border: pw.Border.all(color: const PdfColor(0.7, 0.9, 0.75), width: 0.5),
-                        ),
-                        child: pw.Column(
-                          children: [
-                            pw.Text('TOTAL IN', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.green900)),
-                            pw.SizedBox(height: 2),
-                            pw.Text('+$totalIn', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.green900)),
-                          ],
-                        ),
-                      ),
-                      pw.SizedBox(width: 6),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: pw.BoxDecoration(
-                          color: const PdfColor(0.98, 0.88, 0.88),
-                          borderRadius: pw.BorderRadius.circular(4),
-                          border: pw.Border.all(color: const PdfColor(0.95, 0.75, 0.75), width: 0.5),
-                        ),
-                        child: pw.Column(
-                          children: [
-                            pw.Text('TOTAL OUT', style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.red900)),
-                            pw.SizedBox(height: 2),
-                            pw.Text('-$totalOut', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
-                          ],
-                        ),
-                      ),
-                      pw.SizedBox(width: 6),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: pw.BoxDecoration(
-                          color: const PdfColor(0.9, 0.93, 0.98),
-                          borderRadius: pw.BorderRadius.circular(4),
-                          border: pw.Border.all(color: const PdfColor(0.75, 0.82, 0.95), width: 0.5),
-                        ),
-                        child: pw.Column(
-                          children: [
-                            pw.Text('NET STOCK', style: const pw.TextStyle(fontSize: 7.5, color: primaryPdfColor)),
-                            pw.SizedBox(height: 2),
-                            pw.Text('$netChange', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: primaryPdfColor)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            pw.SizedBox(height: 16),
+              pw.SizedBox(height: 14),
 
-            // Date-wise Transactions Table
-            if (isSubProductReport)
+              // 4 Columns Table: Date, Notes, Type, Amount
               pw.TableHelper.fromTextArray(
                 border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
                 headerStyle: pw.TextStyle(
                   color: textDarkColor,
                   fontWeight: pw.FontWeight.bold,
-                  fontSize: 9,
+                  fontSize: 9.5,
                 ),
                 headerDecoration: const pw.BoxDecoration(color: headerBgColor),
-                headerPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                headerPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
                 cellAlignments: {
-                  0: pw.Alignment.center,
+                  0: pw.Alignment.centerLeft,
                   1: pw.Alignment.centerLeft,
                   2: pw.Alignment.center,
                   3: pw.Alignment.centerRight,
-                  4: pw.Alignment.centerLeft,
                 },
-                headers: ['#', 'Date', 'Type', 'Quantity', 'Remarks'],
+                headers: ['Date', 'Notes', 'Type', 'Amount'],
                 columnWidths: {
-                  0: const pw.FixedColumnWidth(28),
-                  1: const pw.FixedColumnWidth(85),
-                  2: const pw.FixedColumnWidth(55),
-                  3: const pw.FixedColumnWidth(70),
-                  4: const pw.FlexColumnWidth(1),
+                  0: const pw.FixedColumnWidth(85),
+                  1: const pw.FlexColumnWidth(1),
+                  2: const pw.FixedColumnWidth(60),
+                  3: const pw.FixedColumnWidth(75),
                 },
-                data: sortedTransactions.asMap().entries.map((entry) {
-                  final idx = entry.key + 1;
-                  final t = entry.value;
+                data: subTransactions.map((t) {
+                  final notes = t.remarks?.trim().isNotEmpty == true ? _sanitizePdfText(t.remarks!) : '-';
                   final qtyDisplay = t.isIn ? '+${t.quantity}' : '-${t.quantity}';
-                  final remarks = t.remarks?.trim().isNotEmpty == true ? _sanitizePdfText(t.remarks) : '-';
                   return [
-                    '$idx',
-                    t.displayDate,
+                    t.displayDate.isNotEmpty ? t.displayDate : (t.date.isNotEmpty ? t.date : '-'),
+                    notes,
                     t.type.toUpperCase(),
                     qtyDisplay,
-                    remarks,
-                  ];
-                }).toList(),
-              )
-            else
-              pw.TableHelper.fromTextArray(
-                border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
-                headerStyle: pw.TextStyle(
-                  color: textDarkColor,
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 9,
-                ),
-                headerDecoration: const pw.BoxDecoration(color: headerBgColor),
-                headerPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
-                cellAlignments: {
-                  0: pw.Alignment.center,
-                  1: pw.Alignment.centerLeft,
-                  2: pw.Alignment.center,
-                  3: pw.Alignment.centerRight,
-                  4: pw.Alignment.centerLeft,
-                  5: pw.Alignment.centerLeft,
-                },
-                headers: ['#', 'Date', 'Type', 'Quantity', 'Sub-Product / Attributes', 'Remarks'],
-                columnWidths: {
-                  0: const pw.FixedColumnWidth(28),
-                  1: const pw.FixedColumnWidth(80),
-                  2: const pw.FixedColumnWidth(50),
-                  3: const pw.FixedColumnWidth(65),
-                  4: const pw.FlexColumnWidth(2.5),
-                  5: const pw.FlexColumnWidth(1.5),
-                },
-                data: sortedTransactions.asMap().entries.map((entry) {
-                  final idx = entry.key + 1;
-                  final t = entry.value;
-                  final subStr = t.subProductValues.entries
-                      .map((e) => '${e.key}: ${e.value}')
-                      .join(' | ');
-                  final qtyDisplay = t.isIn ? '+${t.quantity}' : '-${t.quantity}';
-                  final itemDisplay = subStr.isNotEmpty
-                      ? _sanitizePdfText(subStr)
-                      : (t.productName.isNotEmpty ? _sanitizePdfText(t.productName) : '-');
-                  final remarks = t.remarks?.trim().isNotEmpty == true ? _sanitizePdfText(t.remarks) : '-';
-                  return [
-                    '$idx',
-                    t.displayDate,
-                    t.type.toUpperCase(),
-                    qtyDisplay,
-                    itemDisplay,
-                    remarks,
                   ];
                 }).toList(),
               ),
-          ];
-        },
-      ),
-    );
+            ];
+          },
+        ),
+      );
+    }
 
     return pdf.save();
   }
@@ -800,6 +822,7 @@ class PdfService {
     required String productName,
     required List<InventoryTransaction> transactions,
     String? subProductSummary,
+    Map<String, String>? subProductNamesMap,
     String? filterType,
     String? dateRangeText,
     DateTime? generatedAt,
@@ -808,6 +831,7 @@ class PdfService {
       productName: productName,
       transactions: transactions,
       subProductSummary: subProductSummary,
+      subProductNamesMap: subProductNamesMap,
       filterType: filterType,
       dateRangeText: dateRangeText,
       generatedAt: generatedAt,
@@ -825,6 +849,7 @@ class PdfService {
     required String productName,
     required List<InventoryTransaction> transactions,
     String? subProductSummary,
+    Map<String, String>? subProductNamesMap,
     String? filterType,
     String? dateRangeText,
   }) async {
@@ -832,6 +857,7 @@ class PdfService {
       productName: productName,
       transactions: transactions,
       subProductSummary: subProductSummary,
+      subProductNamesMap: subProductNamesMap,
       filterType: filterType,
       dateRangeText: dateRangeText,
     );
@@ -847,6 +873,7 @@ class PdfService {
     required String productName,
     required List<InventoryTransaction> transactions,
     String? subProductSummary,
+    Map<String, String>? subProductNamesMap,
     String? filterType,
     String? dateRangeText,
   }) async {
@@ -855,6 +882,7 @@ class PdfService {
         productName: productName,
         transactions: transactions,
         subProductSummary: subProductSummary,
+        subProductNamesMap: subProductNamesMap,
         filterType: filterType,
         dateRangeText: dateRangeText,
       );
@@ -872,3 +900,18 @@ class PdfService {
     }
   }
 }
+
+class _SubProductReportGroup {
+  final String subProductId;
+  final String productName;
+  final String subProductSummary;
+  final List<InventoryTransaction> transactions;
+
+  _SubProductReportGroup({
+    required this.subProductId,
+    required this.productName,
+    required this.subProductSummary,
+    required this.transactions,
+  });
+}
+

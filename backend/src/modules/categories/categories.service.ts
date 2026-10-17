@@ -272,71 +272,20 @@ export class CategoriesService {
   }
 
   /**
-   * Delete category with transactional auditing and affected section unlinking
+   * Delete category — Permanently disabled to protect system integrity
    */
   static async deleteCategory(
     context: AuditContext,
     categoryId: string,
     reason?: string
   ): Promise<boolean> {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // 1. Fetch before snapshot with row lock
-      const existing = await client.query<CategoryRow>(
-        'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1 FOR UPDATE',
-        [categoryId]
-      );
-      if (existing.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return false;
-      }
-      const before = existing.rows[0];
-
-      // 2. Count sections affected by unlinking
-      const secCountRes = await client.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM sections WHERE category_id = $1',
-        [categoryId]
-      );
-      const affectedSectionsCount = parseInt(secCountRes.rows[0]?.count ?? '0', 10);
-
-      // 3. Explicitly unbind sections
-      await client.query('UPDATE sections SET category_id = NULL WHERE category_id = $1', [categoryId]);
-
-      // 4. Delete the category record
-      const result = await client.query('DELETE FROM categories WHERE id = $1 RETURNING id', [categoryId]);
-      const deleted = (result.rowCount ?? 0) > 0;
-
-      // 5. Record transactional audit event
-      await AuditService.recordMutation(client, context, {
-        action: 'category.deleted',
-        resourceType: 'category',
-        resourceId: categoryId,
-        resourceLabel: before.name,
-        before: before as unknown as Record<string, unknown>,
-        after: null,
-        reason,
-        metadata: {
-          affectedSectionsCount,
-          unlinkedAt: new Date().toISOString(),
-        },
-      });
-
-      await client.query('COMMIT');
-      return deleted;
-    } catch (err: any) {
-      await client.query('ROLLBACK');
-      await AuditService.recordFailure(context, {
-        action: 'category.deleted',
-        resourceType: 'category',
-        resourceId: categoryId,
-        error: err,
-        reason,
-      });
-      throw err;
-    } finally {
-      client.release();
-    }
+    await AuditService.recordFailure(context, {
+      action: 'category.deleted',
+      resourceType: 'category',
+      resourceId: categoryId,
+      error: new Error('Category deletion is permanently disabled to protect system data integrity.'),
+      reason,
+    });
+    throw new Error('Category deletion is permanently disabled to protect system data integrity.');
   }
 }

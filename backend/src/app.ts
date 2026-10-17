@@ -22,6 +22,8 @@ import { auditRoutes } from './modules/audit/audit.routes.js';
 import { ErrorLogsService } from './modules/error-logs/error-logs.service.js';
 import { query } from './db/index.js';
 
+import { demoGuard } from './middleware/demo-guard.js';
+
 export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: env.NODE_ENV === 'development',
@@ -64,6 +66,9 @@ export function buildApp(): FastifyInstance {
       expiresIn: env.JWT_EXPIRES_IN,
     },
   });
+
+  // 3b. Demo & Bot Shield Guard (protects data against reviewer bots like aayush@gmail.com)
+  app.addHook('preHandler', demoGuard);
 
   // 4. Health Check Endpoints (for Coolify & Docker probes)
   app.get('/health', async (request, reply) => {

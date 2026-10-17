@@ -95,9 +95,19 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
     try {
       final name = _selectedProductName ?? (transactions.isNotEmpty ? transactions.first.productName : 'Inventory');
       final filter = ref.read(reportFilterProvider);
+      final products = ref.read(inventoryProductsProvider).asData?.value ?? [];
+      final subProductNamesMap = <String, String>{};
+      for (final p in products) {
+        for (final sub in p.subProducts) {
+          if (sub.values.isNotEmpty) {
+            subProductNamesMap[sub.id] = sub.values.entries.map((e) => '${e.key}: ${e.value}').join(' | ');
+          }
+        }
+      }
       await PdfService().shareInventoryStockReportPdf(
         productName: name,
         transactions: transactions,
+        subProductNamesMap: subProductNamesMap,
         filterType: filter.type,
       );
     } catch (e) {

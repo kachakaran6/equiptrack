@@ -173,39 +173,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               );
                             },
                           ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                              color: theme.colorScheme.error,
-                            ),
-                            tooltip: 'Delete category',
-                            splashRadius: 18,
-                            onPressed: () async {
-                              final confirm = await AppConfirmDialog.show(
-                                context: context,
-                                title: 'Delete category?',
-                                message:
-                                    'Are you sure you want to delete category "${category.name}"?',
-                                cascadeNotice:
-                                    'Components in this category will remain intact and become Uncategorized.',
-                                confirmLabel: 'Delete',
-                                isDestructive: true,
-                              );
-                              if (confirm == true) {
-                                final ok = await ref
-                                    .read(categoriesControllerProvider.notifier)
-                                    .deleteCategory(id: category.id);
-                                if (context.mounted) {
-                                  if (ok) {
-                                    context.showSuccessSnackBar('Category deleted');
-                                  } else {
-                                    context.showErrorSnackBar('Failed to delete category');
-                                  }
-                                }
-                              }
-                            },
-                          ),
                         ],
                       ),
                     ),

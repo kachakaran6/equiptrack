@@ -994,12 +994,6 @@ class _CategoryAccordionSection extends ConsumerWidget {
                             label: 'Edit Category',
                             icon: Icons.edit_outlined,
                           ),
-                          AppPopupMenuItem(
-                            value: 'delete',
-                            label: 'Delete Category',
-                            icon: Icons.delete_outline_rounded,
-                            isDestructive: true,
-                          ),
                         ],
                         onSelected: (action) async {
                           if (action == 'export_pdf') {
@@ -1010,32 +1004,6 @@ class _CategoryAccordionSection extends ConsumerWidget {
                               machineId: machineId,
                               category: category,
                             );
-                          } else if (action == 'delete') {
-                            final confirm = await AppConfirmDialog.show(
-                              context: context,
-                              title: 'Delete category?',
-                              message:
-                                  'Are you sure you want to delete category "${category.name}"?',
-                              cascadeNotice:
-                                  'Components in this category will not be deleted; they will automatically become Uncategorized.',
-                              confirmLabel: 'Delete',
-                              isDestructive: true,
-                            );
-                            if (confirm == true) {
-                              final ok = await ref
-                                  .read(categoriesControllerProvider.notifier)
-                                  .deleteCategory(
-                                    id: category.id,
-                                    machineId: machineId,
-                                  );
-                              if (context.mounted) {
-                                if (ok) {
-                                  context.showSuccessSnackBar('Category deleted');
-                                } else {
-                                  context.showErrorSnackBar('Failed to delete category');
-                                }
-                              }
-                            }
                           }
                         },
                       ),
