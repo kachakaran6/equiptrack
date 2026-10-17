@@ -8,6 +8,7 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
   inventoryFilterSchema,
+  InventoryFilterInput,
 } from './inventory.schemas.js';
 import { InventoryService } from './inventory.service.js';
 
@@ -226,7 +227,26 @@ export const inventoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/transactions', async (request, reply) => {
     const query = request.query as Record<string, unknown>;
     const parsed = inventoryFilterSchema.safeParse(query);
-    const filters = parsed.success ? parsed.data : { page: 1, limit: 50 };
+    let filters: InventoryFilterInput;
+    if (parsed.success) {
+      filters = {
+        ...parsed.data,
+        productId: (parsed.data.productId || parsed.data.product_id || undefined) || undefined,
+        subProductId: (parsed.data.subProductId || parsed.data.sub_product_id || undefined) || undefined,
+        startDate: (parsed.data.startDate || parsed.data.start_date || undefined) || undefined,
+        endDate: (parsed.data.endDate || parsed.data.end_date || undefined) || undefined,
+      };
+    } else {
+      fastify.log.warn({ err: parsed.error }, 'inventoryFilterSchema parse warning, applying fallbacks');
+      filters = {
+        page: 1,
+        limit: 500,
+        productId: typeof query.productId === 'string' && query.productId ? query.productId : (typeof query.product_id === 'string' && query.product_id ? query.product_id : undefined),
+        subProductId: typeof query.subProductId === 'string' && query.subProductId ? query.subProductId : (typeof query.sub_product_id === 'string' && query.sub_product_id ? query.sub_product_id : undefined),
+        type: typeof query.type === 'string' ? query.type : undefined,
+        search: typeof query.search === 'string' ? query.search : undefined,
+      };
+    }
 
     const result = await InventoryService.listTransactions(filters);
     return reply.status(200).send({

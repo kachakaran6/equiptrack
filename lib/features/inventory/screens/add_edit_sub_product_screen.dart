@@ -20,18 +20,67 @@ class AddEditSubProductScreen extends ConsumerStatefulWidget {
 class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, TextEditingController> _controllers = {};
+  late InventoryProduct _selectedProduct;
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    for (final field in widget.product.fields) {
-      final existingVal = widget.subProduct?.values[field.label] ??
-          widget.subProduct?.values[field.id] ??
-          '';
+    _selectedProduct = widget.product;
+    _initControllersForProduct(_selectedProduct, initialValues: widget.subProduct?.values);
+  }
+
+  void _initControllersForProduct(
+    InventoryProduct product, {
+    Map<String, String>? initialValues,
+  }) {
+    for (final field in product.fields) {
+      final existingVal = initialValues?[field.label] ?? initialValues?[field.id] ?? '';
       _controllers[field.id] = TextEditingController(text: existingVal);
     }
+  }
+
+  void _switchProduct(InventoryProduct newProduct) {
+    if (newProduct.id == _selectedProduct.id) return;
+
+    // 1. Harvest existing values mapped by normalized label
+    final Map<String, String> harvestedByLabel = {};
+    for (final field in _selectedProduct.fields) {
+      final ctrl = _controllers[field.id];
+      if (ctrl != null && ctrl.text.trim().isNotEmpty) {
+        harvestedByLabel[field.label.trim().toLowerCase()] = ctrl.text.trim();
+      }
+    }
+
+    // 2. Dispose current controllers
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _controllers.clear();
+
+    // 3. Populate new controllers with mapped similar fields
+    for (final field in newProduct.fields) {
+      final normLabel = field.label.trim().toLowerCase();
+      // Try exact or case-insensitive match from harvested values
+      String mappedVal = harvestedByLabel[normLabel] ?? '';
+
+      // If no match in currently typed, check if original subProduct had it
+      if (mappedVal.isEmpty && widget.subProduct != null) {
+        for (final entry in widget.subProduct!.values.entries) {
+          if (entry.key.trim().toLowerCase() == normLabel) {
+            mappedVal = entry.value;
+            break;
+          }
+        }
+      }
+
+      _controllers[field.id] = TextEditingController(text: mappedVal);
+    }
+
+    setState(() {
+      _selectedProduct = newProduct;
+    });
   }
 
   @override
@@ -58,13 +107,14 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
     try {
       if (widget.subProduct == null) {
         await ref.read(inventoryProductsProvider.notifier).createSubProduct(
-              widget.product.id,
+              _selectedProduct.id,
               valuesMap,
             );
       } else {
         await ref.read(inventoryProductsProvider.notifier).updateSubProduct(
               widget.subProduct!.id,
               valuesMap,
+              productId: _selectedProduct.id,
             );
       }
 
@@ -96,7 +146,16 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryPurple = const Color(0xFF7C3AED);
+    const primaryPurple = Color(0xFF7C3AED);
+
+    final allProductsAsync = ref.watch(inventoryProductsProvider);
+    final allProducts = allProductsAsync.value ?? [widget.product];
+
+    // Ensure selectedProduct matches an instance in allProducts if present
+    final currentProduct = allProducts.firstWhere(
+      (p) => p.id == _selectedProduct.id,
+      orElse: () => _selectedProduct,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -109,9 +168,9 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              // Product Badge
+              // Product Dropdown / Category Picker
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: primaryPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -119,22 +178,55 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.category, color: primaryPurple, size: 20),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Category / Main Product',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-                        ),
-                        Text(
-                          widget.product.name,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    const Icon(Icons.category, color: primaryPurple, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Category / Main Product',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey),
+                          ),
+                          DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: currentProduct.id,
+                              isExpanded: true,
+                              dropdownColor: isDark ? const Color(0xFF1E1E24) : Colors.white,
+                              icon: const Icon(Icons.arrow_drop_down, color: primaryPurple),
+                              items: allProducts.map((p) {
+                                return DropdownMenuItem<String>(
+                                  value: p.id,
+                                  child: Text(
+                                    p.name.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newProdId) {
+                                if (newProdId == null) return;
+                                final found = allProducts.firstWhere((p) => p.id == newProdId);
+                                _switchProduct(found);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
+                ),
+              ),
+
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  'Similar attributes (Make, Number, USES, etc.) are automatically mapped when changing product.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ),
 
@@ -164,7 +256,7 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
 
               const SizedBox(height: 20),
 
-              if (widget.product.fields.isEmpty)
+              if (_selectedProduct.fields.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -177,7 +269,7 @@ class _AddEditSubProductScreenState extends ConsumerState<AddEditSubProductScree
                   ),
                 )
               else
-                ...widget.product.fields.map((field) {
+                ..._selectedProduct.fields.map((field) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Column(

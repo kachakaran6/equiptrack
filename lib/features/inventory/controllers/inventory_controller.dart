@@ -77,10 +77,14 @@ class InventoryProductsNotifier extends AsyncNotifier<List<InventoryProduct>> {
     }
   }
 
-  Future<InventorySubProduct?> updateSubProduct(String id, Map<String, String> values) async {
+  Future<InventorySubProduct?> updateSubProduct(
+    String id,
+    Map<String, String> values, {
+    String? productId,
+  }) async {
     try {
       final repo = ref.read(inventoryRepositoryProvider);
-      final sub = await repo.updateSubProduct(id, values);
+      final sub = await repo.updateSubProduct(id, values, productId: productId);
       ref.invalidateSelf();
       return sub;
     } catch (e, st) {

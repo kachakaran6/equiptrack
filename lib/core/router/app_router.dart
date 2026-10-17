@@ -173,7 +173,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'reports',
                     name: 'inventoryReports',
                     parentNavigatorKey: _rootNavigatorKey,
-                    builder: (context, state) => const StockReportScreen(),
+                    builder: (context, state) {
+                      String? productId;
+                      String? productName;
+                      if (state.extra is Map) {
+                        final map = state.extra as Map;
+                        productId = map['productId'] as String?;
+                        productName = map['productName'] as String?;
+                      }
+                      productId ??= state.uri.queryParameters['productId'];
+                      productName ??= state.uri.queryParameters['productName'];
+                      return StockReportScreen(
+                        initialProductId: productId,
+                        initialProductName: productName,
+                      );
+                    },
                   ),
                 ],
               ),

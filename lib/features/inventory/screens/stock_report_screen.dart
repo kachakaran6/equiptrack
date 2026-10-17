@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/pdf_service.dart';
 import '../../../data/repositories/inventory_repository.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
 
 class StockReportScreen extends ConsumerStatefulWidget {
-  const StockReportScreen({super.key});
+  final String? initialProductId;
+  final String? initialProductName;
+
+  const StockReportScreen({
+    super.key,
+    this.initialProductId,
+    this.initialProductName,
+  });
 
   @override
   ConsumerState<StockReportScreen> createState() => _StockReportScreenState();
@@ -14,10 +22,25 @@ class StockReportScreen extends ConsumerStatefulWidget {
 
 class _StockReportScreenState extends ConsumerState<StockReportScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String? _selectedProductId;
+  String? _selectedProductName;
 
   @override
   void initState() {
     super.initState();
+    _selectedProductId = widget.initialProductId;
+    _selectedProductName = widget.initialProductName;
+
+    // Apply product filter if navigated with a specific product
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_selectedProductId != null) {
+        ref.read(reportFilterProvider.notifier).setFilter(ReportFilterState(
+          productId: _selectedProductId,
+          type: 'ALL',
+        ));
+      }
+    });
+
     // Initialize search text if existing filter has search
     final currentFilter = ref.read(reportFilterProvider);
     if (currentFilter.search != null && currentFilter.search!.isNotEmpty) {
@@ -33,6 +56,68 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
 
   void _onTypeFilterChanged(String type) {
     ref.read(reportFilterProvider.notifier).updateFilter((state) => state.copyWith(type: type));
+  }
+
+  void _onProductFilterChanged(String? productId, String? productName) {
+    setState(() {
+      _selectedProductId = productId;
+      _selectedProductName = productName;
+    });
+    ref.read(reportFilterProvider.notifier).updateFilter(
+      (state) => state.copyWith(productId: productId),
+    );
+  }
+
+  Future<void> _exportPdf(List<InventoryTransaction> transactions) async {
+    if (transactions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions to export in current view')),
+      );
+      return;
+    }
+    try {
+      final name = _selectedProductName ?? (transactions.isNotEmpty ? transactions.first.productName : 'Inventory');
+      final filter = ref.read(reportFilterProvider);
+      await PdfService().printOrPreviewInventoryStockReportPdf(
+        productName: name,
+        transactions: transactions,
+        filterType: filter.type,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to export PDF: ${e.toString().replaceAll("Exception:", "").trim()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePdf(List<InventoryTransaction> transactions) async {
+    if (transactions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions to share in current view')),
+      );
+      return;
+    }
+    try {
+      final name = _selectedProductName ?? (transactions.isNotEmpty ? transactions.first.productName : 'Inventory');
+      final filter = ref.read(reportFilterProvider);
+      await PdfService().shareInventoryStockReportPdf(
+        productName: name,
+        transactions: transactions,
+        filterType: filter.type,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to share PDF: ${e.toString().replaceAll("Exception:", "").trim()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDeleteTransaction(InventoryTransaction tx) async {
@@ -77,13 +162,29 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
   Widget build(BuildContext context) {
     final filter = ref.watch(reportFilterProvider);
     final reportsAsync = ref.watch(stockReportsProvider);
+    final productsAsync = ref.watch(inventoryProductsProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    // Resolve product name if we have an ID but no name yet
+    if (_selectedProductId != null && _selectedProductName == null) {
+      productsAsync.whenData((products) {
+        final match = products.where((p) => p.id == _selectedProductId).firstOrNull;
+        if (match != null && mounted) {
+          setState(() {
+            _selectedProductName = match.name;
+          });
+        }
+      });
+    }
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Stock Report', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _selectedProductName != null ? '${_selectedProductName!} Report' : 'Stock Report',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -95,6 +196,26 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
             }
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Export Stock Report (PDF)',
+            onPressed: () {
+              final raw = reportsAsync.asData?.value ?? [];
+              final filtered = _filterTransactions(raw);
+              _exportPdf(filtered);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Share Report (PDF)',
+            onPressed: () {
+              final raw = reportsAsync.asData?.value ?? [];
+              final filtered = _filterTransactions(raw);
+              _sharePdf(filtered);
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -106,7 +227,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back to Home Link (Ref: Image 5)
+              // Back to Home Link (Ref: Image 3)
               InkWell(
                 onTap: () {
                   if (context.canPop()) {
@@ -115,17 +236,17 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                     context.go('/inventory');
                   }
                 },
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                child: const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.arrow_back, size: 16, color: Color(0xFF7C3AED)),
-                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_back, size: 16, color: Color(0xFF7C3AED)),
+                      SizedBox(width: 4),
                       Text(
                         'Back to Home',
                         style: TextStyle(
-                          color: const Color(0xFF7C3AED),
+                          color: Color(0xFF7C3AED),
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
@@ -135,21 +256,122 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                 ),
               ),
 
-              Text(
-                'Stock Reports',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              // Title and Product Dropdown
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Stock Reports',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  // Dropdown to switch product
+                  productsAsync.when(
+                    data: (products) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _selectedProductId != null
+                                ? const Color(0xFF7C3AED)
+                                : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                            width: _selectedProductId != null ? 1.5 : 1,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: _selectedProductId,
+                            isDense: true,
+                            hint: Text(
+                              'All Products',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              ),
+                            ),
+                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF7C3AED)),
+                            dropdownColor: isDark ? const Color(0xFF242424) : Colors.white,
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('All Products', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              ),
+                              ...products.map((p) => DropdownMenuItem<String?>(
+                                    value: p.id,
+                                    child: Text(
+                                      p.name,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                    ),
+                                  )),
+                            ],
+                            onChanged: (newId) {
+                              final matched = products.where((p) => p.id == newId).firstOrNull;
+                              _onProductFilterChanged(newId, matched?.name);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, s) => const SizedBox.shrink(),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // Filter Report Search Input (Ref: Image 5)
+              // Active Product Filter Banner (If a specific product is filtered)
+              if (_selectedProductId != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2E1065) : const Color(0xFFF3E8FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF7C3AED), width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.category_rounded, size: 16, color: Color(0xFF7C3AED)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Filtered for: ${_selectedProductName?.toUpperCase() ?? "Product"}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF7C3AED),
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _onProductFilterChanged(null, null),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7C3AED),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Show All',
+                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Filter Report Search Input (Ref: Image 3)
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Filter Report...',
+                  hintText: 'Filter Report (Make, Number, Uses, remarks)...',
                   hintStyle: TextStyle(
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
                     fontSize: 14,
@@ -160,6 +382,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                           icon: const Icon(Icons.clear, size: 18),
                           onPressed: () {
                             _searchController.clear();
+                            setState(() {});
                             ref.read(reportFilterProvider.notifier).updateFilter(
                               (s) => s.copyWith(search: ''),
                             );
@@ -190,14 +413,17 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                   ),
                 ),
                 onChanged: (val) {
+                  // Instant in-memory search update
+                  setState(() {});
+                  // Also trigger backend filter query
                   ref.read(reportFilterProvider.notifier).updateFilter(
                     (s) => s.copyWith(search: val.trim()),
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Segmented Filter Tabs: [ All ] [ In ] [ Out ] (Ref: Image 5)
+              // Segmented Filter Tabs: [ All ] [ In ] [ Out ] (Ref: Image 3)
               Container(
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
@@ -229,12 +455,58 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+
+              // Export PDF and Share Action Bar
+              reportsAsync.when(
+                data: (transactions) {
+                  final displayTransactions = _filterTransactions(transactions);
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF7C3AED),
+                            side: const BorderSide(color: Color(0xFF7C3AED), width: 1.2),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                          label: Text(
+                            _selectedProductName != null
+                                ? 'Export ${_selectedProductName!} PDF'
+                                : 'Export Stock PDF',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                          onPressed: () => _exportPdf(displayTransactions),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF059669),
+                          side: const BorderSide(color: Color(0xFF059669), width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                        label: const Text('Share', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        onPressed: () => _sharePdf(displayTransactions),
+                      ),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (e, s) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 16),
 
               // Report Data / Table List
               reportsAsync.when(
                 data: (transactions) {
-                  if (transactions.isEmpty) {
+                  final displayTransactions = _filterTransactions(transactions);
+
+                  if (displayTransactions.isEmpty) {
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
@@ -255,12 +527,17 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'No stock records found',
+                              _searchController.text.isNotEmpty
+                                  ? 'No transactions matching "${_searchController.text}"'
+                                  : (_selectedProductName != null
+                                      ? 'No transactions for ${_selectedProductName!}'
+                                      : 'No stock records found'),
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.grey[400] : Colors.grey[600],
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
@@ -268,15 +545,31 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                     );
                   }
 
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: transactions.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final tx = transactions[index];
-                      return _buildTransactionCard(context, tx: tx, isDark: isDark);
-                    },
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'Showing ${displayTransactions.length} transaction${displayTransactions.length == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: displayTransactions.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final tx = displayTransactions[index];
+                          return _buildTransactionCard(context, tx: tx, isDark: isDark);
+                        },
+                      ),
+                    ],
                   );
                 },
                 loading: () => const Padding(
@@ -306,6 +599,34 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
         ),
       ),
     );
+  }
+
+  /// Client-side instant filter to guarantee exact match and instant search response
+  List<InventoryTransaction> _filterTransactions(List<InventoryTransaction> list) {
+    return list.where((tx) {
+      // 1. Product ID filter
+      if (_selectedProductId != null && tx.productId.isNotEmpty) {
+        if (tx.productId != _selectedProductId) return false;
+      }
+
+      // 2. Search query filter across all fields (Make, Number, Uses, remarks, product, quantity, date)
+      final query = _searchController.text.trim().toLowerCase();
+      if (query.isNotEmpty) {
+        final prodMatch = tx.productName.toLowerCase().contains(query);
+        final remarkMatch = (tx.remarks ?? '').toLowerCase().contains(query);
+        final typeMatch = tx.type.toLowerCase().contains(query);
+        final qtyMatch = tx.quantity.toString().contains(query);
+        final dateMatch = tx.displayDate.toLowerCase().contains(query);
+        final valuesMatch = tx.subProductValues.values.any((val) => val.toLowerCase().contains(query));
+        final keysMatch = tx.subProductValues.keys.any((key) => key.toLowerCase().contains(query));
+
+        if (!prodMatch && !remarkMatch && !typeMatch && !qtyMatch && !dateMatch && !valuesMatch && !keysMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
   }
 
   Widget _buildFilterTab({
@@ -373,7 +694,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product Name & details (Ref: Image 5)
+              // Product Name & details (Ref: Image 3)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,7 +704,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF9A3412), // Warm brown/orange brand tone from Ref Image 5
+                        color: Color(0xFF9A3412), // Warm brown/orange brand tone from Ref Image 3
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -399,7 +720,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                 ),
               ),
 
-              // Quantity badge (Ref: Image 5)
+              // Quantity badge (Ref: Image 3)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -442,7 +763,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
           const Divider(height: 1),
           const SizedBox(height: 8),
 
-          // Date, Remarks & Actions (Ref: Image 5)
+          // Date, Remarks & Actions (Ref: Image 3)
           Row(
             children: [
               Icon(Icons.calendar_today_outlined, size: 14, color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -463,7 +784,7 @@ class _StockReportScreenState extends ConsumerState<StockReportScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Red Delete Action Button (Ref: Image 5)
+              // Red Delete Action Button (Ref: Image 3)
               SizedBox(
                 height: 28,
                 child: ElevatedButton(

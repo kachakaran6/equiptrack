@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/calculated_usage_row.dart';
+import '../../models/inventory_models.dart';
 import '../../models/machine.dart';
 import '../../models/section.dart';
 import '../constants/app_constants.dart';
@@ -452,5 +453,258 @@ class PdfService {
       onLayout: (format) async => pdfBytes,
       name: 'Report_${machine.name}_${section.name}',
     );
+  }
+
+  /// Generates a structured A4 PDF report for inventory transactions of a main product
+  Future<Uint8List> generateInventoryStockReportPdf({
+    required String productName,
+    required List<InventoryTransaction> transactions,
+    String? filterType,
+    DateTime? generatedAt,
+  }) async {
+    if (transactions.isEmpty) {
+      throw const ValidationFailure('Cannot generate PDF: No inventory transactions found to export.');
+    }
+
+    final timestamp = generatedAt ?? DateTime.now();
+    final title = 'Stock Report - $productName';
+
+    final pdf = pw.Document(
+      title: title,
+      author: AppConstants.appName,
+    );
+
+    final totalIn = transactions.where((t) => t.type == 'IN').fold<int>(0, (s, t) => s + t.quantity);
+    final totalOut = transactions.where((t) => t.type == 'OUT').fold<int>(0, (s, t) => s + t.quantity);
+    final netChange = totalIn - totalOut;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(36),
+        header: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(bottom: 16),
+            padding: const pw.EdgeInsets.only(bottom: 8),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(
+                bottom: pw.BorderSide(color: borderRowColor, width: 1),
+              ),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'EQUIPTRACK INVENTORY STOCK REPORT',
+                  style: pw.TextStyle(
+                    fontSize: 13,
+                    fontWeight: pw.FontWeight.bold,
+                    color: primaryPdfColor,
+                  ),
+                ),
+                pw.Text(
+                  'Page ${context.pageNumber} of ${context.pagesCount}',
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: textMutedColor,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        footer: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(top: 16),
+            padding: const pw.EdgeInsets.only(top: 8),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(
+                top: pw.BorderSide(color: borderRowColor, width: 1),
+              ),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'EquipTrack - Confidential Inventory Record',
+                  style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
+                ),
+                pw.Text(
+                  'Generated on ${timestamp.toReadableDateTime()}',
+                  style: const pw.TextStyle(fontSize: 8, color: textMutedColor),
+                ),
+              ],
+            ),
+          );
+        },
+        build: (pw.Context context) {
+          return [
+            // Top Summary Card
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: headerBgColor,
+                borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: borderRowColor),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'MAIN PRODUCT: ${productName.toUpperCase()}',
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          color: textDarkColor,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Filter: ${filterType ?? "ALL"} • Total Transactions: ${transactions.length}',
+                        style: const pw.TextStyle(fontSize: 10, color: textMutedColor),
+                      ),
+                    ],
+                  ),
+                  pw.Row(
+                    children: [
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          color: const PdfColor(0.85, 0.95, 0.88),
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text('TOTAL IN', style: const pw.TextStyle(fontSize: 8, color: PdfColors.green900)),
+                            pw.Text('+$totalIn', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.green900)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          color: const PdfColor(0.98, 0.88, 0.88),
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text('TOTAL OUT', style: const pw.TextStyle(fontSize: 8, color: PdfColors.red900)),
+                            pw.Text('-$totalOut', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          color: const PdfColor(0.9, 0.92, 0.98),
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text('NET STOCK', style: const pw.TextStyle(fontSize: 8, color: primaryPdfColor)),
+                            pw.Text('$netChange', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: primaryPdfColor)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // Table
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: borderRowColor, width: 0.5),
+              headerStyle: pw.TextStyle(
+                color: textDarkColor,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 9,
+              ),
+              headerDecoration: const pw.BoxDecoration(color: headerBgColor),
+              headerHeight: 24,
+              cellHeight: 22,
+              cellStyle: const pw.TextStyle(fontSize: 8.5, color: textDarkColor),
+              cellAlignment: pw.Alignment.centerLeft,
+              headers: ['Date', 'Type', 'Sub-Product Attributes', 'Quantity', 'Remarks'],
+              columnWidths: {
+                0: const pw.FixedColumnWidth(65),
+                1: const pw.FixedColumnWidth(40),
+                2: const pw.FlexColumnWidth(3),
+                3: const pw.FixedColumnWidth(35),
+                4: const pw.FlexColumnWidth(2),
+              },
+              data: transactions.map((t) {
+                final subStr = t.subProductValues.entries.map((e) => '${e.key}: ${e.value}').join(' • ');
+                return [
+                  t.displayDate,
+                  t.type,
+                  subStr.isNotEmpty ? subStr : t.productName,
+                  t.quantity.toString(),
+                  t.remarks?.isNotEmpty == true ? t.remarks! : '-',
+                ];
+              }).toList(),
+            ),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  /// Print or preview inventory stock report PDF via native dialog
+  Future<void> printOrPreviewInventoryStockReportPdf({
+    required String productName,
+    required List<InventoryTransaction> transactions,
+    String? filterType,
+  }) async {
+    final pdfBytes = await generateInventoryStockReportPdf(
+      productName: productName,
+      transactions: transactions,
+      filterType: filterType,
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdfBytes,
+      name: 'Stock_Report_${productName.replaceAll(RegExp(r"[^\w\s]+"), "_")}',
+    );
+  }
+
+  /// Share inventory stock report PDF file via native sharing sheet
+  Future<void> shareInventoryStockReportPdf({
+    required String productName,
+    required List<InventoryTransaction> transactions,
+    String? filterType,
+  }) async {
+    try {
+      final pdfBytes = await generateInventoryStockReportPdf(
+        productName: productName,
+        transactions: transactions,
+        filterType: filterType,
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final sanitizedProduct = productName.replaceAll(RegExp(r'[^\w\s]+'), '_');
+      final fileName = 'Stock_Report_${sanitizedProduct}_${DateTime.now().toFileTimestamp()}.pdf';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(pdfBytes, flush: true);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          text: 'Stock Report for $productName (${transactions.length} transactions)',
+          subject: 'Stock Report: $productName',
+          files: [XFile(file.path)],
+        ),
+      );
+    } catch (e, st) {
+      AppLogger.error('Failed to share inventory PDF', e, st);
+      rethrow;
+    }
   }
 }

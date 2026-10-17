@@ -20,6 +20,8 @@ import '../../../core/widgets/status_badge.dart';
 import '../../../data/repositories/machine_repository.dart';
 import '../../../data/repositories/section_repository.dart';
 import '../../../models/machine.dart';
+import '../../../data/repositories/category_repository.dart';
+import '../../reports/widgets/pdf_export_dialog.dart';
 import '../controllers/machines_controller.dart';
 import '../widgets/add_edit_machine_dialog.dart';
 import '../widgets/duplicate_machine_dialog.dart';
@@ -253,6 +255,11 @@ class _MachineRowCard extends ConsumerWidget {
                 icon: Icons.copy_rounded,
               ),
               AppPopupMenuItem(
+                value: 'export_pdf',
+                label: 'Export Report to PDF',
+                icon: Icons.picture_as_pdf_outlined,
+              ),
+              AppPopupMenuItem(
                 value: 'delete',
                 label: 'Delete',
                 icon: Icons.delete_outline_rounded,
@@ -264,6 +271,29 @@ class _MachineRowCard extends ConsumerWidget {
                 AddEditMachineDialog.show(context, machine: machine);
               } else if (action == 'duplicate') {
                 DuplicateMachineDialog.show(context, machine: machine);
+              } else if (action == 'export_pdf') {
+                try {
+                  final sections = await ref.read(sectionRepositoryProvider).getSections(machine.id);
+                  final categories = await ref.read(categoryRepositoryProvider).getCategories(machine.id);
+                  final categoryMap = {for (final c in categories) c.id: c.name};
+
+                  if (!context.mounted) return;
+                  if (sections.isEmpty) {
+                    context.showInfoSnackBar('No components found in "${machine.name}" to export.');
+                    return;
+                  }
+
+                  PdfExportDialog.showMulti(
+                    context,
+                    machine: machine,
+                    selectedSections: sections,
+                    categoryNames: categoryMap,
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    context.showErrorSnackBar('Failed to load components for export: $e');
+                  }
+                }
               } else if (action == 'delete') {
                 final confirm = await AppConfirmDialog.show(
                   context: context,

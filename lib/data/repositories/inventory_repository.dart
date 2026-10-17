@@ -13,7 +13,7 @@ abstract class InventoryRepository {
 
   Future<InventorySubProduct> createSubProduct(String productId, Map<String, String> values);
   Future<InventorySubProduct> getSubProduct(String id);
-  Future<InventorySubProduct> updateSubProduct(String id, Map<String, String> values);
+  Future<InventorySubProduct> updateSubProduct(String id, Map<String, String> values, {String? productId});
   Future<void> deleteSubProduct(String id);
 
   Future<InventoryTransaction> createTransaction(
@@ -163,11 +163,21 @@ class ApiInventoryRepository implements InventoryRepository {
   }
 
   @override
-  Future<InventorySubProduct> updateSubProduct(String id, Map<String, String> values) async {
+  Future<InventorySubProduct> updateSubProduct(
+    String id,
+    Map<String, String> values, {
+    String? productId,
+  }) async {
     try {
+      final body = <String, dynamic>{
+        'values': values,
+      };
+      if (productId != null && productId.isNotEmpty) {
+        body['product_id'] = productId;
+      }
       final data = await _apiClient.patch(
         '/inventory/sub-products/$id',
-        body: {'values': values},
+        body: body,
       );
       return InventorySubProduct.fromJson(Map<String, dynamic>.from(data as Map));
     } catch (e, st) {

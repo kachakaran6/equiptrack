@@ -462,21 +462,46 @@ export class InventoryService {
       );
       if (subRes.rows.length === 0) throw new Error('Sub product not found');
 
+      const currentProductId = subRes.rows[0].product_id;
+      const targetProductId = input.product_id || input.productId || currentProductId;
+
+      if (targetProductId !== currentProductId) {
+        // Validate target product exists
+        const checkProd = await client.query('SELECT id FROM inventory_products WHERE id = $1', [targetProductId]);
+        if (checkProd.rows.length === 0) throw new Error('Target product category not found');
+
+        // Update product_id on the sub-product
+        await client.query(
+          'UPDATE inventory_sub_products SET product_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          [targetProductId, subProductId]
+        );
+
+        // Delete any sub_product_values whose field_id does not belong to targetProductId
+        await client.query(
+          `DELETE FROM inventory_sub_product_values 
+           WHERE sub_product_id = $1 
+             AND field_id NOT IN (SELECT id FROM inventory_product_fields WHERE product_id = $2)`,
+          [subProductId, targetProductId]
+        );
+      }
+
       const fieldsRes = await client.query<ProductFieldRow>(
         'SELECT id, label FROM inventory_product_fields WHERE product_id = $1',
-        [subRes.rows[0].product_id]
+        [targetProductId]
       );
 
-      for (const field of fieldsRes.rows) {
-        const val = input.values[field.id] ?? input.values[field.label];
-        if (val !== undefined) {
-          await client.query(
-            `INSERT INTO inventory_sub_product_values (sub_product_id, field_id, value, updated_at)
-             VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-             ON CONFLICT (sub_product_id, field_id)
-             DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
-            [subProductId, field.id, val]
-          );
+      if (input.values) {
+        for (const field of fieldsRes.rows) {
+          const val = input.values[field.id] ?? input.values[field.label];
+          if (val !== undefined) {
+            await client.query(
+              `INSERT INTO inventory_sub_product_values (sub_product_id, field_id, value, updated_at)
+               VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+               ON CONFLICT (sub_product_id, field_id)
+               DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP`,
+              [subProductId, field.id, val]
+            );
+          }
         }
       }
 
@@ -621,9 +646,9 @@ export class InventoryService {
       conditions.push(`sp.product_id = $${idx++}`);
       params.push(opts.productId);
     }
-    if (opts.type && opts.type !== 'ALL') {
+    if (opts.type && opts.type.toUpperCase() !== 'ALL') {
       conditions.push(`t.type = $${idx++}`);
-      params.push(opts.type);
+      params.push(opts.type.toUpperCase());
     }
     if (opts.startDate) {
       conditions.push(`t.date >= $${idx++}`);
@@ -634,14 +659,22 @@ export class InventoryService {
       params.push(opts.endDate);
     }
     if (opts.search && opts.search.trim()) {
-      conditions.push(`(p.name ILIKE $${idx} OR t.remarks ILIKE $${idx})`);
-      params.push(`%${opts.search.trim()}%`);
+      const term = `%${opts.search.trim()}%`;
+      conditions.push(`(
+        p.name ILIKE $${idx} 
+        OR t.remarks ILIKE $${idx} 
+        OR EXISTS (
+          SELECT 1 FROM inventory_sub_product_values v 
+          WHERE v.sub_product_id = t.sub_product_id AND v.value ILIKE $${idx}
+        )
+      )`);
+      params.push(term);
       idx++;
     }
 
     const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const page = Math.max(1, opts.page || 1);
-    const limit = Math.min(200, Math.max(1, opts.limit || 50));
+    const limit = Math.min(1000, Math.max(1, opts.limit || 50));
     const offset = (page - 1) * limit;
 
     const countRes = await query<{ count: string }>(

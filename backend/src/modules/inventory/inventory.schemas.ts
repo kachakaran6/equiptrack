@@ -20,7 +20,9 @@ export const createSubProductSchema = z.object({
 });
 
 export const updateSubProductSchema = z.object({
-  values: z.record(z.string(), z.string()),
+  values: z.record(z.string(), z.string()).optional().default({}),
+  product_id: z.string().uuid().optional(),
+  productId: z.string().uuid().optional(),
 });
 
 export const createTransactionSchema = z.object({
@@ -38,14 +40,18 @@ export const updateTransactionSchema = z.object({
 });
 
 export const inventoryFilterSchema = z.object({
-  productId: z.string().uuid().optional(),
-  subProductId: z.string().uuid().optional(),
-  type: z.enum(['IN', 'OUT', 'ALL']).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  search: z.string().optional(),
+  productId: z.string().uuid().optional().nullable().or(z.literal('')),
+  product_id: z.string().uuid().optional().nullable().or(z.literal('')),
+  subProductId: z.string().uuid().optional().nullable().or(z.literal('')),
+  sub_product_id: z.string().uuid().optional().nullable().or(z.literal('')),
+  type: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  start_date: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(),
+  end_date: z.string().optional().nullable(),
+  search: z.string().optional().nullable(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(500),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

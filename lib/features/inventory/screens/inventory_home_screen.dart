@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/global_app_header.dart';
 import '../../../models/inventory_models.dart';
 import '../controllers/inventory_controller.dart';
+import '../../../core/services/pdf_service.dart';
+import '../../../data/repositories/inventory_repository.dart';
 import '../widgets/stock_in_out_dialog.dart';
 
 class InventoryHomeScreen extends ConsumerStatefulWidget {
@@ -92,6 +94,53 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
     }
   }
 
+  Future<void> _exportProductStockPdf(InventoryProduct product) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Text('Generating PDF report for ${product.name}...'),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      final transactions = await ref.read(inventoryRepositoryProvider).getTransactions(
+        productId: product.id,
+        limit: 1000,
+      );
+
+      if (!mounted) return;
+      if (transactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No stock transactions found for ${product.name}')),
+        );
+        return;
+      }
+
+      await PdfService().printOrPreviewInventoryStockReportPdf(
+        productName: product.name,
+        transactions: transactions,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate PDF: ${e.toString().replaceAll("Exception:", "").trim()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _showStockModal(BuildContext context, InventorySubProduct subProduct, String type) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -127,6 +176,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
             icon: const Icon(Icons.assessment_outlined, size: 20),
             splashRadius: 20,
             onPressed: () {
+              ref.read(reportFilterProvider.notifier).setFilter(const ReportFilterState(type: 'ALL'));
               context.push(AppRoutes.inventoryReports);
             },
           ),
@@ -463,7 +513,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                 },
               ),
 
-            // Bottom action row: [View Report] button + Delete Product trash button (Ref: Image 4)
+            // Bottom action row: [View Report] button + [Export PDF] button + Delete Product trash button
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
               child: Row(
@@ -471,7 +521,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                   Expanded(
                     child: SizedBox(
                       height: 38,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7C3AED),
                           foregroundColor: Colors.white,
@@ -479,6 +529,7 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                         ),
                         onPressed: () {
                           // Navigate to reports filtered for this product
@@ -486,13 +537,36 @@ class _InventoryHomeScreenState extends ConsumerState<InventoryHomeScreen> {
                             productId: product.id,
                             type: 'ALL',
                           ));
-                          context.push(AppRoutes.inventoryReports);
+                          context.push(
+                            AppRoutes.inventoryReports,
+                            extra: {
+                              'productId': product.id,
+                              'productName': product.name,
+                            },
+                          );
                         },
-                        child: const Text(
+                        icon: const Icon(Icons.assessment_outlined, size: 18),
+                        label: const Text(
                           'View Report',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Export PDF button (Emerald green icon button)
+                  Container(
+                    height: 38,
+                    width: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF059669),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white, size: 20),
+                      tooltip: 'Export ${product.name} PDF Report',
+                      onPressed: () => _exportProductStockPdf(product),
                     ),
                   ),
                   const SizedBox(width: 8),

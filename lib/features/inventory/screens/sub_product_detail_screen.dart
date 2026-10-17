@@ -22,6 +22,85 @@ class SubProductDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen> {
+  Future<void> _confirmDeleteSubProduct(InventorySubProduct sub, String summaryStr) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Sub Product?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to permanently delete this sub-product ($summaryStr)?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This will permanently remove the item, its current stock, and all its transaction history. This action cannot be undone.',
+                      style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete Sub Product'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(inventoryProductsProvider.notifier).deleteSubProduct(widget.subProductId);
+        if (mounted) {
+          Navigator.of(context).pop(true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sub product deleted successfully.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: ${e.toString().replaceAll("Exception:", "").trim()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _deleteTransaction(InventoryTransaction tx) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -173,38 +252,51 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
         title: Text(widget.productName.isNotEmpty ? widget.productName : 'Item Details'),
         actions: [
           subDetailAsync.when(
-            data: (sub) => IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit item attributes',
-              onPressed: () async {
-                final products = await ref.read(inventoryRepositoryProvider).getProducts();
-                final parentProd = products.firstWhere(
-                  (p) => p.id == sub.productId,
-                  orElse: () => InventoryProduct(
-                    id: sub.productId,
-                    userId: sub.userId,
-                    name: widget.productName,
-                    createdAt: DateTime.now(),
-                    updatedAt: DateTime.now(),
-                  ),
-                );
+            data: (sub) {
+              final summaryStr = sub.values.entries.map((e) => '${e.key}: ${e.value}').join(' • ');
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit item attributes',
+                    onPressed: () async {
+                      final products = await ref.read(inventoryRepositoryProvider).getProducts();
+                      final parentProd = products.firstWhere(
+                        (p) => p.id == sub.productId,
+                        orElse: () => InventoryProduct(
+                          id: sub.productId,
+                          userId: sub.userId,
+                          name: widget.productName,
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now(),
+                        ),
+                      );
 
-                if (context.mounted) {
-                  final res = await Navigator.of(context).push<bool>(
-                    MaterialPageRoute(
-                      builder: (_) => AddEditSubProductScreen(
-                        product: parentProd,
-                        subProduct: sub,
-                      ),
-                    ),
-                  );
-                  if (res == true) {
-                    ref.invalidate(subProductDetailProvider(widget.subProductId));
-                    ref.invalidate(inventoryProductsProvider);
-                  }
-                }
-              },
-            ),
+                      if (context.mounted) {
+                        final res = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => AddEditSubProductScreen(
+                              product: parentProd,
+                              subProduct: sub,
+                            ),
+                          ),
+                        );
+                        if (res == true) {
+                          ref.invalidate(subProductDetailProvider(widget.subProductId));
+                          ref.invalidate(inventoryProductsProvider);
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    tooltip: 'Delete Sub Product',
+                    onPressed: () => _confirmDeleteSubProduct(sub, summaryStr),
+                  ),
+                ],
+              );
+            },
             loading: () => const SizedBox.shrink(),
             error: (error, stack) => const SizedBox.shrink(),
           ),
@@ -564,6 +656,29 @@ class _SubProductDetailScreenState extends ConsumerState<SubProductDetailScreen>
                   );
                 },
               ),
+
+              const SizedBox(height: 28),
+
+              // Delete Sub Product Destructive Button
+              OutlinedButton.icon(
+                onPressed: () => _confirmDeleteSubProduct(sub, summaryStr),
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                label: const Text(
+                  'Delete Sub Product',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+
+              const SizedBox(height: 32),
             ],
           );
         },
