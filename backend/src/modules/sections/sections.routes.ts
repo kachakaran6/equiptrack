@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
+import { getAuditContext } from '../audit/audit.context.js';
 import { createSectionSchema, updateSectionSchema } from './sections.schemas.js';
 import { SectionsService } from './sections.service.js';
 
@@ -41,8 +42,9 @@ export const sectionRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      const context = getAuditContext(request);
       const section = await SectionsService.createSection(
-        request.user.id,
+        context,
         request.params.machineId,
         parsed.data
       );
@@ -78,7 +80,7 @@ export const sectionRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /api/sections/:id
-  fastify.patch<{ Params: { id: string } }>('/sections/:id', async (request, reply) => {
+  fastify.patch<{ Params: { id: string }; Body?: { reason?: string } }>('/sections/:id', async (request, reply) => {
     const parsed = updateSectionSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -88,8 +90,9 @@ export const sectionRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    const context = getAuditContext(request);
     const section = await SectionsService.updateSection(
-      request.user.id,
+      context,
       request.params.id,
       parsed.data
     );
@@ -108,8 +111,16 @@ export const sectionRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /api/sections/:id
-  fastify.delete<{ Params: { id: string } }>('/sections/:id', async (request, reply) => {
-    await SectionsService.deleteSection(request.user.id, request.params.id);
+  fastify.delete<{ Params: { id: string }; Body?: { reason?: string } }>('/sections/:id', async (request, reply) => {
+    const context = getAuditContext(request);
+    const reason = (request.body as any)?.reason;
+    const deleted = await SectionsService.deleteSection(context, request.params.id, reason);
+    if (!deleted) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Section not found',
+      });
+    }
     return reply.status(200).send({
       success: true,
       message: 'Section deleted successfully',

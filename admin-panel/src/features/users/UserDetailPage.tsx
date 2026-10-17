@@ -46,11 +46,12 @@ export const UserDetailPage: React.FC = () => {
     enabled: !!id,
   })
 
-  const { data: auditLogs = [] } = useQuery({
+  const { data: auditResponse } = useQuery({
     queryKey: ['userAuditLogs', id],
-    queryFn: () => auditApi.listAuditLogs({ resource: 'users', limit: 20 }),
+    queryFn: () => auditApi.listAuditLogs({ resource_type: 'user', limit: 20 }),
     enabled: !!id,
   })
+  const auditLogs = auditResponse?.data || []
 
   const passwordMutation = useMutation({
     mutationFn: (pass: string) => usersApi.updateUserPassword(id!, pass),

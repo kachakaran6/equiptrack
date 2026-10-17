@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
+import { getAuditContext } from '../audit/audit.context.js';
 import { createCategorySchema, updateCategorySchema } from './categories.schemas.js';
 import { CategoriesService } from './categories.service.js';
 
@@ -40,7 +41,6 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
 
   // POST /api/categories — Create a new global category
   fastify.post('/categories', async (request, reply) => {
-    const user = (request as any).user;
     const parsed = createCategorySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -50,7 +50,8 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    const res = await CategoriesService.createUserCategory(user.id, parsed.data);
+    const context = getAuditContext(request);
+    const res = await CategoriesService.createUserCategory(context, parsed.data);
     if (res.error) {
       return reply.status(res.status || 400).send({
         success: false,
@@ -92,7 +93,6 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Params: { machineId: string } }>(
     '/machines/:machineId/categories',
     async (request, reply) => {
-      const user = (request as any).user;
       const parsed = createCategorySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -102,10 +102,11 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      const context = getAuditContext(request);
       const res = await CategoriesService.createCategory(
+        context,
         request.params.machineId,
-        parsed.data,
-        user?.id
+        parsed.data
       );
 
       if (res.error) {
@@ -139,7 +140,7 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /api/categories/:id
-  fastify.patch<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
+  fastify.patch<{ Params: { id: string }; Body: { reason?: string } }>('/categories/:id', async (request, reply) => {
     const parsed = updateCategorySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -149,7 +150,9 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    const context = getAuditContext(request);
     const res = await CategoriesService.updateCategory(
+      context,
       request.params.id,
       parsed.data
     );
@@ -168,8 +171,16 @@ export const categoryRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /api/categories/:id
-  fastify.delete<{ Params: { id: string } }>('/categories/:id', async (request, reply) => {
-    await CategoriesService.deleteCategory(request.params.id);
+  fastify.delete<{ Params: { id: string }; Body?: { reason?: string } }>('/categories/:id', async (request, reply) => {
+    const context = getAuditContext(request);
+    const reason = (request.body as any)?.reason;
+    const deleted = await CategoriesService.deleteCategory(context, request.params.id, reason);
+    if (!deleted) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Category not found',
+      });
+    }
     return reply.status(200).send({
       success: true,
       message: 'Category deleted successfully',

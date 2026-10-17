@@ -999,17 +999,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // AUDIT LOGS
   // ──────────────────────────────────────────────────────────────────
 
-  // GET /api/admin/audit-logs
-  fastify.get('/audit-logs', async (request, reply) => {
-    const q = request.query as Record<string, string>;
-    const { page, limit } = paginationSchema.parse(q);
-    const result = await AuditService.list({ page, limit, userId: q.userId, action: q.action });
-    return reply.send({
-      success: true,
-      data: result.rows,
-      pagination: { page, limit, total: result.total, pages: Math.ceil(result.total / limit) },
-    });
-  });
+  // Note: /audit-logs and related audit endpoints are fully handled with filtering, outbox metrics, and export by auditRoutes
 
   // ──────────────────────────────────────────────────────────────────
   // BACKUP CONFIG

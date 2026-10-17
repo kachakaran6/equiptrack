@@ -19,6 +19,30 @@ export type QueryFn = <T extends QueryResultRow = any>(
 
 let customQueryHandler: QueryFn | null = null;
 
+// Proxy pool.connect to support in-memory test mocks seamlessly
+const originalConnect = pool.connect.bind(pool);
+(pool as any).connect = async function (...args: any[]) {
+  if (customQueryHandler) {
+    return {
+      query: async (text: string, params?: any[]) => {
+        const clean = text.trim().toUpperCase();
+        if (clean === 'BEGIN' || clean === 'COMMIT' || clean === 'ROLLBACK') {
+          return { rows: [], rowCount: 0 };
+        }
+        if (clean.includes('INSERT INTO AUDIT_LOGS')) {
+          return { rows: [{ id: 'mock-audit-id-' + Date.now() }], rowCount: 1 };
+        }
+        if (clean.includes('INSERT INTO AUDIT_OUTBOX')) {
+          return { rows: [{ id: 'mock-outbox-id-' + Date.now() }], rowCount: 1 };
+        }
+        return customQueryHandler!(text, params);
+      },
+      release: () => {},
+    };
+  }
+  return (originalConnect as any)(...args);
+};
+
 export function setCustomQueryHandler(fn: QueryFn | null): void {
   customQueryHandler = fn;
 }
@@ -45,4 +69,3 @@ export async function closePool(): Promise<void> {
     await pool.end();
   }
 }
-

@@ -1,4 +1,6 @@
-import { query } from '../../db/index.js';
+import { pool } from '../../db/index.js';
+import { AuditContext } from '../audit/audit.types.js';
+import { AuditService } from '../audit/audit.service.js';
 import { CreateCategoryInput, UpdateCategoryInput } from './categories.schemas.js';
 
 export interface CategoryRow {
@@ -15,7 +17,7 @@ export class CategoriesService {
    * List all categories across the application (global/shared for all users)
    */
   static async listAllCategories(): Promise<CategoryRow[]> {
-    const result = await query<CategoryRow>(
+    const result = await pool.query<CategoryRow>(
       'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories ORDER BY name ASC'
     );
     return result.rows;
@@ -30,15 +32,13 @@ export class CategoriesService {
 
   /**
    * List categories used in a specific machine.
-   * If a category is not used by any component/section in the machine,
-   * it will not be returned unless includeUnused is true.
    */
   static async listCategoriesByMachine(
     machineId: string,
     _userId?: string,
     options: { includeUnused?: boolean } = {}
   ): Promise<CategoryRow[] | null> {
-    const machineCheck = await query('SELECT id FROM machines WHERE id = $1', [machineId]);
+    const machineCheck = await pool.query('SELECT id FROM machines WHERE id = $1', [machineId]);
     if (machineCheck.rows.length === 0) {
       return null;
     }
@@ -47,8 +47,7 @@ export class CategoriesService {
       return this.listAllCategories();
     }
 
-    // Default: return only categories actively assigned to sections in this machine
-    const result = await query<CategoryRow>(
+    const result = await pool.query<CategoryRow>(
       `SELECT DISTINCT c.id, c.user_id, c.machine_id, c.name, c.created_at, c.updated_at
        FROM categories c
        INNER JOIN sections s ON s.category_id = c.id
@@ -59,8 +58,8 @@ export class CategoriesService {
     return result.rows;
   }
 
-  static async getCategoryById(categoryId: string, _userId?: string): Promise<CategoryRow | null> {
-    const result = await query<CategoryRow>(
+  static async getCategoryById(categoryId: string): Promise<CategoryRow | null> {
+    const result = await pool.query<CategoryRow>(
       'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1',
       [categoryId]
     );
@@ -68,16 +67,16 @@ export class CategoriesService {
   }
 
   /**
-   * Create a global category
+   * Create a global category with transactional auditing
    */
   static async createUserCategory(
-    userId: string,
+    context: AuditContext,
     input: CreateCategoryInput
   ): Promise<{ category?: CategoryRow; error?: string; status?: number }> {
     const trimmedName = input.name.trim();
 
     // Check duplicate category name globally (case-insensitive)
-    const duplicateCheck = await query(
+    const duplicateCheck = await pool.query(
       'SELECT id FROM categories WHERE LOWER(name) = LOWER($1)',
       [trimmedName]
     );
@@ -88,37 +87,58 @@ export class CategoriesService {
       };
     }
 
+    const client = await pool.connect();
     try {
-      const result = await query<CategoryRow>(
+      await client.query('BEGIN');
+
+      const result = await client.query<CategoryRow>(
         'INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id, user_id, machine_id, name, created_at, updated_at',
-        [userId, trimmedName]
+        [context.actorUserId, trimmedName]
       );
-      return { category: result.rows[0] };
+      const newCategory = result.rows[0];
+
+      // Audit atomically in the same transaction
+      await AuditService.recordMutation(client, context, {
+        action: 'category.created',
+        resourceType: 'category',
+        resourceId: newCategory.id,
+        resourceLabel: newCategory.name,
+        before: null,
+        after: newCategory as unknown as Record<string, unknown>,
+      });
+
+      await client.query('COMMIT');
+      return { category: newCategory };
     } catch (err: any) {
+      await client.query('ROLLBACK');
       if (err.code === '23505') {
         return {
           error: `Category "${trimmedName}" already exists`,
           status: 409,
         };
       }
+      await AuditService.recordFailure(context, {
+        action: 'category.created',
+        resourceType: 'category',
+        resourceLabel: trimmedName,
+        error: err,
+      });
       throw err;
+    } finally {
+      client.release();
     }
   }
 
   /**
-   * Backward-compatible creator supporting machineId
+   * Backward-compatible creator supporting machineId with transactional auditing
    */
   static async createCategory(
+    context: AuditContext,
     machineId: string,
-    input: CreateCategoryInput,
-    userId?: string
+    input: CreateCategoryInput
   ): Promise<{ category?: CategoryRow; error?: string; status?: number }> {
-    if (userId) {
-      return this.createUserCategory(userId, input);
-    }
-
     const trimmedName = input.name.trim();
-    const duplicateCheck = await query(
+    const duplicateCheck = await pool.query(
       'SELECT id FROM categories WHERE LOWER(name) = LOWER($1)',
       [trimmedName]
     );
@@ -129,76 +149,194 @@ export class CategoriesService {
       };
     }
 
+    const client = await pool.connect();
     try {
-      const result = await query<CategoryRow>(
-        'INSERT INTO categories (machine_id, name) VALUES ($1, $2) RETURNING id, user_id, machine_id, name, created_at, updated_at',
-        [machineId, trimmedName]
+      await client.query('BEGIN');
+
+      const result = await client.query<CategoryRow>(
+        'INSERT INTO categories (machine_id, user_id, name) VALUES ($1, $2, $3) RETURNING id, user_id, machine_id, name, created_at, updated_at',
+        [machineId, context.actorUserId, trimmedName]
       );
-      return { category: result.rows[0] };
+      const newCategory = result.rows[0];
+
+      await AuditService.recordMutation(client, context, {
+        action: 'category.created',
+        resourceType: 'category',
+        resourceId: newCategory.id,
+        resourceLabel: newCategory.name,
+        before: null,
+        after: newCategory as unknown as Record<string, unknown>,
+        metadata: { machineId },
+      });
+
+      await client.query('COMMIT');
+      return { category: newCategory };
     } catch (err: any) {
+      await client.query('ROLLBACK');
       if (err.code === '23505') {
         return {
           error: `Category "${trimmedName}" already exists`,
           status: 409,
         };
       }
+      await AuditService.recordFailure(context, {
+        action: 'category.created',
+        resourceType: 'category',
+        resourceLabel: trimmedName,
+        error: err,
+      });
       throw err;
+    } finally {
+      client.release();
     }
   }
 
+  /**
+   * Update category with transactional auditing and diff capture
+   */
   static async updateCategory(
+    context: AuditContext,
     categoryId: string,
-    input: UpdateCategoryInput,
-    _userId?: string
+    input: UpdateCategoryInput
   ): Promise<{ category?: CategoryRow; error?: string; status?: number }> {
-    // Check if category exists
-    const existing = await query<CategoryRow>(
-      'SELECT id, user_id, machine_id, name FROM categories WHERE id = $1',
-      [categoryId]
-    );
-    if (existing.rows.length === 0) {
-      return { error: 'Category not found', status: 404 };
-    }
-
     const trimmedName = input.name.trim();
 
-    // Check duplicate category name globally
-    const duplicateCheck = await query(
-      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND id != $2',
-      [trimmedName, categoryId]
-    );
-    if (duplicateCheck.rows.length > 0) {
-      return {
-        error: `Category "${trimmedName}" already exists`,
-        status: 409,
-      };
-    }
-
+    const client = await pool.connect();
     try {
-      const result = await query<CategoryRow>(
+      await client.query('BEGIN');
+
+      // 1. Fetch before snapshot with row lock
+      const existing = await client.query<CategoryRow>(
+        'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1 FOR UPDATE',
+        [categoryId]
+      );
+      if (existing.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { error: 'Category not found', status: 404 };
+      }
+      const before = existing.rows[0];
+
+      // 2. Check duplicate name globally
+      const duplicateCheck = await client.query(
+        'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND id != $2',
+        [trimmedName, categoryId]
+      );
+      if (duplicateCheck.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return {
+          error: `Category "${trimmedName}" already exists`,
+          status: 409,
+        };
+      }
+
+      // 3. Update category
+      const result = await client.query<CategoryRow>(
         `UPDATE categories 
          SET name = $1, updated_at = CURRENT_TIMESTAMP 
          WHERE id = $2 
          RETURNING id, user_id, machine_id, name, created_at, updated_at`,
         [trimmedName, categoryId]
       );
-      return { category: result.rows[0] || null };
+      const after = result.rows[0];
+
+      // 4. Record transactional audit
+      await AuditService.recordMutation(client, context, {
+        action: 'category.updated',
+        resourceType: 'category',
+        resourceId: categoryId,
+        resourceLabel: after.name,
+        before: before as unknown as Record<string, unknown>,
+        after: after as unknown as Record<string, unknown>,
+      });
+
+      await client.query('COMMIT');
+      return { category: after };
     } catch (err: any) {
+      await client.query('ROLLBACK');
       if (err.code === '23505') {
         return {
           error: `Category "${trimmedName}" already exists`,
           status: 409,
         };
       }
+      await AuditService.recordFailure(context, {
+        action: 'category.updated',
+        resourceType: 'category',
+        resourceId: categoryId,
+        error: err,
+      });
       throw err;
+    } finally {
+      client.release();
     }
   }
 
-  static async deleteCategory(categoryId: string, _userId?: string): Promise<boolean> {
-    // Ensure components become uncategorized
-    await query('UPDATE sections SET category_id = NULL WHERE category_id = $1', [categoryId]);
+  /**
+   * Delete category with transactional auditing and affected section unlinking
+   */
+  static async deleteCategory(
+    context: AuditContext,
+    categoryId: string,
+    reason?: string
+  ): Promise<boolean> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    const result = await query('DELETE FROM categories WHERE id = $1 RETURNING id', [categoryId]);
-    return (result.rowCount ?? 0) > 0;
+      // 1. Fetch before snapshot with row lock
+      const existing = await client.query<CategoryRow>(
+        'SELECT id, user_id, machine_id, name, created_at, updated_at FROM categories WHERE id = $1 FOR UPDATE',
+        [categoryId]
+      );
+      if (existing.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      const before = existing.rows[0];
+
+      // 2. Count sections affected by unlinking
+      const secCountRes = await client.query<{ count: string }>(
+        'SELECT COUNT(*) as count FROM sections WHERE category_id = $1',
+        [categoryId]
+      );
+      const affectedSectionsCount = parseInt(secCountRes.rows[0]?.count ?? '0', 10);
+
+      // 3. Explicitly unbind sections
+      await client.query('UPDATE sections SET category_id = NULL WHERE category_id = $1', [categoryId]);
+
+      // 4. Delete the category record
+      const result = await client.query('DELETE FROM categories WHERE id = $1 RETURNING id', [categoryId]);
+      const deleted = (result.rowCount ?? 0) > 0;
+
+      // 5. Record transactional audit event
+      await AuditService.recordMutation(client, context, {
+        action: 'category.deleted',
+        resourceType: 'category',
+        resourceId: categoryId,
+        resourceLabel: before.name,
+        before: before as unknown as Record<string, unknown>,
+        after: null,
+        reason,
+        metadata: {
+          affectedSectionsCount,
+          unlinkedAt: new Date().toISOString(),
+        },
+      });
+
+      await client.query('COMMIT');
+      return deleted;
+    } catch (err: any) {
+      await client.query('ROLLBACK');
+      await AuditService.recordFailure(context, {
+        action: 'category.deleted',
+        resourceType: 'category',
+        resourceId: categoryId,
+        error: err,
+        reason,
+      });
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 }

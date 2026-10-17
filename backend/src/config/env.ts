@@ -23,6 +23,11 @@ const envSchema = z.object({
   BACKUP_FORMAT: z.enum(['sql', 'json', 'csv', 'zip']).default('sql'),
   BACKUP_COMPRESSION: z.enum(['none', 'gzip']).default('gzip'),
   BACKUP_RETENTION_DAYS: z.coerce.number().default(30),
+
+  // PostHog analytics and transactional outbox
+  POSTHOG_PROJECT_TOKEN: z.string().optional(),
+  POSTHOG_HOST: z.string().default('https://eu.i.posthog.com'),
+  POSTHOG_PERSONAL_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

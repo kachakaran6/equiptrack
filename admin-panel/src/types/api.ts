@@ -66,17 +66,43 @@ export interface ErrorLog {
 
 export interface AuditLog {
   id: string
+  occurred_at?: string
+  ingested_at?: string
+  actor_user_id?: string | null
+  actor_email?: string | null
+  actor_role?: string | null
+  action: string
+  resource_type?: string
+  resource?: string
+  resource_id?: string | null
+  resource_label?: string | null
+  outcome?: 'SUCCESS' | 'FAILURE'
+  result?: string
+  source?: string
+  request_id?: string | null
+  correlation_id?: string | null
+  changed_fields?: string[] | null
+  before_data?: Record<string, unknown> | null
+  after_data?: Record<string, unknown> | null
+  reason?: string | null
+  application_version?: string | null
+  ip_address?: string | null
+  metadata?: Record<string, unknown> | null
+  outbox_status?: 'pending' | 'delivered' | 'failed' | null
+  outbox_delivered_at?: string | null
+  created_at?: string
+  admin_email?: string | null
   admin_id?: string | null
   admin_name?: string | null
-  admin_email?: string | null
-  action: string
-  resource: string
-  resource_id?: string | null
-  ip_address?: string | null
   user_agent?: string | null
-  result: 'SUCCESS' | 'FAILED' | 'PENDING'
   details?: Record<string, unknown> | null
-  created_at: string
+}
+
+export interface AuditOutboxStats {
+  pendingCount: number
+  failedCount: number
+  deliveredCount: number
+  oldestPendingAgeSeconds: number | null
 }
 
 export interface TableColumnMetadata {

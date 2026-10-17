@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
+import { getAuditContext } from '../audit/audit.context.js';
 import {
   createUsageRecordSchema,
   updateUsageRecordSchema,
@@ -45,8 +46,9 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      const context = getAuditContext(request);
       const result = await UsageRecordsService.createRecord(
-        request.user.id,
+        context,
         request.params.sectionId,
         parsed.data
       );
@@ -82,7 +84,7 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /api/usage-records/:id
-  fastify.patch<{ Params: { id: string } }>('/usage-records/:id', async (request, reply) => {
+  fastify.patch<{ Params: { id: string }; Body?: { reason?: string } }>('/usage-records/:id', async (request, reply) => {
     const parsed = updateUsageRecordSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -92,8 +94,9 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    const context = getAuditContext(request);
     const result = await UsageRecordsService.updateRecord(
-      request.user.id,
+      context,
       request.params.id,
       parsed.data
     );
@@ -112,8 +115,16 @@ export const usageRecordRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /api/usage-records/:id
-  fastify.delete<{ Params: { id: string } }>('/usage-records/:id', async (request, reply) => {
-    await UsageRecordsService.deleteRecord(request.user.id, request.params.id);
+  fastify.delete<{ Params: { id: string }; Body?: { reason?: string } }>('/usage-records/:id', async (request, reply) => {
+    const context = getAuditContext(request);
+    const reason = (request.body as any)?.reason;
+    const deleted = await UsageRecordsService.deleteRecord(context, request.params.id, reason);
+    if (!deleted) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Usage record not found',
+      });
+    }
     return reply.status(200).send({
       success: true,
       message: 'Usage record deleted successfully',

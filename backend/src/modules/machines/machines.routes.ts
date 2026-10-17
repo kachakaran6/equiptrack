@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { authenticate } from '../../middleware/auth.js';
+import { getAuditContext } from '../audit/audit.context.js';
 import { createMachineSchema, updateMachineSchema, duplicateMachineSchema } from './machines.schemas.js';
 import { MachinesService } from './machines.service.js';
 
@@ -42,7 +43,8 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    const machine = await MachinesService.createMachine(request.user.id, parsed.data);
+    const context = getAuditContext(request);
+    const machine = await MachinesService.createMachine(context, parsed.data);
     return reply.status(201).send({
       success: true,
       data: machine,
@@ -60,8 +62,9 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    const context = getAuditContext(request);
     const machine = await MachinesService.duplicateMachine(
-      request.user.id,
+      context,
       request.params.id,
       parsed.data
     );
@@ -81,7 +84,7 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PATCH /api/machines/:id
-  fastify.patch<{ Params: { id: string } }>('/:id', async (request, reply) => {
+  fastify.patch<{ Params: { id: string }; Body?: { reason?: string } }>('/:id', async (request, reply) => {
     const parsed = updateMachineSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -91,8 +94,9 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
+    const context = getAuditContext(request);
     const machine = await MachinesService.updateMachine(
-      request.user.id,
+      context,
       request.params.id,
       parsed.data
     );
@@ -111,8 +115,16 @@ export const machineRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /api/machines/:id
-  fastify.delete<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    await MachinesService.deleteMachine(request.user.id, request.params.id);
+  fastify.delete<{ Params: { id: string }; Body?: { reason?: string } }>('/:id', async (request, reply) => {
+    const context = getAuditContext(request);
+    const reason = (request.body as any)?.reason;
+    const deleted = await MachinesService.deleteMachine(context, request.params.id, reason);
+    if (!deleted) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Machine not found',
+      });
+    }
     return reply.status(200).send({
       success: true,
       message: 'Machine deleted successfully',

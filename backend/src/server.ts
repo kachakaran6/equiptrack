@@ -3,6 +3,7 @@ import { env } from './config/env.js';
 import { closePool } from './db/index.js';
 import { runMigrations } from './db/migrate.js';
 import { startBackupScheduler, stopBackupScheduler } from './modules/backup/backup.scheduler.js';
+import { AuditOutboxWorker } from './modules/audit/audit-outbox.worker.js';
 
 async function start() {
   const app = buildApp();
@@ -33,16 +34,24 @@ async function start() {
     // Non-fatal: server keeps running
   }
 
+  // Start PostHog audit outbox worker
+  try {
+    AuditOutboxWorker.start();
+  } catch (err) {
+    console.error('[AuditOutboxWorker] Failed to start worker:', err);
+  }
+
   // Graceful Shutdown
   const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
   for (const signal of signals) {
     process.on(signal, async () => {
       console.log(`\nReceived ${signal}, shutting down gracefully...`);
       try {
+        AuditOutboxWorker.stop();
         await stopBackupScheduler();
         await app.close();
         await closePool();
-        console.log('Server and database pool closed successfully.');
+        console.log('Server, workers, and database pool closed successfully.');
         process.exit(0);
       } catch (err) {
         console.error('Error during graceful shutdown:', err);

@@ -18,6 +18,7 @@ import { reportRoutes } from './modules/reports/reports.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { errorLogRoutes } from './modules/error-logs/error-logs.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
+import { auditRoutes } from './modules/audit/audit.routes.js';
 import { ErrorLogsService } from './modules/error-logs/error-logs.service.js';
 import { query } from './db/index.js';
 
@@ -143,6 +144,7 @@ export function buildApp(): FastifyInstance {
         keyGenerator: (req) => req.ip,
       });
       adminApp.register(adminRoutes, { prefix: '/' });
+      adminApp.register(auditRoutes, { prefix: '/' });
     },
     { prefix: '/api/admin' }
   );
